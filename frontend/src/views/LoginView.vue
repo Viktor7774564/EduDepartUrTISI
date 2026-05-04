@@ -161,6 +161,7 @@ const onFormSubmit = async () => {
   padding: 0 14px;
   font-size: 24px;
   margin-bottom: 40px;
+  z-index: 1;
 }
 
 .action-btn {
