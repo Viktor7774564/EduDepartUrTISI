@@ -1,4 +1,4 @@
-﻿import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 
 const router = createRouter({
@@ -8,19 +8,16 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
-      meta: { headerVariant: 'guest' },
     },
     {
       path: '/login',
-      name: 'about',
+      name: 'login',
       component: () => import('../views/LoginView.vue'),
-      meta: { headerVariant: 'guest' },
     },
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../views/NotFoundView.vue'),
-      meta: { headerVariant: 'auth' },
     },
   ],
 })

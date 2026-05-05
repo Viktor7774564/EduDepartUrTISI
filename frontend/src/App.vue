@@ -1,43 +1,68 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed } from 'vue'
-import { RouterView, useRoute } from 'vue-router'
+import { RouterLink, RouterView, useRouter } from 'vue-router'
 import logoUrtisi from '@/assets/urtisi-logo.png'
+import avatarIcon from '@/assets/Avatar.png'
+import caretIcon from '@/assets/Down.png'
+import { useAuthStore } from '@/stores/auth'
 
-const route = useRoute()
-const showAuthHeader = computed(() => route.meta.headerVariant === 'auth')
+const router = useRouter()
+const authStore = useAuthStore()
+
+const showAuthHeader = computed(() => authStore.isAuthenticated)
+const currentUserName = computed(() => authStore.currentUser?.name ?? '')
+const currentUserRole = computed(() => authStore.roleLabel)
 
 const mainLinks = [
-  'Расписание преподавателей',
-  'Расписание студентов',
-  'Расписание аудитории',
-  'Расписание консультаций',
+  { id: 'teachers', title: 'Расписание преподавателей' },
+  { id: 'students', title: 'Расписание студентов' },
+  { id: 'auditories', title: 'Расписание аудитории' },
+  { id: 'consults', title: 'Расписание консультаций' },
 ]
+
+const visibleMainLinks = computed(() => {
+  if (authStore.currentUser?.role === 'student') {
+    return mainLinks.filter((item) => item.id === 'students' || item.id === 'consults')
+  }
+
+  return mainLinks
+})
+
+const onLogout = async () => {
+  authStore.logout()
+  await router.push({ name: 'home' })
+}
 </script>
 
 <template>
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="/" aria-label="УрТИСИ">
+      <RouterLink class="brand" to="/" aria-label="УрТИСИ">
         <img :src="logoUrtisi" alt="Логотип УрТИСИ" />
-      </a>
+      </RouterLink>
 
       <template v-if="showAuthHeader">
         <nav class="menu" aria-label="Навигация">
-          <a v-for="link in mainLinks" :key="link" href="#">{{ link }}</a>
+          <a v-for="link in visibleMainLinks" :key="link.id" href="#">{{ link.title }}</a>
         </nav>
 
-        <button class="profile-btn" type="button" aria-label="Профиль пользователя">
-          <img class="profile-icon" src="../src/assets/Avatar.png"></img>
-          <span>Преподаватель</span>
-          <img class="caret" aria-hidden="true" src="../src/assets/Down.png"></img>
-        </button>
+        <div class="profile-actions">
+          <button class="profile-btn" type="button" aria-label="Профиль пользователя">
+            <img class="profile-icon" :src="avatarIcon" alt="" />
+            <span>{{ currentUserName }}</span>
+            <span class="profile-role">{{ currentUserRole }}</span>
+            <img class="caret" aria-hidden="true" :src="caretIcon" alt="" />
+          </button>
+
+          <button class="logout-btn" type="button" @click="onLogout">Выйти</button>
+        </div>
       </template>
 
       <template v-else>
         <div class="header-spacer" />
-        <router-link to="/login">
+        <RouterLink to="/login">
           <button class="signin-btn" type="button">Войти</button>
-        </router-link>
+        </RouterLink>
       </template>
     </header>
 
@@ -91,8 +116,15 @@ const mainLinks = [
   white-space: nowrap;
 }
 
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .signin-btn,
-.profile-btn {
+.profile-btn,
+.logout-btn {
   border: 0;
   cursor: pointer;
   border-radius: 12px;
@@ -111,19 +143,31 @@ const mainLinks = [
   min-height: 62px;
   display: inline-flex;
   align-items: center;
-  gap: 14px;
-  font-size: 21px;
+  gap: 12px;
+  font-size: 18px;
+}
+
+.profile-role {
+  color: rgb(234 243 249 / 75%);
+  font-size: 15px;
+}
+
+.logout-btn {
+  min-width: 104px;
+  height: 44px;
+  background: rgb(255 255 255 / 10%);
+  font-size: 16px;
 }
 
 .profile-icon {
   width: 28px;
   height: 28px;
   display: inline-block;
-  position: relative;
 }
 
 .caret {
-  font-size: 20px;
+  width: 14px;
+  height: 8px;
 }
 
 .bottombar {
@@ -146,24 +190,26 @@ const mainLinks = [
     font-size: clamp(14px, 2.6vw, 20px);
   }
 
+  .profile-actions {
+    flex-direction: column;
+  }
+
   .signin-btn,
   .profile-btn {
     min-width: 130px;
     height: 52px;
-    font-size: 24px;
+    font-size: 20px;
+  }
+
+  .logout-btn {
+    min-width: 130px;
+    height: 44px;
+    font-size: 18px;
   }
 
   .profile-icon {
     width: 18px;
     height: 18px;
-    border-width: 3px;
-  }
-
-  .profile-icon::after {
-    width: 24px;
-    height: 12px;
-    border-width: 3px;
-    top: 16px;
   }
 }
 </style>

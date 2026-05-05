@@ -1,11 +1,22 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
+import { computed, reactive, ref } from 'vue'
 import telegramIcon from '@/assets/telegram.png'
 import vkIcon from '@/assets/vk.png'
 import maxIcon from '@/assets/max.png'
 import bgCard from '@/assets/bg-card.png'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { mockUsers } from '@/mocks/users'
 
 const router = useRouter()
+const authStore = useAuthStore()
+
+const formData = reactive({
+  login: '',
+  password: '',
+})
+
+const errorMessage = ref('')
 
 const helpfulLinks = [
   {
@@ -48,13 +59,22 @@ const rightDecor = [
   { id: 'right-bottom-right', className: 'right-bottom-right', rotate: -10 },
 ]
 
-const onFormSubmit = async () => {
-  
-  console.log("goto not found")
-  
-  router.push({ name: 'not-found' }) 
-}
+const demoAccountsText = computed(() =>
+  mockUsers.map((user) => `${user.login} / ${user.password}`).join(' | '),
+)
 
+const onFormSubmit = async () => {
+  errorMessage.value = ''
+
+  const result = authStore.login(formData.login, formData.password)
+
+  if (!result.success) {
+    errorMessage.value = result.message ?? 'Не удалось выполнить вход.'
+    return
+  }
+
+  await router.push({ name: 'home' })
+}
 </script>
 
 <template>
@@ -73,13 +93,14 @@ const onFormSubmit = async () => {
 
       <h1>Вход</h1>
 
-      <!--Временное решение (при появлении backend части будет исправлено)-->
       <form class="login-form" @submit.prevent="onFormSubmit">
         <label for="login">Логин</label>
-        <input id="login" name="login" type="text" />
+        <input id="login" v-model="formData.login" name="login" type="text" />
 
         <label for="password">Пароль</label>
-        <input id="password" name="password" type="password" />
+        <input id="password" v-model="formData.password" name="password" type="password" />
+
+        <p v-if="errorMessage" class="form-error">{{ errorMessage }}</p>
 
         <button class="action-btn" type="submit">Войти</button>
       </form>
@@ -175,6 +196,24 @@ const onFormSubmit = async () => {
   color: #eef6fb;
   font-size: 22px;
   cursor: pointer;
+}
+
+.form-error {
+  color: #c43636;
+  font-size: 18px;
+  margin: -20px 0 0;
+  z-index: 1;
+}
+
+.mock-note {
+  margin-top: 24px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: rgb(78 163 215 / 10%);
+  color: #1f4053;
+  font-size: 16px;
+  text-align: center;
+  z-index: 1;
 }
 
 .links-side {
@@ -383,6 +422,10 @@ const onFormSubmit = async () => {
     min-width: 240px;
     height: 60px;
     font-size: 30px;
+  }
+
+  .mock-note {
+    font-size: 18px;
   }
 
   .links-side {

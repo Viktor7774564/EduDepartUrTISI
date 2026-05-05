@@ -1,5 +1,9 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
+import { computed } from 'vue'
 import PageFrame from '@/components/PageFrame.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 const menuCards = [
   { id: 'students', title: 'Расписание студентов', needAuth: false },
@@ -7,6 +11,18 @@ const menuCards = [
   { id: 'auditories', title: 'Расписание аудитории', needAuth: true },
   { id: 'teachers', title: 'Расписание преподавателей', needAuth: true },
 ]
+
+const visibleMenuCards = computed(() => {
+  if (authStore.currentUser?.role === 'student') {
+    return menuCards.filter((item) => item.id === 'students' || item.id === 'consults')
+  }
+
+  if (authStore.currentUser?.role === 'admin') {
+    return menuCards
+  }
+
+  return menuCards
+})
 </script>
 
 <template>
@@ -16,9 +32,9 @@ const menuCards = [
       <p>Удобный доступ к расписанию занятий для студентов, преподавателей и аудиторий в одном месте.</p>
 
       <section class="cards-grid" aria-label="Категории расписания">
-        <article v-for="item in menuCards" :key="item.id" class="menu-card">
+        <article v-for="item in visibleMenuCards" :key="item.id" class="menu-card">
           <h2>{{ item.title }}</h2>
-          <p v-if="item.needAuth">Требуется авторизация</p>
+          <p v-if="item.needAuth && !authStore.isAuthenticated">Требуется авторизация</p>
         </article>
       </section>
     </main>
