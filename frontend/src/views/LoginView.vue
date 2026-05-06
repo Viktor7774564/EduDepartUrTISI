@@ -60,7 +60,7 @@ const rightDecor = [
 ]
 
 const demoAccountsText = computed(() =>
-  mockUsers.map((user) => `${user.login} / ${user.password}`).join(' | '),
+    mockUsers.map((user) => `${user.login} / ${user.password}`).join(' | '),
 )
 
 const onFormSubmit = async () => {
@@ -81,14 +81,14 @@ const onFormSubmit = async () => {
   <main class="content">
     <section class="login-card">
       <img
-        v-for="item in leftDecor"
-        :key="item.id"
-        :src="bgCard"
-        class="decor-card fade-card"
-        :class="item.className"
-        :style="{ transform: `rotate(${item.rotate}deg)` }"
-        alt=""
-        aria-hidden="true"
+          v-for="item in leftDecor"
+          :key="item.id"
+          :src="bgCard"
+          class="decor-card fade-card"
+          :class="item.className"
+          :style="{ transform: `rotate(${item.rotate}deg)` }"
+          alt=""
+          aria-hidden="true"
       />
 
       <h1>Вход</h1>
@@ -108,14 +108,14 @@ const onFormSubmit = async () => {
 
     <section class="links-side">
       <img
-        v-for="item in rightDecor"
-        :key="item.id"
-        :src="bgCard"
-        class="decor-card fade-card"
-        :class="item.className"
-        :style="{ transform: `rotate(${item.rotate}deg)` }"
-        alt=""
-        aria-hidden="true"
+          v-for="item in rightDecor"
+          :key="item.id"
+          :src="bgCard"
+          class="decor-card fade-card"
+          :class="item.className"
+          :style="{ transform: `rotate(${item.rotate}deg)` }"
+          alt=""
+          aria-hidden="true"
       />
 
       <article class="links-card">
@@ -139,22 +139,33 @@ const onFormSubmit = async () => {
 </template>
 
 <style scoped>
+:global(html),
+:global(body),
+:global(#app) {
+  background: #ffffff;
+}
+
 .content {
-  min-height: calc(100vh - 180px);
+  flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  min-height: 100%;
+  background: #ffffff;
 }
 
 .login-card {
   position: relative;
-  border: 1px solid #63abde;
+  border: 1px solid rgba(99, 171, 222, 0.45);
   border-right-width: 2px;
   border-radius: 12px;
+  background: rgba(234, 234, 234, 0.90);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 34px 22px 34px;
+  padding: 34px 22px;
   overflow: hidden;
 }
 
@@ -165,9 +176,9 @@ const onFormSubmit = async () => {
 }
 
 .login-form {
-  width: min(540px, 90%);
+  width: min(380px, 90%);
   display: grid;
-  gap: 18px;
+  gap: 16px;
 }
 
 .login-form label {
@@ -175,14 +186,21 @@ const onFormSubmit = async () => {
 }
 
 .login-form input {
-  height: 75px;
+  height: 50px;
   border: 1px solid #c4cbd0;
-  border-radius: 6px;
+  border-radius: 10px;
   background: #fff;
-  padding: 0 14px;
-  font-size: 24px;
-  margin-bottom: 40px;
+  padding: 0 16px;
+  font-size: 18px;
+  margin-bottom: 22px;
   z-index: 1;
+  transition: 0.2s ease;
+}
+
+.login-form input:focus {
+  outline: none;
+  border-color: #4ea3d7;
+  box-shadow: 0 0 0 3px rgb(78 163 215 / 15%);
 }
 
 .action-btn {
@@ -227,11 +245,13 @@ const onFormSubmit = async () => {
 
 .links-card {
   width: min(892px, 58%);
-  border: 1px solid #63abde;
+  border: 1px solid rgba(99, 171, 222, 0.45);
   border-radius: 14px;
-  background: #dfdfdf;
-  box-shadow: 0 8px 18px rgb(0 0 0 / 10%);
-  padding: 24px 0 30px;
+  background: rgba(234, 234, 234, 0.9);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  padding: 24px 24px 30px;
   position: relative;
   z-index: 2;
 }
@@ -246,20 +266,19 @@ const onFormSubmit = async () => {
 .links-card ul {
   list-style: none;
   display: grid;
-  gap: 36px;
+  gap: 22px;
   padding: 0;
   margin: 0;
-  justify-content: center;
 }
 
 .links-card li {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10vh;
-  background: #f1f1f1;
+  gap: 40px;
+  background: #ffffff;
   border-radius: 14px;
-  padding: 11px 14px;
+  padding: 16px 18px;
 }
 
 .link-info {
@@ -269,8 +288,9 @@ const onFormSubmit = async () => {
 }
 
 .link-info img {
-  width: 80px;
-  height: 80px;
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
 }
 
 .link-info h3 {
@@ -394,7 +414,7 @@ const onFormSubmit = async () => {
   }
 
   .login-card {
-    border-right: 1px solid #63abde;
+    border-right: 1px solid rgba(99, 171, 222, 0.45);
     border-radius: 0;
     padding-top: 80px;
   }
@@ -481,5 +501,14 @@ const onFormSubmit = async () => {
   .right-bottom-center {
     display: none;
   }
+}
+
+.login-card,
+.links-side {
+  min-height: 100%;
+}
+
+.login-card {
+  border-right-width: 2px;
 }
 </style>

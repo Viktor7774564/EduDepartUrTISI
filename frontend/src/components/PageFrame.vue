@@ -1,21 +1,20 @@
 <template>
   <section class="page-frame">
-    <img
-      v-for="item in decorations"
-      :key="item.id"
-      :src="bgCard"
-      class="decor-card fade-card"
-      :style="{
-        top: item.top,
-        left: item.left,
-        right: item.right,
-        bottom: item.bottom,
-        transform: `rotate(${item.rotate}deg)`,
-        animationDelay: `${item.delay}s`,
-      }"
-      alt=""
-      aria-hidden="true"
-    />
+    <div class="decor-layer" :class="{ fade: isFading }">
+      <img
+          v-for="item in decorations"
+          :key="item.id"
+          :src="bgCard"
+          class="decor-card"
+          :style="{
+          top: item.top,
+          left: item.left,
+          transform: `translate(-50%, -50%) rotate(${item.rotate}deg)`,
+        }"
+          alt=""
+          aria-hidden="true"
+      />
+    </div>
 
     <div class="frame-content">
       <slot />
@@ -24,28 +23,99 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import bgCard from '@/assets/bg-card.png'
 
 type Decoration = {
   id: string
-  top?: string
-  left?: string
-  right?: string
-  bottom?: string
+  top: string
+  left: string
   rotate: number
-  delay: number
 }
 
-const decorations: Decoration[] = [
-  { id: 'card-1', top: '42px', left: '15%', rotate: -28, delay: 0 },
-  { id: 'card-2', top: '18px', left: '46%', rotate: 3, delay: 0.45 },
-  { id: 'card-3', top: '44px', right: '8%', rotate: 31, delay: 0.95 },
-  { id: 'card-4', top: '38%', left: '3%', rotate: 23, delay: 0.3 },
-  { id: 'card-5', top: '70%', left: '15%', rotate: -50, delay: 0.5 },
-  { id: 'card-6', top: '37%', left: '47%', rotate: -18, delay: 1.1 },
-  { id: 'card-7', bottom: '15%', left: '29%', rotate: -12, delay: 0.6 },
-  { id: 'card-8', bottom: '12%', right: '16%', rotate: 34, delay: 1.5 },
-]
+const decorations = ref<Decoration[]>([])
+const isFading = ref(false)
+
+const CARD_COUNT = 8
+const MIN_DISTANCE = 16 // расстояния между карточками
+
+function randomBetween(min: number, max: number) {
+  return Math.random() * (max - min) + min
+}
+
+function toPoint(top: string, left: string) {
+  return {
+    x: parseFloat(left),
+    y: parseFloat(top),
+  }
+}
+
+function distance(a: any, b: any) {
+  return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2))
+}
+
+function generateValidPosition(existing: any[]) {
+  let tries = 0
+
+  while (tries < 50) {
+    const pos = {
+      top: `${randomBetween(5, 90)}%`,
+      left: `${randomBetween(5, 90)}%`,
+    }
+
+    const point = toPoint(pos.top, pos.left)
+
+    const isTooClose = existing.some((e) => {
+      const ep = toPoint(e.top, e.left)
+      return distance(point, ep) < MIN_DISTANCE
+    })
+
+    if (!isTooClose) {
+      return pos
+    }
+
+    tries++
+  }
+
+  return {
+    top: `${randomBetween(5, 90)}%`,
+    left: `${randomBetween(5, 90)}%`,
+  }
+}
+
+function generateDecorations() {
+  const items: Decoration[] = []
+
+  for (let i = 0; i < CARD_COUNT; i++) {
+    const pos = generateValidPosition(items)
+
+    items.push({
+      id: `card-${Date.now()}-${i}`,
+      top: pos.top,
+      left: pos.left,
+      rotate: randomBetween(-60, 60),
+    })
+  }
+
+  decorations.value = items
+}
+
+function cycle() {
+  isFading.value = true
+
+  setTimeout(() => {
+    generateDecorations()
+    isFading.value = false
+  }, 600)
+}
+
+onMounted(() => {
+  generateDecorations()
+
+  setInterval(() => {
+    cycle()
+  }, 3500)
+})
 </script>
 
 <style scoped>
@@ -59,33 +129,26 @@ const decorations: Decoration[] = [
 .frame-content {
   position: relative;
   z-index: 2;
-  min-height: calc(100vh - 180px);
+}
+
+/* слой */
+.decor-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transition: opacity 0.6s ease;
+  opacity: 1;
+}
+
+.decor-layer.fade {
+  opacity: 0;
 }
 
 .decor-card {
   position: absolute;
   width: 160px;
-  opacity: 0.34;
+  opacity: 0.5;
   pointer-events: none;
-  z-index: 1;
-}
-
-.fade-card {
-  animation: fadeInOut 3s ease-in-out infinite alternate;
-}
-
-@keyframes fadeInOut {
-  0% {
-    opacity: 0;
-  }
-
-  50% {
-    opacity: 0.34;
-  }
-
-  100% {
-    opacity: 0.34;
-  }
 }
 
 @media (max-width: 900px) {

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import PageFrame from '@/components/PageFrame.vue'
 import { useAuthStore } from '@/stores/auth'
+import { RouterLink } from 'vue-router'
 
 const authStore = useAuthStore()
 
@@ -32,10 +33,15 @@ const visibleMenuCards = computed(() => {
       <p>Удобный доступ к расписанию занятий для студентов, преподавателей и аудиторий в одном месте.</p>
 
       <section class="cards-grid" aria-label="Категории расписания">
-        <article v-for="item in visibleMenuCards" :key="item.id" class="menu-card">
+        <RouterLink
+            v-for="item in visibleMenuCards"
+            :key="item.id"
+            class="menu-card"
+            :to="item.id === 'students' ? '/schedule/students' : '/'"
+        >
           <h2>{{ item.title }}</h2>
           <p v-if="item.needAuth && !authStore.isAuthenticated">Требуется авторизация</p>
-        </article>
+        </RouterLink>
       </section>
     </main>
   </PageFrame>
@@ -108,5 +114,9 @@ h1 {
   .menu-card {
     min-height: 150px;
   }
+}
+.menu-card {
+  text-decoration: none;
+  color: inherit;
 }
 </style>

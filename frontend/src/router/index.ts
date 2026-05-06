@@ -9,11 +9,35 @@ const router = createRouter({
       name: 'home',
       component: HomeView,
     },
+
     {
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
     },
+
+    // РАСПИСАНИЕ
+    {
+      path: '/schedule/students',
+      name: 'students',
+      component: () => import('../views/schedule/StudentSchedule.vue'),
+    },
+    // {
+    //   path: '/schedule/teachers',
+    //   name: 'teachers',
+    //   component: () => import('../views/schedule/TeacherSchedule.vue'),
+    // },
+    // {
+    //   path: '/schedule/auditories',
+    //   name: 'auditories',
+    //   component: () => import('../views/schedule/AuditorySchedule.vue'),
+    // },
+    // {
+    //   path: '/schedule/consults',
+    //   name: 'consults',
+    //   component: () => import('../views/schedule/ConsultSchedule.vue'),
+    // },
+
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',

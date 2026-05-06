@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import logoUrtisi from '@/assets/urtisi-logo.png'
 import avatarIcon from '@/assets/Avatar.png'
@@ -24,192 +24,223 @@ const visibleMainLinks = computed(() => {
   if (authStore.currentUser?.role === 'student') {
     return mainLinks.filter((item) => item.id === 'students' || item.id === 'consults')
   }
-
   return mainLinks
 })
 
 const onLogout = async () => {
   authStore.logout()
+  isProfileOpen.value = false
   await router.push({ name: 'home' })
 }
+
+const isProfileOpen = ref(false)
+
+const toggleProfileMenu = () => {
+  isProfileOpen.value = !isProfileOpen.value
+}
+
+const handleClickOutside = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  if (!target.closest('.profile-wrapper')) {
+    isProfileOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <template>
   <div class="app-shell">
+
     <header class="topbar">
       <RouterLink class="brand" to="/" aria-label="УрТИСИ">
         <img :src="logoUrtisi" alt="Логотип УрТИСИ" />
       </RouterLink>
 
       <template v-if="showAuthHeader">
-        <nav class="menu" aria-label="Навигация">
-          <a v-for="link in visibleMainLinks" :key="link.id" href="#">{{ link.title }}</a>
+        <nav class="menu">
+          <a v-for="link in visibleMainLinks" :key="link.id" href="#">
+            {{ link.title }}
+          </a>
         </nav>
 
         <div class="profile-actions">
-          <button class="profile-btn" type="button" aria-label="Профиль пользователя">
-            <img class="profile-icon" :src="avatarIcon" alt="" />
-            <span>{{ currentUserName }}</span>
-            <span class="profile-role">{{ currentUserRole }}</span>
-            <img class="caret" aria-hidden="true" :src="caretIcon" alt="" />
-          </button>
+          <div class="profile-wrapper">
+            <button class="profile-btn" type="button" @click="toggleProfileMenu">
+              <img class="profile-icon" :src="avatarIcon" alt="" />
+              <span>{{ currentUserName }}</span>
+              <span class="profile-role">{{ currentUserRole }}</span>
+              <img class="caret" :src="caretIcon" alt="" />
+            </button>
 
-          <button class="logout-btn" type="button" @click="onLogout">Выйти</button>
+            <div v-if="isProfileOpen" class="profile-dropdown">
+              <button class="dropdown-item">Личный кабинет</button>
+              <button class="dropdown-item danger" @click="onLogout">Выйти</button>
+            </div>
+          </div>
         </div>
       </template>
 
       <template v-else>
         <div class="header-spacer" />
         <RouterLink to="/login">
-          <button class="signin-btn" type="button">Войти</button>
+          <button class="signin-btn">Войти</button>
         </RouterLink>
       </template>
     </header>
-
-    <RouterView />
+    <main class="page-content">
+      <RouterView />
+    </main>
 
     <footer class="bottombar" />
+
   </div>
 </template>
 
 <style scoped>
 .app-shell {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: #e8e8e8;
   color: #101215;
+}
+
+.page-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .topbar {
   position: sticky;
   top: 0;
   z-index: 1000;
-  min-height: 95px;
-  padding: 0 40px;
+  min-height: 72px;
+  padding: 0 28px;
   background: #333840;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 24px;
+  gap: 18px;
 }
 
-.brand {
-  display: inline-flex;
-}
-
-.header-spacer {
-  min-height: 1px;
+.brand img {
+  height: 58px;
 }
 
 .menu {
   display: flex;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 26px;
-  min-width: 0;
+  gap: 18px;
 }
 
 .menu a {
   color: #f0f4f7;
   text-decoration: none;
-  font-size: 21px;
-  line-height: 1.2;
-  white-space: nowrap;
+  font-size: 16px;
+  padding: 8px 10px;
+  border-radius: 8px;
 }
 
-.profile-actions {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+.menu a:hover {
+  background: rgba(255,255,255,0.1);
 }
 
-.signin-btn,
-.profile-btn,
-.logout-btn {
-  border: 0;
-  cursor: pointer;
-  border-radius: 12px;
-  color: #eaf3f9;
-}
-
-.signin-btn {
-  min-width: 146px;
-  height: 57px;
-  background: #4ea3d7;
-  font-size: 21px;
+.profile-wrapper {
+  position: relative;
 }
 
 .profile-btn {
   background: transparent;
-  min-height: 62px;
-  display: inline-flex;
+  border: 0;
+  cursor: pointer;
+  color: #eaf3f9;
+  display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 18px;
+  gap: 10px;
+  font-size: 15px;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.profile-btn:hover {
+  background: rgba(255,255,255,0.08);
 }
 
 .profile-role {
-  color: rgb(234 243 249 / 75%);
-  font-size: 15px;
-}
-
-.logout-btn {
-  min-width: 104px;
-  height: 44px;
-  background: rgb(255 255 255 / 10%);
-  font-size: 16px;
+  font-size: 12px;
+  color: rgba(234,243,249,0.7);
 }
 
 .profile-icon {
-  width: 28px;
-  height: 28px;
-  display: inline-block;
+  width: 24px;
+  height: 24px;
 }
 
 .caret {
-  width: 14px;
+  width: 12px;
   height: 8px;
 }
+
+
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+
+  background: #fff;
+  border-radius: 12px;
+
+  min-width: 180px;
+
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  overflow: hidden;
+  z-index: 2000;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-item {
+  width: 100%;
+  display: block;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.dropdown-item:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.dropdown-item.danger {
+  color: #c43636;
+}
+
+
+.signin-btn {
+  min-width: 120px;
+  height: 40px;
+  background: #4ea3d7;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+}
+
 
 .bottombar {
   height: 85px;
   background: #333840;
-}
-
-@media (max-width: 1360px) {
-  .topbar {
-    padding: 14px 18px;
-    grid-template-columns: 1fr;
-    justify-items: center;
-  }
-
-  .menu {
-    gap: 12px;
-  }
-
-  .menu a {
-    font-size: clamp(14px, 2.6vw, 20px);
-  }
-
-  .profile-actions {
-    flex-direction: column;
-  }
-
-  .signin-btn,
-  .profile-btn {
-    min-width: 130px;
-    height: 52px;
-    font-size: 20px;
-  }
-
-  .logout-btn {
-    min-width: 130px;
-    height: 44px;
-    font-size: 18px;
-  }
-
-  .profile-icon {
-    width: 18px;
-    height: 18px;
-  }
 }
 </style>
