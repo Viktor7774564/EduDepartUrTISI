@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import logoUrtisi from '@/assets/urtisi-logo.png'
 import avatarIcon from '@/assets/Avatar.png'
 import caretIcon from '@/assets/Down.png'
 import { useAuthStore } from '@/stores/auth'
+import type { ScheduleKind } from '@/views/schedule/scheduleOptions'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -16,7 +17,7 @@ const currentUserRole = computed(() => authStore.roleLabel)
 const mainLinks = [
   { id: 'teachers', title: 'Расписание преподавателей' },
   { id: 'students', title: 'Расписание студентов' },
-  { id: 'auditories', title: 'Расписание аудитории' },
+  { id: 'auditories', title: 'Расписание аудиторий' },
   { id: 'consults', title: 'Расписание консультаций' },
 ]
 
@@ -24,7 +25,13 @@ const visibleMainLinks = computed(() => {
   if (authStore.currentUser?.role === 'student') {
     return mainLinks.filter((item) => item.id === 'students' || item.id === 'consults')
   }
+
   return mainLinks
+})
+
+const getScheduleRoute = (type: string) => ({
+  name: 'schedule-selection' as const,
+  params: { type: type as ScheduleKind },
 })
 
 const onLogout = async () => {
@@ -39,8 +46,9 @@ const toggleProfileMenu = () => {
   isProfileOpen.value = !isProfileOpen.value
 }
 
-const handleClickOutside = (e: MouseEvent) => {
-  const target = e.target as HTMLElement
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+
   if (!target.closest('.profile-wrapper')) {
     isProfileOpen.value = false
   }
@@ -57,7 +65,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="app-shell">
-
     <header class="topbar">
       <RouterLink class="brand" to="/" aria-label="УрТИСИ">
         <img :src="logoUrtisi" alt="Логотип УрТИСИ" />
@@ -65,9 +72,13 @@ onBeforeUnmount(() => {
 
       <template v-if="showAuthHeader">
         <nav class="menu">
-          <a v-for="link in visibleMainLinks" :key="link.id" href="#">
+          <RouterLink
+              v-for="link in visibleMainLinks"
+              :key="link.id"
+              :to="getScheduleRoute(link.id)"
+          >
             {{ link.title }}
-          </a>
+          </RouterLink>
         </nav>
 
         <div class="profile-actions">
@@ -80,8 +91,10 @@ onBeforeUnmount(() => {
             </button>
 
             <div v-if="isProfileOpen" class="profile-dropdown">
-              <button class="dropdown-item">Личный кабинет</button>
-              <button class="dropdown-item danger" @click="onLogout">Выйти</button>
+              <button class="dropdown-item" type="button">Личный кабинет</button>
+              <button class="dropdown-item danger" type="button" @click="onLogout">
+                Выйти
+              </button>
             </div>
           </div>
         </div>
@@ -90,16 +103,16 @@ onBeforeUnmount(() => {
       <template v-else>
         <div class="header-spacer" />
         <RouterLink to="/login">
-          <button class="signin-btn">Войти</button>
+          <button class="signin-btn" type="button">Войти</button>
         </RouterLink>
       </template>
     </header>
+
     <main class="page-content">
       <RouterView />
     </main>
 
     <footer class="bottombar" />
-
   </div>
 </template>
 
@@ -145,13 +158,10 @@ onBeforeUnmount(() => {
   color: #f0f4f7;
   text-decoration: none;
   font-size: 16px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 14px 16px 12px;
+  border-radius: 14px;
 }
 
-.menu a:hover {
-  background: rgba(255,255,255,0.1);
-}
 
 .profile-wrapper {
   position: relative;
@@ -170,13 +180,9 @@ onBeforeUnmount(() => {
   border-radius: 10px;
 }
 
-.profile-btn:hover {
-  background: rgba(255,255,255,0.08);
-}
-
 .profile-role {
   font-size: 12px;
-  color: rgba(234,243,249,0.7);
+  color: rgba(234, 243, 249, 0.7);
 }
 
 .profile-icon {
@@ -189,28 +195,22 @@ onBeforeUnmount(() => {
   height: 8px;
 }
 
-
 .profile-dropdown {
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-
   background: #fff;
   border-radius: 12px;
-
   min-width: 180px;
-
-  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   z-index: 2000;
-
   display: flex;
   flex-direction: column;
 }
 
 .dropdown-item {
   width: 100%;
-  display: block;
   padding: 12px 14px;
   border: none;
   background: transparent;
@@ -220,13 +220,12 @@ onBeforeUnmount(() => {
 }
 
 .dropdown-item:hover {
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .dropdown-item.danger {
   color: #c43636;
 }
-
 
 .signin-btn {
   min-width: 120px;
@@ -238,9 +237,23 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
-
 .bottombar {
   height: 85px;
   background: #333840;
+}
+
+@media (max-width: 1100px) {
+  .topbar {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'brand auth'
+      'menu menu';
+    padding: 14px 18px;
+  }
+
+  .menu {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 </style>

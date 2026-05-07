@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 import PageFrame from '@/components/PageFrame.vue'
 import { useAuthStore } from '@/stores/auth'
-import { RouterLink } from 'vue-router'
+import type { ScheduleKind } from '@/views/schedule/scheduleOptions'
 
 const authStore = useAuthStore()
 
 const menuCards = [
   { id: 'students', title: 'Расписание студентов', needAuth: false },
   { id: 'consults', title: 'Расписание консультаций', needAuth: true },
-  { id: 'auditories', title: 'Расписание аудитории', needAuth: true },
+  { id: 'auditories', title: 'Расписание аудиторий', needAuth: true },
   { id: 'teachers', title: 'Расписание преподавателей', needAuth: true },
 ]
 
@@ -18,11 +19,12 @@ const visibleMenuCards = computed(() => {
     return menuCards.filter((item) => item.id === 'students' || item.id === 'consults')
   }
 
-  if (authStore.currentUser?.role === 'admin') {
-    return menuCards
-  }
-
   return menuCards
+})
+
+const getCardRoute = (type: string) => ({
+  name: 'schedule-selection' as const,
+  params: { type: type as ScheduleKind },
 })
 </script>
 
@@ -30,17 +32,22 @@ const visibleMenuCards = computed(() => {
   <PageFrame>
     <main class="home-main">
       <h1>Расписание института</h1>
-      <p>Удобный доступ к расписанию занятий для студентов, преподавателей и аудиторий в одном месте.</p>
+      <p>
+        Удобный доступ к расписанию занятий для студентов, преподавателей, аудиторий и
+        консультаций в одном месте.
+      </p>
 
       <section class="cards-grid" aria-label="Категории расписания">
         <RouterLink
             v-for="item in visibleMenuCards"
             :key="item.id"
             class="menu-card"
-            :to="item.id === 'students' ? '/schedule/students' : '/'"
+            :to="getCardRoute(item.id)"
         >
           <h2>{{ item.title }}</h2>
-          <p v-if="item.needAuth && !authStore.isAuthenticated">Требуется авторизация</p>
+          <p v-if="item.needAuth && !authStore.isAuthenticated">
+            Требуется авторизация
+          </p>
         </RouterLink>
       </section>
     </main>
@@ -55,14 +62,14 @@ const visibleMenuCards = computed(() => {
 }
 
 h1 {
-  font-size: clamp(38px, 4.2vw, 40px);
   margin: 0;
+  font-size: clamp(38px, 4.2vw, 40px);
   font-weight: 600;
 }
 
 .home-main > p {
-  font-size: clamp(23px, 1.9vw, 25px);
   margin: 3vh 0 6vh;
+  font-size: clamp(23px, 1.9vw, 25px);
   line-height: 1.35;
 }
 
@@ -74,16 +81,61 @@ h1 {
 }
 
 .menu-card {
+  position: relative;
+  overflow: hidden;
+
+  width: 38vh;
   min-height: 168px;
-  border-radius: 18px;
-  border: 1px solid #c8c8c8;
-  background: #dcdcdc;
-  box-shadow: 0 7px 10px rgb(0 0 0 / 20%);
+
   display: grid;
   place-content: center;
   gap: 13px;
+
+  border-radius: 18px;
+  border: 1px solid #c8c8c8;
+
+  background: #dcdcdc;
+  box-shadow: 0 7px 10px rgb(0 0 0 / 20%);
+
   text-align: center;
-  width: 38vh;
+  text-decoration: none;
+  color: inherit;
+
+  transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease,
+      background-color 0.25s ease,
+      color 0.25s ease;
+}
+
+/* ГРАДИЕНТНАЯ ПОЛОСА СВЕРХУ (как в меню) */
+.menu-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  width: 100%;
+  height: 5px;
+
+  background: linear-gradient(90deg, #59b4ef 0%, #2d90d2 100%);
+
+  transform: scaleX(0);
+  transform-origin: left center;
+
+  transition: transform 0.32s ease;
+}
+
+.menu-card:hover {
+  background: #ffffff;
+  color: #101215;
+
+  transform: translateY(-6px);
+  box-shadow: 0 14px 28px rgb(0 0 0 / 22%);
+}
+
+.menu-card:hover::before {
+  transform: scaleX(1);
 }
 
 .menu-card h2 {
@@ -94,7 +146,13 @@ h1 {
 
 .menu-card p {
   margin: 0;
-  font-size: clamp(21px, 1.6vw, 21px);
+  font-size: clamp(18px, 1.5vw, 20px);
+  color: #4a5560;
+}
+
+/* чуть синхронизируем текст при hover */
+.menu-card:hover p {
+  color: #2f3a44;
 }
 
 @media (max-width: 980px) {
@@ -112,11 +170,8 @@ h1 {
   }
 
   .menu-card {
+    width: 100%;
     min-height: 150px;
   }
-}
-.menu-card {
-  text-decoration: none;
-  color: inherit;
 }
 </style>

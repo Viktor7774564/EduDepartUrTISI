@@ -1,6 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 
+const AUTH_STORAGE_KEY = 'edu-depart-auth-user'
+const protectedScheduleTypes = new Set(['teachers', 'auditories', 'consults'])
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -9,41 +12,57 @@ const router = createRouter({
       name: 'home',
       component: HomeView,
     },
-
     {
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
     },
-
-    // РАСПИСАНИЕ
     {
-      path: '/schedule/students',
-      name: 'students',
-      component: () => import('../views/schedule/StudentSchedule.vue'),
+      path: '/schedule/:type',
+      name: 'schedule-selection',
+      component: () => import('../views/schedule/ScheduleSelectionView.vue'),
     },
-    // {
-    //   path: '/schedule/teachers',
-    //   name: 'teachers',
-    //   component: () => import('../views/schedule/TeacherSchedule.vue'),
-    // },
-    // {
-    //   path: '/schedule/auditories',
-    //   name: 'auditories',
-    //   component: () => import('../views/schedule/AuditorySchedule.vue'),
-    // },
-    // {
-    //   path: '/schedule/consults',
-    //   name: 'consults',
-    //   component: () => import('../views/schedule/ConsultSchedule.vue'),
-    // },
-
+    {
+      path: '/schedule/:type/view',
+      name: 'schedule-view',
+      component: () => import('../views/schedule/Schedule.vue'),
+    },
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../views/NotFoundView.vue'),
     },
   ],
+})
+
+router.beforeEach((to) => {
+  if (!to.path.startsWith('/schedule/')) {
+    return true
+  }
+
+  const scheduleType = String(to.params.type ?? '')
+  const isProtectedType = protectedScheduleTypes.has(scheduleType)
+
+  if (!isProtectedType) {
+    return true
+  }
+
+  if (typeof window === 'undefined') {
+    return true
+  }
+
+  const isAuthenticated = Boolean(window.localStorage.getItem(AUTH_STORAGE_KEY))
+
+  if (isAuthenticated) {
+    return true
+  }
+
+  return {
+    name: 'login',
+    query: {
+      redirect: to.fullPath,
+    },
+  }
 })
 
 export default router
