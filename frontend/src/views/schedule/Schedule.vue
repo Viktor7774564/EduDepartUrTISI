@@ -26,6 +26,7 @@ type CellLesson = DisplayScheduleItem & {
 }
 
 const selectedLesson = ref<CellLesson | null>(null)
+const editingLesson = ref<CellLesson | null>(null)
 const currentWeekIndex = ref(0)
 
 const isMenuVisible = ref(false)
@@ -89,12 +90,23 @@ const parseWeekRange = (key: string) => {
 
 const syncWeekIndex = () => {
   const today = new Date()
+
+  // Обнуляем время
+  today.setHours(0, 0, 0, 0)
+
   const initialIndex = weekKeys.value.findIndex((key) => {
     const { start, end } = parseWeekRange(key)
+
+    // Тоже обнуляем
+    start.setHours(0, 0, 0, 0)
+    end.setHours(0, 0, 0, 0)
+
     return today >= start && today <= end
   })
 
-  currentWeekIndex.value = initialIndex !== -1 ? initialIndex : 0
+  currentWeekIndex.value = initialIndex !== -1
+      ? initialIndex
+      : 0
 }
 
 watch(weekKeys, syncWeekIndex, { immediate: true })
@@ -129,24 +141,30 @@ const closeModal = () => {
 
 const openEditModal = () => {
   if (!selectedLesson.value) return
-  
-  // Заполняем форму данными из занятия
+
+  editingLesson.value = selectedLesson.value
+
   editForm.value = {
-    name: selectedLesson.value.subject,
-    type: selectedLesson.value.type,
-    group: selectedLesson.value.groups.join(', '),
-    teacher: selectedLesson.value.teacher,
-    building: '', // Если нужно разделить корпус и аудиторию
-    room: selectedLesson.value.room,
-    time: `${selectedLesson.value.startTime} - ${selectedLesson.value.endTime}`,
+    name: editingLesson.value.subject,
+    type: editingLesson.value.type,
+    group: editingLesson.value.groups.join(', '),
+    teacher: editingLesson.value.teacher,
+    building: '',
+    room: editingLesson.value.room,
+    time: `${editingLesson.value.startTime} - ${editingLesson.value.endTime}`,
     additional: '',
   }
-  
+
+  // Закрываем первое окно
+  selectedLesson.value = null
+
+  // Открываем второе
   isEditModalVisible.value = true
 }
 
 const closeEditModal = () => {
   isEditModalVisible.value = false
+  editingLesson.value = null
 }
 
 const saveEdit = () => {
@@ -155,7 +173,6 @@ const saveEdit = () => {
   
   // Закрываем оба модальных окна
   closeEditModal()
-  closeModal()
   
   // Показываем уведомление (опционально)
   alert('Изменения сохранены!')
@@ -202,6 +219,56 @@ const commandTwo = () => {
   if (!contextLesson.value) return
 
   alert(`Команда 2: ${contextLesson.value.teacher}`)
+
+  closeMenu()
+}
+
+const emptyCellData = ref<{
+  day: string
+  time: string
+} | null>(null)
+
+const showEmptyContextMenu = (
+    event: MouseEvent,
+    day: string,
+    time: string
+) => {
+  if (authStore.currentUser?.role !== 'education_department') {
+    return
+  }
+
+  event.preventDefault()
+
+  menuX.value = event.clientX
+  menuY.value = event.clientY
+
+  // Сбрасываем выбранную пару
+  contextLesson.value = null
+
+  // Сохраняем данные пустого слота
+  emptyCellData.value = {
+    day,
+    time,
+  }
+
+  isMenuVisible.value = true
+}
+
+const commandAddLesson = () => {
+  if (!emptyCellData.value) return
+
+  editForm.value = {
+    name: '',
+    type: '',
+    group: '',
+    teacher: '',
+    building: '',
+    room: '',
+    time: emptyCellData.value.time,
+    additional: '',
+  }
+
+  isEditModalVisible.value = true
 
   closeMenu()
 }
@@ -407,14 +474,19 @@ onUnmounted(() => {
           <div v-for="time in times" :key="time" class="row">
             <div class="time">{{ time }}</div>
 
-            <div v-for="day in days" :key="day" class="cell">
+            <div
+                v-for="day in days"
+                :key="day"
+                class="cell"
+                @contextmenu.prevent="showEmptyContextMenu($event, day, time)"
+            >
               <div
                 v-for="lesson in getLessons(day, time)"
                 :key="`${lesson.group}-${lesson.id}`"
                 class="lesson"
                 :class="getLessonClass(lesson.type)"
                 @click="openModal(lesson)"
-                @contextmenu.prevent="showContextMenu($event, lesson)"
+                @contextmenu.prevent.stop="showContextMenu($event, lesson)"
               >
                 <div class="subject">{{ lesson.subject }}</div>
                 <div class="meta">{{ getLessonMeta(lesson) }}</div>
@@ -597,24 +669,34 @@ onUnmounted(() => {
     </section>
 
     <ul
-      v-if="isMenuVisible"
-      class="context-menu"
-      :style="{
-        top: menuY + 'px',
-        left: menuX + 'px'
-      }"
+        v-if="isMenuVisible"
+        class="context-menu"
+        :style="{
+    top: menuY + 'px',
+    left: menuX + 'px'
+  }"
     >
-      <li @click="commandOne">
-        Добавить пару
-      </li>
+      <!-- Если слот пустой -->
+      <template v-if="!contextLesson">
 
-      <li @click="commandTwo">
-        Отменить пару
-      </li>
+        <li @click="commandAddLesson">
+          Добавить пару
+        </li>
 
-      <li @click="EditLesson">
-        Внести изменения
-      </li>
+      </template>
+
+      <!-- Если есть пара -->
+      <template v-else>
+
+        <li @click="EditLesson">
+          Внести изменения
+        </li>
+
+        <li @click="commandTwo">
+          Отменить пару
+        </li>
+
+      </template>
 
       <li @click="closeMenu">
         Отмена

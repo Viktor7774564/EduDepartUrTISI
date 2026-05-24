@@ -25,6 +25,7 @@ const helpfulLinks = [
     subtitle: 'Учебный отдел',
     icon: telegramIcon,
     alt: 'Логотип Telegram',
+    url: 'https://t.me/c/2226177795/1',
   },
   {
     id: 'vk',
@@ -32,6 +33,7 @@ const helpfulLinks = [
     subtitle: 'Новости УрТИСИ',
     icon: vkIcon,
     alt: 'Логотип ВКонтакте',
+    url: 'https://vk.com/urtisi',
   },
   {
     id: 'max',
@@ -39,8 +41,13 @@ const helpfulLinks = [
     subtitle: 'Новости УрТИСИ',
     icon: maxIcon,
     alt: 'Логотип MAX',
+    url: 'https://max.ru/id5405101327_gos2',
   },
 ]
+
+const openLink = (url: string) => {
+  window.open(url, '_blank')
+}
 
 const leftDecor = [
   { id: 'left-top-right', className: 'left-top-right', rotate: 3 },
@@ -125,12 +132,19 @@ const onFormSubmit = async () => {
           <li v-for="item in helpfulLinks" :key="item.id">
             <div class="link-info">
               <img :src="item.icon" :alt="item.alt" />
+
               <div>
                 <h3>{{ item.title }}</h3>
                 <p>{{ item.subtitle }}</p>
               </div>
             </div>
-            <button type="button">Открыть</button>
+
+            <button
+                type="button"
+                @click="openLink(item.url)"
+            >
+              Открыть
+            </button>
           </li>
         </ul>
       </article>
