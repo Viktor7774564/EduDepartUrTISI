@@ -28,6 +28,29 @@ const router = createRouter({
       component: () => import('../views/schedule/Schedule.vue'),
     },
     {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/ProfileView.vue'),
+    },
+    {
+      path: '/admin',
+      name: 'admin-panel',
+      component: () => import('../views/AdminPanel.vue'),
+      children: [
+        {
+          path: 'edit-user',
+          name: 'admin-edit-user',
+          component: () => import('../views/EditUsers.vue'),    
+        },
+        {
+          path: 'add-user',
+          name: 'admin-add-user',
+          component: () => import('../views/AddUser.vue'),    
+        },
+      ]
+    },
+
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../views/NotFoundView.vue'),

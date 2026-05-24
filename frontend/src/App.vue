@@ -14,6 +14,8 @@ const showAuthHeader = computed(() => authStore.isAuthenticated)
 const currentUserName = computed(() => authStore.currentUser?.name ?? '')
 const currentUserRole = computed(() => authStore.roleLabel)
 
+const isAdmin = computed(() => authStore.currentUser?.role === 'admin')
+
 const mainLinks = [
   { id: 'teachers', title: 'Расписание преподавателей' },
   { id: 'students', title: 'Расписание студентов' },
@@ -38,6 +40,18 @@ const onLogout = async () => {
   authStore.logout()
   isProfileOpen.value = false
   await router.push({ name: 'home' })
+}
+
+const goToProfile = async () => {
+  isProfileOpen.value = false
+
+  await router.push({ name: 'profile' })
+}
+
+const goToAdminPanel = async () => {
+  isProfileOpen.value = false
+
+  await router.push({ name: 'admin-panel' })
 }
 
 const isProfileOpen = ref(false)
@@ -91,8 +105,28 @@ onBeforeUnmount(() => {
             </button>
 
             <div v-if="isProfileOpen" class="profile-dropdown">
-              <button class="dropdown-item" type="button">Личный кабинет</button>
-              <button class="dropdown-item danger" type="button" @click="onLogout">
+              <button
+                class="dropdown-item"
+                type="button"
+                @click="goToProfile"
+              >
+                Личный кабинет
+              </button>
+
+              <button
+                v-if="isAdmin"
+                class="dropdown-item"
+                type="button"
+                @click="goToAdminPanel"
+              >
+                Админ панель
+              </button>
+
+              <button
+                class="dropdown-item danger"
+                type="button"
+                @click="onLogout"
+              >
                 Выйти
               </button>
             </div>

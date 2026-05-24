@@ -48,6 +48,14 @@ export const useAuthStore = defineStore('auth', () => {
       return 'Студент'
     }
 
+    if (currentUser.value?.role === 'teacher') {
+      return 'Преподаватель'
+    }
+
+    if (currentUser.value?.role === 'education_department') {
+      return 'Учебный отдел'
+    }
+
     return ''
   })
 

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import PageFrame from '@/components/PageFrame.vue'
+import editIcon from '@/assets/edit.svg'
 import {
   getConsultationSchedulesForTeacher,
   getWeeklySchedulesForSelection,
@@ -11,6 +13,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const days = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ']
 const times = ['08:30', '10:15', '12:00', '14:15', '16:00', '17:40', '19:15']
@@ -24,6 +27,23 @@ type CellLesson = DisplayScheduleItem & {
 
 const selectedLesson = ref<CellLesson | null>(null)
 const currentWeekIndex = ref(0)
+
+const isMenuVisible = ref(false)
+const menuX = ref(0)
+const menuY = ref(0)
+const contextLesson = ref<CellLesson | null>(null)
+
+const isEditModalVisible = ref(false)
+const editForm = ref({
+  name: '',
+  type: '',
+  group: '',
+  teacher: '',
+  building: '',
+  room: '',
+  time: '',
+  additional: '',
+})
 
 const weeklySchedules = computed(() => {
   if (!secondValue.value) {
@@ -105,6 +125,85 @@ const openModal = (lesson: CellLesson) => {
 
 const closeModal = () => {
   selectedLesson.value = null
+}
+
+const openEditModal = () => {
+  if (!selectedLesson.value) return
+  
+  // Заполняем форму данными из занятия
+  editForm.value = {
+    name: selectedLesson.value.subject,
+    type: selectedLesson.value.type,
+    group: selectedLesson.value.groups.join(', '),
+    teacher: selectedLesson.value.teacher,
+    building: '', // Если нужно разделить корпус и аудиторию
+    room: selectedLesson.value.room,
+    time: `${selectedLesson.value.startTime} - ${selectedLesson.value.endTime}`,
+    additional: '',
+  }
+  
+  isEditModalVisible.value = true
+}
+
+const closeEditModal = () => {
+  isEditModalVisible.value = false
+}
+
+const saveEdit = () => {
+  // Здесь логика сохранения (API call)
+  console.log('Saving changes:', editForm.value)
+  
+  // Закрываем оба модальных окна
+  closeEditModal()
+  closeModal()
+  
+  // Показываем уведомление (опционально)
+  alert('Изменения сохранены!')
+}
+
+const showContextMenu = (event: MouseEvent, lesson: CellLesson) => {
+  if (authStore.currentUser?.role !== 'education_department') {
+    return
+  }
+
+  menuX.value = event.clientX
+  menuY.value = event.clientY
+  contextLesson.value = lesson
+  isMenuVisible.value = true
+}
+
+const closeMenu = () => {
+  isMenuVisible.value = false
+}
+
+
+const commandOne = () => {
+  if (!contextLesson.value) return
+
+  alert(`Команда 1: ${contextLesson.value.subject}`)
+
+  closeMenu()
+}
+
+const EditLesson = () => {
+  if (!contextLesson.value) return
+
+  // Закрываем контекстное меню
+  closeMenu()
+  
+  // Устанавливаем выбранное занятие из контекстного меню
+  selectedLesson.value = contextLesson.value
+  
+  // Открываем модальное окно редактирования
+  openEditModal()
+}
+
+const commandTwo = () => {
+  if (!contextLesson.value) return
+
+  alert(`Команда 2: ${contextLesson.value.teacher}`)
+
+  closeMenu()
 }
 
 const backToSelection = async () => {
@@ -221,6 +320,17 @@ const getLessonMeta = (lesson: CellLesson) => {
 }
 
 const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
+
+// Проверка, может ли текущий пользователь редактировать
+const canEdit = computed(() => authStore.currentUser?.role === 'education_department')
+
+onMounted(() => {
+  document.addEventListener('click', closeMenu)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeMenu)
+})
 </script>
 
 <template>
@@ -304,6 +414,7 @@ const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
                 class="lesson"
                 :class="getLessonClass(lesson.type)"
                 @click="openModal(lesson)"
+                @contextmenu.prevent="showContextMenu($event, lesson)"
               >
                 <div class="subject">{{ lesson.subject }}</div>
                 <div class="meta">{{ getLessonMeta(lesson) }}</div>
@@ -318,9 +429,24 @@ const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
         <p>Попробуйте вернуться назад и выбрать другой факультет, преподавателя или аудиторию.</p>
       </div>
 
+      <!-- Первое модальное окно (просмотр) -->
       <div v-if="selectedLesson" class="modal-overlay" @click="closeModal">
         <div class="modal" @click.stop>
-          <button class="close-btn" type="button" @click="closeModal">✕</button>
+          <div class="modal-header-actions">
+            <!-- Кнопка редактирования (только для уч. отдела) -->
+            <button 
+              v-if="canEdit"
+              class="edit-btn" 
+              type="button" 
+              @click="openEditModal"
+              title="Редактировать"
+            >
+              <img :src="editIcon" alt="Редактировать" />
+            </button>
+            
+            <!-- Кнопка закрытия -->
+            <button class="close-btn-main" type="button" @click="closeModal">✕</button>
+          </div>
 
           <h2 class="modal-title">{{ selectedLesson.subject }}</h2>
 
@@ -353,7 +479,147 @@ const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
           </div>
         </div>
       </div>
+
+      
+      <div v-if="isEditModalVisible" class="modal-overlay" @click="closeEditModal">
+        <div class="modal edit-modal" @click.stop>
+          <button class="close-btn" type="button" @click="closeEditModal">✕</button>
+
+          <h2 class="modal-title">Редактирование занятия</h2>
+
+          <div class="modal-body">
+            <div class="edit-form">
+              <div class="form-group">
+                <label for="edit-name" class="form-label">Название</label>
+                <input
+                  id="edit-name"
+                  v-model="editForm.name"
+                  type="text"
+                  class="form-input"
+                  placeholder="Название"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="edit-type" class="form-label">Тип занятия</label>
+                <select id="edit-type" v-model="editForm.type" class="form-select">
+                  <option value="" disabled>Выберите</option>
+                  <option value="Лекция">Лекция</option>
+                  <option value="Практика">Практика</option>
+                  <option value="Лабораторная">Лабораторная</option>
+                  <option value="Консультация">Консультация</option>
+                  <option value="Зачёт">Зачёт</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="edit-group" class="form-label">Группа</label>
+                <input
+                  id="edit-group"
+                  v-model="editForm.group"
+                  type="text"
+                  class="form-input"
+                  placeholder="Выберите"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="edit-teacher" class="form-label">Преподаватель</label>
+                <input
+                  id="edit-teacher"
+                  v-model="editForm.teacher"
+                  type="text"
+                  class="form-input"
+                  placeholder="Выберите"
+                />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="edit-building" class="form-label">Корпус</label>
+                  <select id="edit-building" v-model="editForm.building" class="form-select">
+                    <option value="" disabled>Выберите</option>
+                    <option value="1">Корпус 1</option>
+                    <option value="2">Корпус 2</option>
+                    <option value="3">Корпус 3</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="edit-room" class="form-label">Аудитория</label>
+                  <select id="edit-room" v-model="editForm.room" class="form-select">
+                    <option value="" disabled>Выберите</option>
+                    <option value="101">101</option>
+                    <option value="102">102</option>
+                    <option value="201">201</option>
+                    <option value="312">312</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="edit-time" class="form-label">Время</label>
+                <select id="edit-time" v-model="editForm.time" class="form-select">
+                  <option value="" disabled>Выберите</option>
+                  <option value="08:30 - 10:00">08:30 - 10:00</option>
+                  <option value="10:15 - 11:45">10:15 - 11:45</option>
+                  <option value="12:00 - 13:30">12:00 - 13:30</option>
+                  <option value="14:15 - 15:45">14:15 - 15:45</option>
+                  <option value="16:00 - 17:30">16:00 - 17:30</option>
+                  <option value="17:40 - 19:05">17:40 - 19:05</option>
+                  <option value="19:15 - 20:40">19:15 - 20:40</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="edit-additional" class="form-label">Дополнительное</label>
+                <input
+                  id="edit-additional"
+                  v-model="editForm.additional"
+                  type="text"
+                  class="form-input"
+                  placeholder="Выберите"
+                />
+              </div>
+            </div>
+
+            <div class="edit-actions">
+              <button type="button" class="btn btn-secondary" @click="closeEditModal">
+                Отмена
+              </button>
+              <button type="button" class="btn btn-primary" @click="saveEdit">
+                Сохранить
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
+
+    <ul
+      v-if="isMenuVisible"
+      class="context-menu"
+      :style="{
+        top: menuY + 'px',
+        left: menuX + 'px'
+      }"
+    >
+      <li @click="commandOne">
+        Добавить пару
+      </li>
+
+      <li @click="commandTwo">
+        Отменить пару
+      </li>
+
+      <li @click="EditLesson">
+        Внести изменения
+      </li>
+
+      <li @click="closeMenu">
+        Отмена
+      </li>
+    </ul>
   </PageFrame>
 </template>
 
@@ -583,6 +849,55 @@ const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
 }
 
+.edit-modal {
+  min-height: auto;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header-actions {
+  position: absolute;
+  top: 23px;
+  right: 17px;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Расстояние между кнопками */
+  z-index: 10;
+}
+
+/* Кнопка редактирования */
+.edit-btn {
+  position: static; /* Важно! */
+  width: 34px;
+  height: 34px;
+  border: 1px solid #4ea3d7;
+  border-radius: 8px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 4px;
+}
+
+.edit-btn:hover {
+  background: #4ea3d7;
+  border-color: #4ea3d7;
+}
+
+.edit-btn img {
+  width: 30px;
+  height: 30px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.edit-btn:hover img {
+  opacity: 1;
+  filter: brightness(0) invert(1);
+}
+
 .modal-title {
   margin: 0;
   padding: 17px 22px;
@@ -598,7 +913,7 @@ const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
 
 .close-btn {
   position: absolute;
-  top: 12px;
+  top: 23px;
   right: 17px;
   width: 34px;
   height: 34px;
@@ -606,7 +921,29 @@ const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
   background: transparent;
   color: red;
   font-size: 32px;
+  line-height: 1; /* Для точного центрирования крестика */
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn-main {
+  position: static; /* Важно! */
+  top: auto;
+  right: auto;
+  
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: red;
+  font-size: 32px;
+  line-height: 1; /* Для точного центрирования крестика */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .type-badge {
@@ -668,6 +1005,116 @@ const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
   font-style: italic;
 }
 
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #24313f;
+}
+
+.form-input,
+.form-select {
+  padding: 10px 14px;
+  border: 1px solid #d7e0e9;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #ffffff;
+  transition: all 0.2s;
+}
+
+.form-input:hover,
+.form-select:hover {
+  border-color: #4ea3d7;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #4ea3d7;
+  box-shadow: 0 0 0 3px rgba(78, 163, 215, 0.1);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+  padding-top: 20px;
+  border-top: 1px solid #d7e0e9;
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #4caf50;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: #43a047;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: #24313f;
+  border: 1px solid #d7e0e9;
+}
+
+.btn-secondary:hover {
+  background: #f5f5f5;
+  border-color: #4ea3d7;
+}
+
+.context-menu {
+  position: fixed;
+  min-width: 220px;
+  padding: 6px 0;
+  margin: 0;
+  list-style: none;
+  background: #ffffff;
+  border: 1px solid #d9dfe5;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  z-index: 3000;
+}
+
+.context-menu li {
+  padding: 12px 18px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.context-menu li:hover {
+  background: #f3f6f9;
+}
+
 @media (max-width: 960px) {
   .schedule-page {
     padding: 22px 12px 40px;
@@ -684,6 +1131,10 @@ const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
   .header,
   .row {
     min-width: 920px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>
