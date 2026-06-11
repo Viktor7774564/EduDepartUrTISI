@@ -102,195 +102,103 @@ const deleteUser = (id: number) => {
 
 <style scoped>
 .admin-edit-page {
-  min-height: calc(100vh - 180px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 30px 20px;
+  @apply min-h-[calc(100vh-180px)] flex justify-center items-center py-[30px] px-[20px];
 }
 
 .admin-card {
-  width: 100%;
-  max-width: 1100px;
-  background: #ececec;
-  border: 1px solid #4ea3d7;
-  border-radius: 14px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  padding: 40px 48px;
-  position: relative;
-  z-index: 2;
+  @apply w-full max-w-[1100px] bg-[#ececec] border border-[#4ea3d7] rounded-[14px] shadow-[0_4px_12px_rgba(0,0,0,0.12)] py-[40px] px-[48px] relative z-[2];
 }
 
 .card-header {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 24px;
-  position: relative;
+  @apply flex items-center gap-[20px] mb-[24px] relative;
 }
 
 .back-btn {
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 10px;
-  background: #4ea3d7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
+  @apply w-[40px] h-[40px] border-0 rounded-[10px] bg-[#4ea3d7] flex items-center justify-center cursor-pointer transition-colors duration-[200ms] shrink-0 relative z-[1];
 }
 
 .back-btn:hover {
-  background: #3f96cb;
+  @apply bg-[#3f96cb];
 }
 
 .card-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #101215;
-  text-align: center;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  pointer-events: none;
+  @apply m-0 text-[24px] font-semibold text-[#101215] text-center absolute left-1/2 -translate-x-1/2 w-full pointer-events-none;
 }
 
 .card-subtitle {
-  font-size: 16px;
-  color: #5f6975;
-  text-align: center;
-  margin-bottom: 32px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #d7e0e9;
+  @apply text-[16px] text-[#5f6975] text-center mb-[32px] pb-[16px] border-b border-[#d7e0e9];
 }
 
 .users-table {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  @apply flex flex-col gap-[12px];
 }
 
 .table-header {
-  display: grid;
+  @apply grid gap-[16px] py-[14px] px-[18px] bg-[rgba(78,163,215,0.15)] rounded-[10px] font-semibold text-[14px] text-[#24313f];
   grid-template-columns: 1.5fr 1.5fr 1.5fr 1fr 100px;
-  gap: 16px;
-  padding: 14px 18px;
-  background: rgba(78, 163, 215, 0.15);
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 14px;
-  color: #24313f;
 }
 
 .table-row {
-  display: grid;
+  @apply grid gap-[16px] py-[16px] px-[18px] bg-white border border-[#d7e0e9] rounded-[10px] items-center transition-shadow duration-[200ms];
   grid-template-columns: 1.5fr 1.5fr 1.5fr 1fr 100px;
-  gap: 16px;
-  padding: 16px 18px;
-  background: #ffffff;
-  border: 1px solid #d7e0e9;
-  border-radius: 10px;
-  align-items: center;
-  transition: box-shadow 0.2s;
 }
 
 .table-row:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  @apply shadow-[0_4px_12px_rgba(0,0,0,0.08)];
 }
 
 .col-name,
 .col-login,
 .col-role,
 .col-password {
-  font-size: 14px;
-  color: #24313f;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  @apply text-[14px] text-[#24313f] whitespace-nowrap overflow-hidden text-ellipsis;
 }
 
 .col-name {
-  font-weight: 500;
+  @apply font-medium;
 }
 
 .col-login {
   font-family: monospace;
-  color: #5f6975;
+  @apply text-[#5f6975];
 }
 
 .col-role {
-  color: #4ea3d7;
-  font-weight: 500;
+  @apply text-[#4ea3d7] font-medium;
 }
 
 .col-password {
   font-family: monospace;
-  color: #5f6975;
+  @apply text-[#5f6975];
   /*letter-spacing: 2px;*/
 }
 
 .col-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
+  @apply flex gap-[10px] justify-end;
 }
 
 .edit-btn {
-  width: 34px;
-  height: 34px;
-  border: 1px solid #4ea3d7;
-  border-radius: 8px;
-  background: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  padding: 6px;
+  @apply w-[34px] h-[34px] border border-[#4ea3d7] rounded-[8px] bg-white flex items-center justify-center cursor-pointer transition-all duration-[200ms] p-[6px];
 }
 
 .edit-btn:hover {
-  background: #4ea3d7;
-  border-color: #4ea3d7;
+  @apply bg-[#4ea3d7] border-[#4ea3d7];
 }
 
 .edit-btn img {
-  width: 22px;
-  height: 22px;
-  opacity: 0.7;
-  transition: opacity 0.2s;
+  @apply w-[22px] h-[22px] opacity-70 transition-opacity duration-[200ms];
 }
 
 .edit-btn:hover img {
-  opacity: 1;
+  @apply opacity-100;
 }
 
 .close-btn {
-  width: 34px;
-  height: 34px;
-  border: 1px solid #e74c3c;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #e74c3c;
-  font-size: 20px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
+  @apply w-[34px] h-[34px] border border-[#e74c3c] rounded-[8px] bg-white text-[#e74c3c] text-[20px] leading-[1] flex items-center justify-center cursor-pointer transition-all duration-[200ms];
 }
 
 .close-btn:hover {
-  background: #e74c3c;
-  color: #ffffff;
+  @apply bg-[#e74c3c] text-white;
 }
 
 @media (max-width: 1200px) {
@@ -306,11 +214,11 @@ const deleteUser = (id: number) => {
   }
 
   .card-title {
-    font-size: 22px;
+    @apply text-[22px];
   }
 
   .card-subtitle {
-    font-size: 15px;
+    @apply text-[15px];
   }
 
   .table-header,
@@ -335,17 +243,15 @@ const deleteUser = (id: number) => {
 
   .edit-btn,
   .close-btn {
-    width: 32px;
-    height: 32px;
+    @apply w-[32px] h-[32px];
   }
 
   .edit-btn img {
-    width: 18px;
-    height: 18px;
+    @apply w-[18px] h-[18px];
   }
 
   .close-btn {
-    font-size: 18px;
+    @apply text-[18px];
   }
 }
 
@@ -356,17 +262,15 @@ const deleteUser = (id: number) => {
   }
 
   .back-btn {
-    align-self: flex-start;
-    width: 38px;
-    height: 38px;
+    @apply self-start w-[38px] h-[38px];
   }
 
   .card-title {
-    font-size: 20px;
+    @apply text-[20px];
   }
 
   .card-subtitle {
-    font-size: 14px;
+    @apply text-[14px];
   }
 
   .table-header,
@@ -389,12 +293,11 @@ const deleteUser = (id: number) => {
 
   .edit-btn,
   .close-btn {
-    width: 30px;
-    height: 30px;
+    @apply w-[30px] h-[30px];
   }
 
   .close-btn {
-    font-size: 16px;
+    @apply text-[16px];
   }
 }
 </style>

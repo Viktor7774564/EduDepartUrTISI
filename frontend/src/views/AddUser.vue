@@ -658,94 +658,45 @@ const resetForm = () => {
 
 <style scoped>
 .admin-edit-page {
-  min-height: calc(100vh - 180px);
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 30px 20px;
+  @apply min-h-[calc(100vh-180px)] flex justify-center items-start py-[30px] px-[20px];
 }
 
 .admin-card {
-  width: 100%;
-  max-width: 1100px;
-  background: #ececec;
-  border: 1px solid #4ea3d7;
-  border-radius: 14px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  padding: 40px 48px;
-  position: relative;
-  z-index: 2;
+  @apply w-full max-w-[1100px] bg-[#ececec] border border-[#4ea3d7] rounded-[14px] shadow-[0_4px_12px_rgba(0,0,0,0.12)] py-[40px] px-[48px] relative z-[2];
 }
 
 .card-header {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 32px;
-  position: relative;
+  @apply flex items-center gap-[20px] mb-[32px] relative;
 }
 
 .back-btn {
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 10px;
-  background: #4ea3d7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
+  @apply w-[40px] h-[40px] border-0 rounded-[10px] bg-[#4ea3d7] flex items-center justify-center cursor-pointer transition-colors duration-[200ms] shrink-0 relative z-[1];
 }
 
 .back-btn:hover {
-  background: #3f96cb;
+  @apply bg-[#3f96cb];
 }
 
 .card-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #101215;
-  text-align: center;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  pointer-events: none;
+  @apply m-0 text-[24px] font-semibold text-[#101215] text-center absolute left-1/2 -translate-x-1/2 w-full pointer-events-none;
 }
 
 /* Форма */
 .user-form {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
+  @apply flex flex-col gap-[32px];
 }
 
 .form-section {
-  background: #ffffff;
-  border: 1px solid #d7e0e9;
-  border-radius: 10px;
-  padding: 24px;
+  @apply bg-white border border-[#d7e0e9] rounded-[10px] p-[24px];
 }
 
 .section-title {
-  margin: 0 0 20px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #24313f;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #4ea3d7;
+  @apply m-0 mb-[20px] text-[18px] font-semibold text-[#24313f] pb-[12px] border-b-2 border-[#4ea3d7];
 }
 
 .form-row {
-  display: grid;
+  @apply grid gap-[20px] mb-[20px];
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 20px;
 }
 
 .form-row:last-child {
@@ -753,9 +704,7 @@ const resetForm = () => {
 }
 
 .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  @apply flex flex-col gap-[6px];
 }
 
 .form-group.full-width {
@@ -763,139 +712,102 @@ const resetForm = () => {
 }
 
 .form-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #24313f;
+  @apply text-[14px] font-medium text-[#24313f];
 }
 
 .required {
-  color: #e74c3c;
+  @apply text-[#e74c3c];
 }
 
 .form-input,
 .form-select {
-  padding: 10px 14px;
-  border: 1px solid #d7e0e9;
-  border-radius: 8px;
-  font-size: 14px;
-  background: #ffffff;
-  transition: all 0.2s;
+  @apply py-[10px] px-[14px] border border-[#d7e0e9] rounded-[8px] text-[14px] bg-white transition-all duration-[200ms];
 }
 
 .form-input:hover,
 .form-select:hover {
-  border-color: #4ea3d7;
+  @apply border-[#4ea3d7];
 }
 
 .form-input:focus,
 .form-select:focus {
-  outline: none;
-  border-color: #4ea3d7;
-  box-shadow: 0 0 0 3px rgba(78, 163, 215, 0.1);
+  @apply outline-none border-[#4ea3d7] shadow-[0_0_0_3px_rgba(78,163,215,0.1)];
 }
 
 .form-input.error,
 .form-select.error {
-  border-color: #e74c3c;
+  @apply border-[#e74c3c];
 }
 
 .form-input.error:focus,
 .form-select.error:focus {
-  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+  @apply shadow-[0_0_0_3px_rgba(231,76,60,0.1)];
 }
 
 .error-message {
-  font-size: 12px;
-  color: #e74c3c;
-  margin-top: 2px;
+  @apply text-[12px] text-[#e74c3c] mt-[2px];
 }
 
 /* Кнопки */
 .form-actions {
-  display: flex;
-  gap: 16px;
-  justify-content: flex-end;
-  padding-top: 20px;
-  border-top: 1px solid #d7e0e9;
+  @apply flex gap-[16px] justify-end pt-[20px] border-t border-[#d7e0e9];
 }
 
 .btn {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
+  @apply py-[12px] px-[24px] border-0 rounded-[8px] text-[14px] font-semibold cursor-pointer transition-all duration-[200ms];
 }
 
 .btn-primary {
-  background: #4ea3d7;
-  color: #ffffff;
+  @apply bg-[#4ea3d7] text-white;
 }
 
 .btn-primary:hover {
-  background: #3f96cb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(78, 163, 215, 0.3);
+  @apply bg-[#3f96cb] translate-y-[-1px] shadow-[0_4px_8px_rgba(78,163,215,0.3)];
 }
 
 .btn-secondary {
-  background: #ffffff;
-  color: #24313f;
-  border: 1px solid #d7e0e9;
+  @apply bg-white text-[#24313f] border border-[#d7e0e9];
 }
 
 .btn-secondary:hover {
-  background: #f5f5f5;
-  border-color: #4ea3d7;
+  @apply bg-[#f5f5f5] border-[#4ea3d7];
 }
 
 .btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  @apply opacity-60 cursor-not-allowed;
   transform: none !important;
 }
 
 .form-input:disabled,
 .form-select:disabled {
-  background: #f5f5f5;
-  cursor: not-allowed;
+  @apply bg-[#f5f5f5] cursor-not-allowed;
 }
 
 /* Сообщение */
 .submit-message {
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 24px;
-  font-size: 14px;
-  font-weight: 500;
+  @apply py-[12px] px-[16px] rounded-[8px] mb-[24px] text-[14px] font-medium;
 }
 
 .submit-message.success {
-  background: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  @apply bg-[#d4edda] text-[#155724] border border-[#c3e6cb];
 }
 
 .submit-message.error {
-  background: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  @apply bg-[#f8d7da] text-[#721c24] border border-[#f5c6cb];
 }
 
 /* Адаптив */
 @media (max-width: 768px) {
   .admin-card {
-    padding: 32px 24px;
+    @apply py-[32px] px-[24px];
   }
 
   .card-title {
-    font-size: 20px;
+    @apply text-[20px];
   }
 
   .form-section {
-    padding: 20px;
+    @apply p-[20px];
   }
 
   .form-row {
@@ -908,27 +820,26 @@ const resetForm = () => {
   }
 
   .btn {
-    width: 100%;
+    @apply w-full;
   }
 }
 
 @media (max-width: 480px) {
   .admin-card {
-    padding: 24px 16px;
+    @apply py-[24px] px-[16px];
   }
 
   .card-title {
-    font-size: 18px;
+    @apply text-[18px];
   }
 
   .section-title {
-    font-size: 16px;
+    @apply text-[16px];
   }
 
   .form-input,
   .form-select {
-    padding: 9px 12px;
-    font-size: 13px;
+    @apply py-[9px] px-[12px] text-[13px];
   }
 }
 </style>

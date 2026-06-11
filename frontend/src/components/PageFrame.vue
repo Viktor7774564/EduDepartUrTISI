@@ -120,40 +120,29 @@ onMounted(() => {
 
 <style scoped>
 .page-frame {
-  position: relative;
-  min-height: calc(100vh - 180px);
-  background: #efefef;
-  overflow: hidden;
+  @apply relative min-h-[calc(100vh-180px)] bg-[#efefef] overflow-hidden;
 }
 
 .frame-content {
-  position: relative;
-  z-index: 2;
+  @apply relative z-[2];
 }
 
 /* слой */
 .decor-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  transition: opacity 0.6s ease;
-  opacity: 1;
+  @apply absolute inset-0 z-[1] opacity-100 transition-opacity duration-[600ms] ease-in-out;
 }
 
 .decor-layer.fade {
-  opacity: 0;
+  @apply opacity-0;
 }
 
 .decor-card {
-  position: absolute;
-  width: 160px;
-  opacity: 0.5;
-  pointer-events: none;
+  @apply absolute w-[160px] opacity-50 pointer-events-none;
 }
 
 @media (max-width: 900px) {
   .decor-card {
-    width: 125px;
+    @apply w-[125px];
   }
 }
 

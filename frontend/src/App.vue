@@ -152,128 +152,76 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .app-shell {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #e8e8e8;
-  color: #101215;
+  @apply min-h-screen flex flex-col bg-[#e8e8e8] text-[#101215];
 }
 
 .page-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  @apply flex-1 flex flex-col;
 }
 
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  min-height: 72px;
-  padding: 0 28px;
-  background: #333840;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 18px;
+  @apply sticky top-0 z-[1000] min-h-[72px] px-[28px] bg-[#333840] grid grid-cols-[auto_1fr_auto] items-center gap-[18px];
 }
 
 .brand img {
-  height: 58px;
+  @apply h-[58px];
 }
 
 .menu {
-  display: flex;
-  justify-content: center;
-  gap: 18px;
+  @apply flex justify-center gap-[18px];
 }
 
 .menu a {
-  color: #f0f4f7;
-  text-decoration: none;
-  font-size: 16px;
-  padding: 14px 16px 12px;
-  border-radius: 14px;
+  @apply text-[#f0f4f7] no-underline text-[16px] py-[14px] px-[16px] pb-[12px] rounded-[14px];
 }
 
 
 .profile-wrapper {
-  position: relative;
+  @apply relative;
+}
+
+.profile-actions {
+  @apply justify-self-end;
 }
 
 .profile-btn {
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  color: #eaf3f9;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 15px;
-  padding: 6px 10px;
-  border-radius: 10px;
+  @apply bg-transparent border-0 cursor-pointer text-[#eaf3f9] flex items-center gap-[10px] text-[15px] py-[6px] px-[10px] rounded-[10px];
 }
 
 .profile-role {
-  font-size: 12px;
-  color: rgba(234, 243, 249, 0.7);
+  @apply text-[12px] text-[rgba(234,243,249,0.7)];
 }
 
 .profile-icon {
-  width: 24px;
-  height: 24px;
+  @apply w-[24px] h-[24px];
 }
 
 .caret {
-  width: 12px;
-  height: 8px;
+  @apply w-[12px] h-[8px];
 }
 
 .profile-dropdown {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  background: #fff;
-  border-radius: 12px;
-  min-width: 180px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-  z-index: 2000;
-  display: flex;
-  flex-direction: column;
+  @apply absolute top-[calc(100%+10px)] right-0 bg-white rounded-[12px] min-w-[180px] shadow-[0_10px_25px_rgba(0,0,0,0.15)] overflow-hidden z-[2000] flex flex-col;
 }
 
 .dropdown-item {
-  width: 100%;
-  padding: 12px 14px;
-  border: none;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  font-size: 14px;
+  @apply w-full py-[12px] px-[14px] border-0 bg-transparent text-left cursor-pointer text-[14px];
 }
 
 .dropdown-item:hover {
-  background: rgba(0, 0, 0, 0.05);
+  @apply bg-[rgba(0,0,0,0.05)];
 }
 
 .dropdown-item.danger {
-  color: #c43636;
+  @apply text-[#c43636];
 }
 
 .signin-btn {
-  min-width: 120px;
-  height: 40px;
-  background: #4ea3d7;
-  border: 0;
-  border-radius: 10px;
-  color: #fff;
-  cursor: pointer;
+  @apply min-w-[120px] h-[40px] bg-[#4ea3d7] border-0 rounded-[10px] text-white cursor-pointer;
 }
 
 .bottombar {
-  height: 85px;
-  background: #333840;
+  @apply h-[85px] bg-[#333840];
 }
 
 @media (max-width: 1100px) {
@@ -285,9 +233,68 @@ onBeforeUnmount(() => {
     padding: 14px 18px;
   }
 
+  .brand {
+    grid-area: brand;
+  }
+
+  .profile-actions {
+    grid-area: auth;
+    justify-self: end;
+  }
+
+  .menu {
+    grid-area: menu;
+  }
+
   .menu {
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'brand auth'
+      'menu menu';
+    gap: 10px;
+    padding: 10px 12px;
+    min-height: auto;
+  }
+
+  .brand img {
+    @apply h-[44px];
+  }
+
+  .menu,
+  .signin-btn,
+  .header-spacer {
+    display: none;
+  }
+
+  .profile-actions {
+    @apply justify-self-end;
+  }
+
+  .profile-btn {
+    @apply gap-[6px] px-[8px] py-[4px] text-[13px];
+  }
+
+  .profile-role {
+    @apply hidden;
+  }
+
+  .profile-icon {
+    @apply w-[20px] h-[20px];
+  }
+
+  .caret {
+    @apply w-[10px] h-[7px];
+  }
+
+  .bottombar {
+    @apply h-[56px];
   }
 }
 </style>

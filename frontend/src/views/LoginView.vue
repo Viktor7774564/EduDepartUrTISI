@@ -160,182 +160,89 @@ const onFormSubmit = async () => {
 }
 
 .content {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-height: 100%;
-  background: #ffffff;
+  @apply flex-1 grid grid-cols-2 min-h-full bg-white;
 }
 
 .login-card {
-  position: relative;
-  border: 1px solid rgba(99, 171, 222, 0.45);
-  border-right-width: 2px;
-  border-radius: 12px;
-  background: rgba(234, 234, 234, 0.90);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 34px 22px;
-  overflow: hidden;
+  @apply relative border border-[rgba(99,171,222,0.45)] border-r-2 rounded-[12px] bg-[rgba(234,234,234,0.9)] backdrop-blur-[14px] flex flex-col items-center justify-center py-[34px] px-[22px] overflow-hidden;
 }
 
 .login-card h1 {
-  font-size: 34px;
-  font-weight: 600;
-  margin-bottom: 70px;
+  @apply text-[34px] font-semibold mb-[70px];
 }
 
 .login-form {
   width: min(380px, 90%);
-  display: grid;
-  gap: 16px;
+  @apply grid gap-[16px];
 }
 
 .login-form label {
-  font-size: 20px;
+  @apply text-[20px];
 }
 
 .login-form input {
-  height: 50px;
-  border: 1px solid #c4cbd0;
-  border-radius: 10px;
-  background: #fff;
-  padding: 0 16px;
-  font-size: 18px;
-  margin-bottom: 22px;
-  z-index: 1;
-  transition: 0.2s ease;
+  @apply h-[50px] border border-[#c4cbd0] rounded-[10px] bg-white px-[16px] text-[18px] mb-[22px] z-[1] transition-[border-color,box-shadow] duration-[200ms] ease-in-out;
 }
 
 .login-form input:focus {
-  outline: none;
-  border-color: #4ea3d7;
-  box-shadow: 0 0 0 3px rgb(78 163 215 / 15%);
+  @apply outline-none border-[#4ea3d7] shadow-[0_0_0_3px_rgb(78_163_215_/_15%)];
 }
 
 .action-btn {
-  justify-self: center;
-  margin-top: 30px;
-  min-width: 250px;
-  height: 55px;
-  border: 0;
-  border-radius: 13px;
-  background: #4ea3d7;
-  color: #eef6fb;
-  font-size: 22px;
-  cursor: pointer;
+  @apply justify-self-center mt-[30px] min-w-[250px] h-[55px] border-0 rounded-[13px] bg-[#4ea3d7] text-[#eef6fb] text-[22px] cursor-pointer;
 }
 
 .form-error {
-  color: #c43636;
-  font-size: 18px;
-  margin: -20px 0 0;
-  z-index: 1;
+  @apply text-[#c43636] text-[18px] mt-[-20px] z-[1];
 }
 
 .mock-note {
-  margin-top: 24px;
-  padding: 12px 18px;
-  border-radius: 10px;
-  background: rgb(78 163 215 / 10%);
-  color: #1f4053;
-  font-size: 16px;
-  text-align: center;
-  z-index: 1;
+  @apply mt-[24px] py-[12px] px-[18px] rounded-[10px] bg-[rgb(78_163_215_/_10%)] text-[#1f4053] text-[16px] text-center z-[1];
 }
 
 .links-side {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  overflow: hidden;
+  @apply relative flex items-center justify-center p-[20px] overflow-hidden;
 }
 
 .links-card {
   width: min(892px, 58%);
-  border: 1px solid rgba(99, 171, 222, 0.45);
-  border-radius: 14px;
-  background: rgba(234, 234, 234, 0.9);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-  padding: 24px 24px 30px;
-  position: relative;
-  z-index: 2;
+  @apply border border-[rgba(99,171,222,0.45)] rounded-[14px] bg-[rgba(234,234,234,0.9)] backdrop-blur-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.08)] pt-[24px] px-[24px] pb-[30px] relative z-[2];
 }
 
 .links-card h2 {
-  text-align: center;
-  font-size: 34px;
-  font-weight: 600;
-  margin-bottom: 60px;
+  @apply text-center text-[34px] font-semibold mb-[60px];
 }
 
 .links-card ul {
-  list-style: none;
-  display: grid;
-  gap: 22px;
-  padding: 0;
-  margin: 0;
+  @apply list-none grid gap-[22px] p-0 m-0;
 }
 
 .links-card li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 40px;
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 16px 18px;
+  @apply flex justify-between items-center gap-[40px] bg-white rounded-[14px] py-[16px] px-[18px];
 }
 
 .link-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  @apply flex items-center gap-[12px];
 }
 
 .link-info img {
-  width: 54px;
-  height: 54px;
-  object-fit: contain;
+  @apply w-[54px] h-[54px] object-contain;
 }
 
 .link-info h3 {
-  font-size: 18px;
-  font-weight: 640;
-  line-height: 1.15;
-  margin: 0;
+  @apply text-[18px] font-semibold leading-[1.15] m-0;
 }
 
 .link-info p {
-  font-size: 18px;
-  margin: 2px 0 0;
-  line-height: 1.15;
+  @apply text-[18px] mt-[2px] mb-0 leading-[1.15];
 }
 
 .links-card li button {
-  min-width: 118px;
-  height: 35px;
-  border: 0;
-  border-radius: 10px;
-  background: #4ea3d7;
-  color: #edf6fb;
-  font-size: 17px;
-  cursor: pointer;
+  @apply min-w-[118px] h-[35px] border-0 rounded-[10px] bg-[#4ea3d7] text-[#edf6fb] text-[17px] cursor-pointer;
 }
 
 .decor-card {
-  position: absolute;
-  width: 160px;
-  opacity: 0.36;
-  pointer-events: none;
+  @apply absolute w-[160px] opacity-[0.36] pointer-events-none;
 }
 
 .fade-card {
@@ -434,8 +341,7 @@ const onFormSubmit = async () => {
   }
 
   .login-card h1 {
-    font-size: 42px;
-    margin-bottom: 36px;
+    @apply text-[42px] mb-[36px];
   }
 
   .login-form {
@@ -444,26 +350,23 @@ const onFormSubmit = async () => {
   }
 
   .login-form label {
-    font-size: 28px;
+    @apply text-[28px];
   }
 
   .login-form input {
-    height: 60px;
-    font-size: 24px;
+    @apply h-[60px] text-[24px];
   }
 
   .action-btn {
-    min-width: 240px;
-    height: 60px;
-    font-size: 30px;
+    @apply min-w-[240px] h-[60px] text-[30px];
   }
 
   .mock-note {
-    font-size: 18px;
+    @apply text-[18px];
   }
 
   .links-side {
-    padding: 32px 16px;
+    @apply p-[32px] px-[16px];
   }
 
   .links-card {
@@ -472,26 +375,23 @@ const onFormSubmit = async () => {
   }
 
   .links-card h2 {
-    font-size: clamp(12px, 1.15vw, 18px);
-    margin-bottom: 24px;
+    @apply text-[clamp(12px,1.15vw,18px)] mb-[24px];
   }
 
   .link-info h3 {
-    font-size: 26px;
+    @apply text-[26px];
   }
 
   .link-info p {
-    font-size: 22px;
+    @apply text-[22px];
   }
 
   .links-card li button {
-    min-width: 110px;
-    height: 42px;
-    font-size: 24px;
+    @apply min-w-[110px] h-[42px] text-[24px];
   }
 
   .decor-card {
-    width: 140px;
+    @apply w-[140px];
   }
 }
 

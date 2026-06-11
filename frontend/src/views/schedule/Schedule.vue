@@ -505,7 +505,6 @@ onUnmounted(() => {
       <div v-if="selectedLesson" class="modal-overlay" @click="closeModal">
         <div class="modal" @click.stop>
           <div class="modal-header-actions">
-            <!-- Кнопка редактирования (только для уч. отдела) -->
             <button 
               v-if="canEdit"
               class="edit-btn" 
@@ -707,499 +706,293 @@ onUnmounted(() => {
 
 <style scoped>
 .schedule-page {
-  padding: 36px 24px 56px;
+  @apply pt-[36px] px-[24px] pb-[56px];
 }
 
 .page-head {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  max-width: 1460px;
-  margin: 0 auto 26px;
-  text-align: center;
+  @apply flex flex-col items-center gap-[12px] max-w-[1460px] mx-auto mb-[26px] text-center;
 }
 
 .title {
-  margin: 0;
-  font-size: clamp(28px, 4vw, 42px);
-  font-weight: 800;
-  color: #101215;
+  @apply m-0 text-[clamp(28px,4vw,42px)] font-extrabold text-[#101215];
 }
 
 .week-nav {
-  max-width: 1460px;
-  margin: 0 auto 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
+  @apply max-w-[1460px] mx-auto mb-[24px] flex flex-col items-center gap-[14px];
 }
 
 .week-label {
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid #d7e0e9;
-  font-weight: 700;
+  @apply py-[10px] px-[16px] rounded-[12px] bg-[rgba(255,255,255,0.92)] border border-[#d7e0e9] font-bold;
 }
 
 .week-buttons {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
+  @apply flex gap-[12px] flex-wrap justify-center;
 }
 
 .week-buttons button {
-  min-height: 44px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 12px;
-  background: #4ea3d7;
-  color: white;
-  cursor: pointer;
-  transition: 0.2s;
+  @apply min-h-[44px] px-[16px] border-0 rounded-[12px] bg-[#4ea3d7] text-white cursor-pointer transition-colors duration-[200ms];
 }
 
 .week-buttons button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+  @apply opacity-[0.55] cursor-not-allowed;
 }
 
 .week-buttons button:hover:not(:disabled) {
-  background: #3f93c7;
+  @apply bg-[#3f93c7];
 }
 
 .legend {
-  max-width: 1460px;
-  margin: 0 auto 24px;
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  justify-content: center;
+  @apply max-w-[1460px] mx-auto mb-[24px] flex gap-[18px] flex-wrap justify-center;
 }
 
 .legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #24313f;
+  @apply flex items-center gap-[8px] text-[#24313f];
 }
 
 .box {
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
+  @apply w-[14px] h-[14px] rounded-[4px];
 }
 
 .table {
-  max-width: 1460px;
-  margin: 0 auto;
-  display: grid;
-  gap: 6px;
+  @apply max-w-[1460px] mx-auto grid gap-[6px];
 }
 
 .header,
 .row {
-  display: grid;
+  @apply grid gap-[6px];
   grid-template-columns: 120px repeat(6, minmax(130px, 1fr));
-  gap: 6px;
 }
 
 .header div {
-  background: #dfe7ef;
-  padding: 10px;
-  text-align: center;
-  font-weight: 800;
-  color: #18212a;
+  @apply bg-[#dfe7ef] p-[10px] text-center font-extrabold text-[#18212a];
 }
 
 .time {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #dfe7ef;
-  color: #18212a;
-  font-weight: 700;
+  @apply flex justify-center items-center bg-[#dfe7ef] text-[#18212a] font-bold;
 }
 
 .cell {
-  min-height: 92px;
-  padding: 4px;
-  border: 1px solid #d7dee6;
-  background: rgba(255, 255, 255, 0.78);
+  @apply min-h-[92px] min-w-0 p-[4px] border border-[#d7dee6] bg-[rgba(255,255,255,0.78)];
 }
 
 .lesson {
-  padding: 8px;
-  border-radius: 8px;
-  margin-bottom: 4px;
-  cursor: pointer;
-  transition: transform 0.2s ease;
+  @apply min-w-0 p-[8px] rounded-[8px] mb-[4px] cursor-pointer transition-transform duration-[200ms] ease-in-out overflow-hidden;
 }
 
 .lesson:hover {
-  transform: translateY(-1px);
+  @apply translate-y-[-1px];
 }
 
 .subject {
-  font-weight: 700;
-  font-size: 12px;
+  @apply font-bold text-[12px] break-words whitespace-normal leading-[1.2] [overflow-wrap:anywhere];
 }
 
 .meta {
-  margin-top: 4px;
-  font-size: 11px;
-  opacity: 0.76;
+  @apply mt-[4px] text-[11px] opacity-[0.76] break-words whitespace-normal leading-[1.2] [overflow-wrap:anywhere];
 }
 
 .lecture {
-  background: #c8e6c9;
+  @apply bg-[#c8e6c9];
 }
 
 .practice {
-  background: #b3e5fc;
+  @apply bg-[#b3e5fc];
 }
 
 .lab {
-  background: #fff9c4;
+  @apply bg-[#fff9c4];
 }
 
 .exam {
-  background: #f8bbd0;
+  @apply bg-[#f8bbd0];
 }
 
 .consultation {
-  background: #9773bd;
-  color: #ffffff;
+  @apply bg-[#9773bd] text-white;
 }
 
 .consult-online {
-  background: #b39dc7;
-  color: #ffffff;
+  @apply bg-[#b39dc7] text-white;
 }
 
 .box.consultation {
-  background: #9773bd;
+  @apply bg-[#9773bd];
 }
 
 .box.consult-online {
-  background: #b39dc7;
+  @apply bg-[#b39dc7];
 }
 
 .empty-state {
-  max-width: 720px;
-  margin: 80px auto;
-  padding: 36px 28px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 20px 40px rgba(18, 38, 63, 0.08);
-  text-align: center;
+  @apply max-w-[720px] mx-auto my-[80px] py-[36px] px-[28px] rounded-[24px] bg-[rgba(255,255,255,0.9)] shadow-[0_20px_40px_rgba(18,38,63,0.08)] text-center;
 }
 
 .empty-state h2 {
-  margin: 0 0 12px;
-  font-size: 28px;
+  @apply m-0 mb-[12px] text-[28px];
 }
 
 .empty-state p {
-  margin: 0;
-  color: #5f6975;
-  line-height: 1.55;
+  @apply m-0 text-[#5f6975] leading-[1.55];
 }
 
 .modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
+  @apply fixed inset-0 bg-[rgba(0,0,0,0.18)] flex items-center justify-center z-[999];
 }
 
 .modal {
-  position: relative;
-  width: 876px;
-  max-width: 96%;
-  min-height: 468px;
-  overflow: hidden;
-  border: 1px solid #999999;
-  border-radius: 10px;
-  background: #f4f4f4;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  @apply relative w-[876px] max-w-[96%] min-h-[468px] overflow-hidden border border-[#999999] rounded-[10px] bg-[#f4f4f4] shadow-[0_12px_28px_rgba(0,0,0,0.18)];
 }
 
 .edit-modal {
   min-height: auto;
-  max-height: 90vh;
-  overflow-y: auto;
+  @apply max-h-[90vh] overflow-y-auto;
 }
 
 .modal-header-actions {
-  position: absolute;
-  top: 23px;
-  right: 17px;
-  display: flex;
-  align-items: center;
-  gap: 8px; /* Расстояние между кнопками */
-  z-index: 10;
+  @apply absolute top-[23px] right-[17px] flex items-center gap-[8px] z-[10];
 }
 
 /* Кнопка редактирования */
 .edit-btn {
-  position: static; /* Важно! */
-  width: 34px;
-  height: 34px;
-  border: 1px solid #4ea3d7;
-  border-radius: 8px;
-  background: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  padding: 4px;
+  @apply static w-[34px] h-[34px] border border-[#4ea3d7] rounded-[8px] bg-white flex items-center justify-center cursor-pointer transition-all duration-[200ms] p-[4px];
 }
 
 .edit-btn:hover {
-  background: #4ea3d7;
-  border-color: #4ea3d7;
+  @apply bg-[#4ea3d7] border-[#4ea3d7];
 }
 
 .edit-btn img {
-  width: 30px;
-  height: 30px;
-  opacity: 0.7;
-  transition: opacity 0.2s;
+  @apply w-[30px] h-[30px] opacity-70 transition-opacity duration-[200ms];
 }
 
 .edit-btn:hover img {
-  opacity: 1;
+  @apply opacity-100;
   filter: brightness(0) invert(1);
 }
 
 .modal-title {
-  margin: 0;
-  padding: 17px 22px;
-  border-bottom: 1px solid #999999;
-  font-size: 25px;
-  font-style: italic;
-  font-weight: 400;
+  @apply m-0 py-[17px] px-[22px] border-b border-[#999999] text-[25px] italic font-normal;
 }
 
 .modal-body {
-  padding: 29px 22px;
+  @apply py-[29px] px-[22px];
 }
 
 .close-btn {
-  position: absolute;
-  top: 23px;
-  right: 17px;
-  width: 34px;
-  height: 34px;
-  border: none;
-  background: transparent;
-  color: red;
-  font-size: 32px;
-  line-height: 1; /* Для точного центрирования крестика */
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @apply absolute top-[23px] right-[17px] w-[34px] h-[34px] border-0 bg-transparent text-red-600 text-[32px] leading-[1] cursor-pointer flex items-center justify-center;
 }
 
 .close-btn-main {
-  position: static; /* Важно! */
-  top: auto;
-  right: auto;
-  
-  width: 34px;
-  height: 34px;
-  border: none;
-  background: transparent;
-  color: red;
-  font-size: 32px;
-  line-height: 1; /* Для точного центрирования крестика */
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @apply static w-[34px] h-[34px] border-0 bg-transparent text-red-600 text-[32px] leading-[1] cursor-pointer flex items-center justify-center;
 }
 
 .type-badge {
-  display: inline-block;
-  min-width: 174px;
-  margin-bottom: 28px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 400;
+  @apply inline-block min-w-[174px] mb-[28px] py-[10px] px-[14px] rounded-[8px] text-[16px] font-normal;
 }
 
 .type-badge.lecture {
-  background: rgba(76, 175, 80, 0.14);
-  border: 2px solid #4caf50;
-  color: #388e3c;
+  @apply bg-[rgba(76,175,80,0.14)] border-2 border-[#4caf50] text-[#388e3c];
 }
 
 .type-badge.practice {
-  background: rgba(33, 150, 243, 0.14);
-  border: 2px solid #2196f3;
-  color: #1976d2;
+  @apply bg-[rgba(33,150,243,0.14)] border-2 border-[#2196f3] text-[#1976d2];
 }
 
 .type-badge.lab {
-  background: rgba(255, 193, 7, 0.14);
-  border: 2px solid #ffc107;
-  color: #f57f17;
+  @apply bg-[rgba(255,193,7,0.14)] border-2 border-[#ffc107] text-[#f57f17];
 }
 
 .type-badge.exam {
-  background: rgba(233, 30, 99, 0.14);
-  border: 2px solid #e91e63;
-  color: #c2185b;
+  @apply bg-[rgba(233,30,99,0.14)] border-2 border-[#e91e63] text-[#c2185b];
 }
 
 .type-badge.consultation {
-  background: rgba(151, 115, 189, 0.16);
-  border: 2px solid #9773bd;
-  color: #6e5092;
+  @apply bg-[rgba(151,115,189,0.16)] border-2 border-[#9773bd] text-[#6e5092];
 }
 
 .type-badge.consult-online {
-  background: rgba(179, 157, 199, 0.22);
-  border: 2px solid #b39dc7;
-  color: #7c6794;
+  @apply bg-[rgba(179,157,199,0.22)] border-2 border-[#b39dc7] text-[#7c6794];
 }
 
 .modal-info p {
-  margin: 0 0 24px;
-  font-size: 18px;
-  line-height: 1.35;
+  @apply m-0 mb-[24px] text-[18px] leading-[1.35];
 }
 
 .modal-info strong {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 400;
-  font-style: italic;
+  @apply block mb-[8px] font-normal italic;
 }
 
 .edit-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  margin-bottom: 24px;
+  @apply flex flex-col gap-[20px] mb-[24px];
 }
 
 .form-row {
-  display: grid;
+  @apply grid gap-[16px];
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
 }
 
 .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  @apply flex flex-col gap-[6px];
 }
 
 .form-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #24313f;
+  @apply text-[14px] font-medium text-[#24313f];
 }
 
 .form-input,
 .form-select {
-  padding: 10px 14px;
-  border: 1px solid #d7e0e9;
-  border-radius: 8px;
-  font-size: 14px;
-  background: #ffffff;
-  transition: all 0.2s;
+  @apply py-[10px] px-[14px] border border-[#d7e0e9] rounded-[8px] text-[14px] bg-white transition-all duration-[200ms];
 }
 
 .form-input:hover,
 .form-select:hover {
-  border-color: #4ea3d7;
+  @apply border-[#4ea3d7];
 }
 
 .form-input:focus,
 .form-select:focus {
-  outline: none;
-  border-color: #4ea3d7;
-  box-shadow: 0 0 0 3px rgba(78, 163, 215, 0.1);
+  @apply outline-none border-[#4ea3d7] shadow-[0_0_0_3px_rgba(78,163,215,0.1)];
 }
 
 .edit-actions {
-  display: flex;
-  gap: 16px;
-  justify-content: flex-end;
-  padding-top: 20px;
-  border-top: 1px solid #d7e0e9;
+  @apply flex gap-[16px] justify-end pt-[20px] border-t border-[#d7e0e9];
 }
 
 .btn {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
+  @apply py-[12px] px-[24px] border-0 rounded-[8px] text-[14px] font-semibold cursor-pointer transition-all duration-[200ms];
 }
 
 .btn-primary {
-  background: #4caf50;
-  color: #ffffff;
+  @apply bg-[#4caf50] text-white;
 }
 
 .btn-primary:hover {
-  background: #43a047;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+  @apply bg-[#43a047] translate-y-[-1px] shadow-[0_4px_8px_rgba(76,175,80,0.3)];
 }
 
 .btn-secondary {
-  background: #ffffff;
-  color: #24313f;
-  border: 1px solid #d7e0e9;
+  @apply bg-white text-[#24313f] border border-[#d7e0e9];
 }
 
 .btn-secondary:hover {
-  background: #f5f5f5;
-  border-color: #4ea3d7;
+  @apply bg-[#f5f5f5] border-[#4ea3d7];
 }
 
 .context-menu {
-  position: fixed;
-  min-width: 220px;
-  padding: 6px 0;
-  margin: 0;
-  list-style: none;
-  background: #ffffff;
-  border: 1px solid #d9dfe5;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  z-index: 3000;
+  @apply fixed min-w-[220px] py-[6px] m-0 list-none bg-white border border-[#d9dfe5] rounded-[12px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-[3000];
 }
 
 .context-menu li {
-  padding: 12px 18px;
-  cursor: pointer;
-  transition: background 0.15s ease;
+  @apply py-[12px] px-[18px] cursor-pointer transition-colors duration-[150ms] ease-in-out;
 }
 
 .context-menu li:hover {
-  background: #f3f6f9;
+  @apply bg-[#f3f6f9];
 }
 
 @media (max-width: 960px) {
   .schedule-page {
-    padding: 22px 12px 40px;
+    @apply pt-[22px] px-[12px] pb-[40px];
   }
 
   .week-nav {
@@ -1217,6 +1010,119 @@ onUnmounted(() => {
 
   .form-row {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .schedule-page {
+    @apply pt-[16px] px-[10px] pb-[28px];
+  }
+
+  .page-head {
+    @apply mb-[18px];
+  }
+
+  .title {
+    @apply text-[clamp(22px,7vw,30px)];
+  }
+
+  .week-label {
+    @apply w-full text-center text-[14px] py-[8px] px-[12px];
+  }
+
+  .week-buttons {
+    @apply w-full flex-col gap-[10px];
+  }
+
+  .week-buttons button {
+    @apply w-full min-h-[42px] text-[14px];
+  }
+
+  .legend {
+    @apply gap-[10px] mb-[18px] justify-start;
+  }
+
+  .legend-item {
+    @apply text-[13px];
+  }
+
+  .table {
+    @apply -mx-[10px] px-[10px];
+  }
+
+  .header,
+  .row {
+    min-width: 860px;
+  }
+
+  .cell {
+    @apply overflow-hidden;
+  }
+
+  .lesson {
+    @apply p-[7px];
+  }
+
+  .subject {
+    @apply text-[11px];
+  }
+
+  .meta {
+    @apply text-[10px];
+  }
+
+  .empty-state {
+    @apply my-[40px] py-[24px] px-[18px] rounded-[18px];
+  }
+
+  .empty-state h2 {
+    @apply text-[22px];
+  }
+
+  .empty-state p {
+    @apply text-[14px];
+  }
+
+  .modal {
+    @apply w-[100%] max-w-[calc(100%-20px)] min-h-0 rounded-[14px];
+  }
+
+  .modal-title {
+    @apply text-[20px] py-[14px] px-[16px];
+  }
+
+  .modal-body {
+    @apply py-[18px] px-[16px];
+  }
+
+  .modal-header-actions {
+    @apply top-[14px] right-[12px] gap-[6px];
+  }
+
+  .edit-btn,
+  .close-btn,
+  .close-btn-main {
+    @apply w-[30px] h-[30px] text-[24px];
+  }
+
+  .type-badge {
+    @apply mb-[18px] min-w-0 text-[14px] py-[8px] px-[12px];
+  }
+
+  .modal-info p {
+    @apply mb-[16px] text-[15px];
+  }
+
+  .edit-actions {
+    @apply flex-col;
+  }
+
+  .btn {
+    @apply w-full;
+  }
+
+  .context-menu {
+    @apply min-w-[180px];
   }
 }
 </style>

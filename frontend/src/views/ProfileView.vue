@@ -115,13 +115,7 @@ const buttons = computed(() => {
 
 <style scoped>
 .profile-page {
-  min-height: calc(100vh - 180px);
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  padding: 40px 20px;
+  @apply min-h-[calc(100vh-180px)] flex justify-center items-center py-[40px] px-[20px];
 }
 
 /* ===================== */
@@ -129,25 +123,7 @@ const buttons = computed(() => {
 /* ===================== */
 
 .profile-card {
-  width: 100%;
-  max-width: 850px;
-
-  min-height: 470px;
-
-  background: #ececec;
-
-  border: 1px solid #4ea3d7;
-  border-radius: 18px;
-
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
-
-  display: flex;
-  gap: 30px;
-
-  padding: 42px;
-
-  position: relative;
-  z-index: 2;
+  @apply w-full max-w-[850px] min-h-[470px] bg-[#ececec] border border-[#4ea3d7] rounded-[18px] shadow-[0_6px_14px_rgba(0,0,0,0.15)] flex gap-[30px] p-[42px] relative z-[2];
 }
 
 /* ===================== */
@@ -155,29 +131,15 @@ const buttons = computed(() => {
 /* ===================== */
 
 .photo-block {
-  display: flex;
-  align-items: flex-start;
+  @apply flex items-start;
 }
 
 .photo-placeholder {
-  width: 240px;
-  height: 320px;
-
-  border: 2px solid #4ea3d7;
-  border-radius: 16px;
-
-  background: #ececec;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  @apply w-[240px] h-[320px] border-2 border-[#4ea3d7] rounded-[16px] bg-[#ececec] flex justify-center items-center shadow-[0_4px_10px_rgba(0,0,0,0.15)];
 }
 
 .photo-placeholder span {
-  transform: rotate(-45deg);
-  font-size: 18px;
+  @apply rotate-[-45deg] text-[18px];
 }
 
 /* ===================== */
@@ -185,43 +147,31 @@ const buttons = computed(() => {
 /* ===================== */
 
 .profile-info {
-  flex: 1;
-
-  display: flex;
-  flex-direction: column;
+  @apply flex-1 flex flex-col;
 }
 
 .fullname {
-  font-size: 18px;
-  line-height: 1.8;
+  @apply text-[18px] leading-[1.8];
 }
 
 .divider {
-  width: 270px;
-  height: 2px;
-  background: #222;
-
-  margin: 12px 0 24px;
+  @apply w-[270px] h-[2px] bg-[#222] my-[12px] mx-0 mb-[24px];
 }
 
 .details {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  @apply flex flex-col gap-[18px];
 }
 
 .detail-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  @apply flex gap-[8px] flex-wrap;
 }
 
 .label {
-  font-weight: 500;
+  @apply font-medium;
 }
 
 .value {
-  color: #444;
+  @apply text-[#444];
 }
 
 /* ===================== */
@@ -229,37 +179,15 @@ const buttons = computed(() => {
 /* ===================== */
 
 .actions {
-  margin-top: auto;
-
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-
-  padding-top: 40px;
+  @apply mt-auto flex flex-wrap gap-[20px] pt-[40px];
 }
 
 .action-btn {
-  min-width: 240px;
-  height: 52px;
-
-  border: none;
-  border-radius: 14px;
-
-  background: #4ea3d7;
-  color: white;
-
-  font-size: 15px;
-
-  cursor: pointer;
-
-  transition:
-    transform 0.2s,
-    background 0.2s;
+  @apply min-w-[240px] h-[52px] border-0 rounded-[14px] bg-[#4ea3d7] text-white text-[15px] cursor-pointer transition-[transform,background-color] duration-[200ms];
 }
 
 .action-btn:hover {
-  background: #3f96cb;
-  transform: translateY(-2px);
+  @apply bg-[#3f96cb] translate-y-[-2px];
 }
 
 /* ===================== */
@@ -287,16 +215,15 @@ const buttons = computed(() => {
 
 @media (max-width: 600px) {
   .photo-placeholder {
-    width: 200px;
-    height: 260px;
+    @apply w-[200px] h-[260px];
   }
 
   .profile-card {
-    padding: 24px;
+    @apply p-[24px];
   }
 
   .action-btn {
-    width: 100%;
+    @apply w-full;
   }
 }
 </style>

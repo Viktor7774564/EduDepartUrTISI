@@ -46,13 +46,7 @@ const goToEditUser = () => {
 
 <style scoped>
 .admin-panel-page {
-  min-height: calc(100vh - 180px);
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  padding: 40px 20px;
+  @apply min-h-[calc(100vh-180px)] flex justify-center items-center py-[40px] px-[20px];
 }
 
 /* ===================== */
@@ -60,64 +54,22 @@ const goToEditUser = () => {
 /* ===================== */
 
 .admin-card {
-  width: 100%;
-  max-width: 450px;
-
-  min-height: 280px;
-
-  background: #ececec;
-
-  border: 1px solid #4ea3d7;
-  border-radius: 18px;
-
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 36px;
-
-  padding: 48px 42px;
-
-  position: relative;
-  z-index: 2;
+  @apply w-full max-w-[450px] min-h-[280px] bg-[#ececec] border border-[#4ea3d7] rounded-[18px] shadow-[0_6px_14px_rgba(0,0,0,0.15)] flex flex-col items-center gap-[36px] p-[48px] px-[42px] relative z-[2];
 }
 
 .admin-title {
-  font-size: 26px;
-  font-weight: 500;
-  margin: 0;
-  text-align: center;
+  @apply text-[26px] font-medium m-0 text-center;
 }
 
 .admin-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
+  @apply flex flex-col gap-[20px] w-full;
 }
 
 .admin-btn {
-  width: 100%;
-  height: 52px;
-
-  border: none;
-  border-radius: 14px;
-
-  background: #4ea3d7;
-  color: white;
-
-  font-size: 15px;
-
-  cursor: pointer;
-
-  transition:
-    transform 0.2s,
-    background 0.2s;
+  @apply w-full h-[52px] border-0 rounded-[14px] bg-[#4ea3d7] text-white text-[15px] cursor-pointer transition-[transform,background-color] duration-[200ms];
 }
 
 .admin-btn:hover {
-  background: #3f96cb;
-  transform: translateY(-2px);
+  @apply bg-[#3f96cb] translate-y-[-2px];
 }
 </style>

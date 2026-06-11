@@ -19,12 +19,7 @@ import notFoundImg from '@/assets/404-illustration.png'
 
 <style scoped>
 .not-found-main {
-  min-height: calc(100vh - 180px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 38px;
-  padding: 24px;
+  @apply min-h-[calc(100vh-180px)] flex items-center justify-center gap-[38px] p-[24px];
 }
 
 .not-found-main img {
@@ -33,24 +28,11 @@ import notFoundImg from '@/assets/404-illustration.png'
 }
 
 .not-found-main h1 {
-  margin: 0 0 22px;
-  font-size: clamp(36px, 3.1vw, 36px);
+  @apply m-0 mb-[22px] text-[clamp(36px,3.1vw,36px)];
 }
 
 .back-btn {
-  min-width: 300px;
-  height: 58px;
-  border: 0;
-  border-radius: 14px;
-  background: #4ea3d7;
-  color: #eef6fb;
-  font-size: clamp(20px, 1.55vw, 20px);
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 16px;
+  @apply min-w-[300px] h-[58px] border-0 rounded-[14px] bg-[#4ea3d7] text-[#eef6fb] text-[clamp(20px,1.55vw,20px)] cursor-pointer no-underline inline-flex items-center justify-center px-[16px];
 }
 
 @media (max-width: 980px) {
