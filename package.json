@@ -1,0 +1,17 @@
+{
+  "name": "edudepartur-tisi",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace frontend",
+    "dev:web": "npm run dev --workspace frontend",
+    "dev:api": "npm run start:dev --workspace backend",
+    "build": "npm run build --workspace frontend && npm run build --workspace backend",
+    "build:web": "npm run build --workspace frontend",
+    "build:api": "npm run build --workspace backend",
+    "start:api": "npm run start --workspace backend"
+  }
+}
