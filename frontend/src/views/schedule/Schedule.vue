@@ -175,10 +175,10 @@ const closeEditModal = () => {
 const saveEdit = () => {
   // Здесь логика сохранения (API call)
   console.log('Saving changes:', editForm.value)
-  
+
   // Закрываем оба модальных окна
   closeEditModal()
-  
+
   // Показываем уведомление (опционально)
   alert('Изменения сохранены!')
 }
@@ -188,13 +188,25 @@ const showContextMenu = (event: MouseEvent, lesson: CellLesson) => {
     return
   }
 
+  event.preventDefault()
+  event.stopPropagation()
+
+  emptyCellData.value = null
+
   menuX.value = event.clientX
   menuY.value = event.clientY
+
   contextLesson.value = lesson
   isMenuVisible.value = true
 }
 
-const closeMenu = () => {
+const closeMenu = (event?: MouseEvent) => {
+  const target = event?.target as HTMLElement
+
+  if (target?.closest('.context-menu')) {
+    return
+  }
+
   isMenuVisible.value = false
 }
 
@@ -209,6 +221,9 @@ const openLessonMenu = (lesson: CellLesson) => {
 }
 
 const handleLessonTap = (lesson: CellLesson, event: MouseEvent) => {
+  console.log(authStore.currentUser?.role)
+  console.log(isMobileLayout.value)
+
   if (isMobileLayout.value && authStore.currentUser?.role === 'education_department') {
     event.stopPropagation()
     openLessonMenu(lesson)
@@ -219,10 +234,10 @@ const handleLessonTap = (lesson: CellLesson, event: MouseEvent) => {
 }
 
 const handleCellTap = (
-  day: string,
-  time: string,
-  lessons: CellLesson[],
-  event: MouseEvent
+    day: string,
+    time: string,
+    lessons: CellLesson[],
+    event: MouseEvent
 ) => {
   if (!isMobileLayout.value || lessons.length > 0) {
     return
@@ -250,10 +265,10 @@ const EditLesson = () => {
 
   // Закрываем контекстное меню
   closeMenu()
-  
+
   // Устанавливаем выбранное занятие из контекстного меню
   selectedLesson.value = contextLesson.value
-  
+
   // Открываем модальное окно редактирования
   openEditModal()
 }
@@ -262,7 +277,7 @@ const cancelLesson = () => {
   if (!contextLesson.value) return
 
   const isConfirmed = window.confirm(
-    `Отменить пару "${contextLesson.value.subject}"?`
+      `Отменить пару "${contextLesson.value.subject}"?`
   )
 
   if (!isConfirmed) {
@@ -326,16 +341,16 @@ const commandAddLesson = () => {
 }
 
 const editModalTitle = computed(() =>
-  isCreatingLesson.value ? 'Добавить пару' : 'Редактирование занятия'
+    isCreatingLesson.value ? 'Добавить пару' : 'Редактирование занятия'
 )
 
 const contextMenuStyle = computed(() =>
-  isMobileLayout.value
-    ? {}
-    : {
-        top: `${menuY.value}px`,
-        left: `${menuX.value}px`,
-      }
+    isMobileLayout.value
+        ? {}
+        : {
+          top: `${menuY.value}px`,
+          left: `${menuX.value}px`,
+        }
 )
 
 const backToSelection = async () => {
@@ -461,7 +476,7 @@ const syncMobileLayout = (queryList: MediaQueryList | MediaQueryListEvent) => {
 }
 
 onMounted(() => {
-  document.addEventListener('click', closeMenu)
+  document.addEventListener('click', closeMenu as EventListener)
 
   mobileMediaQuery = window.matchMedia('(max-width: 640px)')
   syncMobileLayout(mobileMediaQuery)
@@ -491,9 +506,9 @@ onUnmounted(() => {
             </button>
 
             <button
-              type="button"
-              @click="nextWeek"
-              :disabled="currentWeekIndex >= weekKeys.length - 1"
+                type="button"
+                @click="nextWeek"
+                :disabled="currentWeekIndex >= weekKeys.length - 1"
             >
               Следующая неделя →
             </button>
@@ -556,12 +571,12 @@ onUnmounted(() => {
                 @contextmenu.prevent="showEmptyContextMenu($event, day, time)"
             >
               <div
-                v-for="lesson in getLessons(day, time)"
-                :key="`${lesson.group}-${lesson.id}`"
-                class="lesson"
-                :class="getLessonClass(lesson.type)"
-                @click.stop="handleLessonTap(lesson, $event)"
-                @contextmenu.prevent.stop="showContextMenu($event, lesson)"
+                  v-for="lesson in getLessons(day, time)"
+                  :key="`${lesson.group}-${lesson.id}`"
+                  class="lesson"
+                  :class="getLessonClass(lesson.type)"
+                  @click.stop="handleLessonTap(lesson, $event)"
+                  @contextmenu.prevent.stop="showContextMenu($event, lesson)"
               >
                 <div class="subject">{{ lesson.subject }}</div>
                 <div class="meta">{{ getLessonMeta(lesson) }}</div>
@@ -580,16 +595,16 @@ onUnmounted(() => {
       <div v-if="selectedLesson" class="modal-overlay" @click="closeModal">
         <div class="modal" @click.stop>
           <div class="modal-header-actions">
-            <button 
-              v-if="canEdit"
-              class="edit-btn" 
-              type="button" 
-              @click="openEditModal"
-              title="Редактировать"
+            <button
+                v-if="canEdit"
+                class="edit-btn"
+                type="button"
+                @click="openEditModal"
+                title="Редактировать"
             >
               <img :src="editIcon" alt="Редактировать" />
             </button>
-            
+
             <!-- Кнопка закрытия -->
             <button class="close-btn-main" type="button" @click="closeModal">✕</button>
           </div>
@@ -626,7 +641,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      
+
       <div v-if="isEditModalVisible" class="modal-overlay" @click="closeEditModal">
         <div class="modal edit-modal" @click.stop>
           <button class="close-btn" type="button" @click="closeEditModal">✕</button>
@@ -638,11 +653,11 @@ onUnmounted(() => {
               <div class="form-group">
                 <label for="edit-name" class="form-label">Название</label>
                 <input
-                  id="edit-name"
-                  v-model="editForm.name"
-                  type="text"
-                  class="form-input"
-                  placeholder="Название"
+                    id="edit-name"
+                    v-model="editForm.name"
+                    type="text"
+                    class="form-input"
+                    placeholder="Название"
                 />
               </div>
 
@@ -661,22 +676,22 @@ onUnmounted(() => {
               <div class="form-group">
                 <label for="edit-group" class="form-label">Группа</label>
                 <input
-                  id="edit-group"
-                  v-model="editForm.group"
-                  type="text"
-                  class="form-input"
-                  placeholder="Выберите"
+                    id="edit-group"
+                    v-model="editForm.group"
+                    type="text"
+                    class="form-input"
+                    placeholder="Выберите"
                 />
               </div>
 
               <div class="form-group">
                 <label for="edit-teacher" class="form-label">Преподаватель</label>
                 <input
-                  id="edit-teacher"
-                  v-model="editForm.teacher"
-                  type="text"
-                  class="form-input"
-                  placeholder="Выберите"
+                    id="edit-teacher"
+                    v-model="editForm.teacher"
+                    type="text"
+                    class="form-input"
+                    placeholder="Выберите"
                 />
               </div>
 
@@ -720,11 +735,11 @@ onUnmounted(() => {
               <div class="form-group">
                 <label for="edit-additional" class="form-label">Дополнительное</label>
                 <input
-                  id="edit-additional"
-                  v-model="editForm.additional"
-                  type="text"
-                  class="form-input"
-                  placeholder="Выберите"
+                    id="edit-additional"
+                    v-model="editForm.additional"
+                    type="text"
+                    class="form-input"
+                    placeholder="Выберите"
                 />
               </div>
             </div>
@@ -779,4 +794,3 @@ onUnmounted(() => {
     </ul>
   </PageFrame>
 </template>
-

@@ -212,9 +212,17 @@
   }
 
   .menu,
-  .signin-btn,
   .header-spacer {
     display: none;
+  }
+
+  .signin-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 92px;
+    height: 36px;
+    font-size: 13px;
   }
 
   .profile-actions {

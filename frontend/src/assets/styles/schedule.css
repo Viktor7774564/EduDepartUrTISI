@@ -258,16 +258,26 @@
 }
 
 .schedule-page .modal-overlay {
-  @apply fixed inset-0 bg-[rgba(0,0,0,0.18)] flex items-center justify-center z-[999];
+  @apply fixed inset-0 bg-[rgba(0,0,0,0.18)] flex items-center justify-center z-[999] p-[12px] overflow-y-auto;
 }
 
 .schedule-page .modal {
-  @apply relative w-[876px] max-w-[96%] min-h-[468px] overflow-hidden border border-[#999999] rounded-[10px] bg-[#f4f4f4] shadow-[0_12px_28px_rgba(0,0,0,0.18)];
+  @apply relative
+  w-[876px]
+  max-w-[min(96vw,876px)]
+  border border-[#999999]
+  rounded-[10px]
+  bg-[#f4f4f4]
+  shadow-[0_12px_28px_rgba(0,0,0,0.18)]
+  flex flex-col;
+
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .schedule-page .edit-modal {
-  min-height: auto;
-  @apply max-h-[90vh] overflow-y-auto;
+  min-height: 0;
 }
 
 .schedule-page .modal-header-actions {
@@ -292,11 +302,11 @@
 }
 
 .schedule-page .modal-title {
-  @apply m-0 py-[17px] px-[22px] border-b border-[#999999] text-[25px] italic font-normal;
+  @apply m-0 py-[17px] px-[22px] border-b border-[#999999] text-[25px] italic font-normal shrink-0;
 }
 
 .schedule-page .modal-body {
-  @apply py-[29px] px-[22px];
+  @apply py-[29px] px-[22px] overflow-y-auto;
 }
 
 .schedule-page .close-btn {
@@ -409,6 +419,42 @@
 
 .schedule-page .context-menu li:hover {
   @apply bg-[#f3f6f9];
+}
+
+.schedule-page .mobile-action-sheet-overlay {
+  @apply fixed inset-0 z-[4000] bg-[rgba(0,0,0,0.28)] flex items-end justify-center p-[12px];
+}
+
+.schedule-page .mobile-action-sheet {
+  @apply w-full max-w-[520px] bg-white rounded-t-[20px] rounded-b-[16px] shadow-[0_-10px_30px_rgba(0,0,0,0.18)] px-[14px] pt-[10px] pb-[14px];
+}
+
+.schedule-page .mobile-action-sheet-handle {
+  @apply w-[42px] h-[4px] rounded-full bg-[#d3dbe3] mx-auto mb-[12px];
+}
+
+.schedule-page .mobile-action-sheet-title {
+  @apply text-[16px] font-semibold text-[#101215] text-center mb-[12px];
+}
+
+.schedule-page .mobile-action-sheet-actions {
+  @apply grid gap-[10px];
+}
+
+.schedule-page .sheet-action {
+  @apply w-full min-h-[46px] rounded-[12px] border border-[#d7e0e9] bg-white text-[#24313f] text-[15px] font-semibold;
+}
+
+.schedule-page .sheet-action.primary {
+  @apply bg-[#4ea3d7] border-[#4ea3d7] text-white;
+}
+
+.schedule-page .sheet-action.secondary {
+  @apply bg-[#f5f8fb];
+}
+
+.schedule-page .sheet-action.danger {
+  @apply bg-[#fff5f5] border-[#f0c8c8] text-[#c43636];
 }
 
 @media (max-width: 1100px) {
@@ -563,16 +609,45 @@
     @apply text-[14px];
   }
 
+  .schedule-page .modal-overlay {
+    @apply p-0 items-end;
+
+    overflow: hidden;
+  }
+
   .schedule-page .modal {
-    @apply w-[100%] max-w-[calc(100%-20px)] min-h-0 rounded-[14px];
+    @apply w-full max-w-full rounded-t-[18px] rounded-b-none flex flex-col;
+
+    max-height: 100vh;
+    max-height: 100svh;
+    max-height: 100dvh;
+
+    min-height: 0;
+
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+
+  .schedule-page .edit-modal {
+    height: auto;
   }
 
   .schedule-page .modal-title {
-    @apply text-[20px] py-[14px] px-[16px];
+    @apply text-[18px] py-[12px] px-[14px] sticky top-0 bg-[#f4f4f4] z-[2];
+
+    flex-shrink: 0;
   }
 
   .schedule-page .modal-body {
-    @apply py-[18px] px-[16px];
+    @apply py-[16px] px-[14px];
+
+    flex: 1;
+    min-height: 0;
+
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
 
   .schedule-page .modal-header-actions {
@@ -593,8 +668,27 @@
     @apply mb-[16px] text-[15px];
   }
 
+  .schedule-page .form-row {
+    grid-template-columns: 1fr;
+  }
+
   .schedule-page .edit-actions {
-    @apply flex-col;
+    @apply flex-col gap-[10px];
+
+    position: sticky;
+    bottom: 0;
+
+    background: #f4f4f4;
+    border-top: 1px solid #d7e0e9;
+
+    padding-top: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+
+    margin: 0 -14px -16px;
+    padding-left: 14px;
+    padding-right: 14px;
+
+    z-index: 2;
   }
 
   .schedule-page .btn {
@@ -602,6 +696,60 @@
   }
 
   .schedule-page .context-menu {
-    @apply min-w-[180px];
+    @apply min-w-0
+    w-full
+    left-0
+    right-0
+    bottom-0
+    top-auto
+    rounded-t-[18px]
+    rounded-b-none
+    py-[10px]
+    px-[12px]
+    max-h-[60vh]
+    overflow-y-auto
+    shadow-[0_-10px_30px_rgba(0,0,0,0.18)];
+
+    transform: none !important;
+  }
+
+  .schedule-page .context-menu li {
+    @apply py-[14px] px-[14px] text-[15px] rounded-[10px];
+  }
+}
+
+.context-menu {
+  position: fixed;
+  min-width: 220px;
+  padding: 6px 0;
+  margin: 0;
+  list-style: none;
+  background: #ffffff;
+  border: 1px solid #d9dfe5;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  z-index: 3000;
+}
+
+.context-menu li {
+  padding: 12px 18px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.context-menu li:hover {
+  background: #f3f6f9;
+}
+
+@media (max-width: 640px) {
+  .context-menu {
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    width: 100%;
+    max-width: none;
+
+    border-radius: 16px 16px 0 0;
   }
 }
