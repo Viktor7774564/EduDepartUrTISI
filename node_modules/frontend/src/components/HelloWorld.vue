@@ -15,24 +15,3 @@ defineProps<{
   </div>
 </template>
 
-<style scoped>
-h1 {
-  @apply font-medium text-[2.6rem] relative top-[-10px];
-}
-
-h3 {
-  @apply text-[1.2rem];
-}
-
-.greetings h1,
-.greetings h3 {
-  @apply text-center;
-}
-
-@media (min-width: 1024px) {
-  .greetings h1,
-  .greetings h3 {
-    text-align: left;
-  }
-}
-</style>

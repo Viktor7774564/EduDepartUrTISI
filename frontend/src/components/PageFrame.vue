@@ -118,37 +118,3 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.page-frame {
-  @apply relative min-h-[calc(100vh-180px)] bg-[#efefef] overflow-hidden;
-}
-
-.frame-content {
-  @apply relative z-[2];
-}
-
-/* слой */
-.decor-layer {
-  @apply absolute inset-0 z-[1] opacity-100 transition-opacity duration-[600ms] ease-in-out;
-}
-
-.decor-layer.fade {
-  @apply opacity-0;
-}
-
-.decor-card {
-  @apply absolute w-[160px] opacity-50 pointer-events-none;
-}
-
-@media (max-width: 900px) {
-  .decor-card {
-    @apply w-[125px];
-  }
-}
-
-@media (max-width: 640px) {
-  .decor-card:nth-child(n + 5) {
-    display: none;
-  }
-}
-</style>

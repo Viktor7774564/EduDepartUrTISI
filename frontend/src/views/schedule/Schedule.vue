@@ -33,8 +33,11 @@ const isMenuVisible = ref(false)
 const menuX = ref(0)
 const menuY = ref(0)
 const contextLesson = ref<CellLesson | null>(null)
+const isMobileLayout = ref(false)
+let mobileMediaQuery: MediaQueryList | null = null
 
 const isEditModalVisible = ref(false)
+const isCreatingLesson = ref(false)
 const editForm = ref({
   name: '',
   type: '',
@@ -142,6 +145,7 @@ const closeModal = () => {
 const openEditModal = () => {
   if (!selectedLesson.value) return
 
+  isCreatingLesson.value = false
   editingLesson.value = selectedLesson.value
 
   editForm.value = {
@@ -165,6 +169,7 @@ const openEditModal = () => {
 const closeEditModal = () => {
   isEditModalVisible.value = false
   editingLesson.value = null
+  isCreatingLesson.value = false
 }
 
 const saveEdit = () => {
@@ -193,11 +198,49 @@ const closeMenu = () => {
   isMenuVisible.value = false
 }
 
+const openLessonMenu = (lesson: CellLesson) => {
+  if (authStore.currentUser?.role !== 'education_department') {
+    return
+  }
 
-const commandOne = () => {
+  contextLesson.value = lesson
+  emptyCellData.value = null
+  isMenuVisible.value = true
+}
+
+const handleLessonTap = (lesson: CellLesson, event: MouseEvent) => {
+  if (isMobileLayout.value && authStore.currentUser?.role === 'education_department') {
+    event.stopPropagation()
+    openLessonMenu(lesson)
+    return
+  }
+
+  openModal(lesson)
+}
+
+const handleCellTap = (
+  day: string,
+  time: string,
+  lessons: CellLesson[],
+  event: MouseEvent
+) => {
+  if (!isMobileLayout.value || lessons.length > 0) {
+    return
+  }
+
+  if (authStore.currentUser?.role !== 'education_department') {
+    return
+  }
+
+  event.stopPropagation()
+  showEmptyContextMenu(event, day, time)
+}
+
+
+const viewLesson = () => {
   if (!contextLesson.value) return
 
-  alert(`Команда 1: ${contextLesson.value.subject}`)
+  selectedLesson.value = contextLesson.value
 
   closeMenu()
 }
@@ -215,10 +258,18 @@ const EditLesson = () => {
   openEditModal()
 }
 
-const commandTwo = () => {
+const cancelLesson = () => {
   if (!contextLesson.value) return
 
-  alert(`Команда 2: ${contextLesson.value.teacher}`)
+  const isConfirmed = window.confirm(
+    `Отменить пару "${contextLesson.value.subject}"?`
+  )
+
+  if (!isConfirmed) {
+    return
+  }
+
+  alert(`Пара "${contextLesson.value.subject}" отменена`)
 
   closeMenu()
 }
@@ -257,6 +308,7 @@ const showEmptyContextMenu = (
 const commandAddLesson = () => {
   if (!emptyCellData.value) return
 
+  isCreatingLesson.value = true
   editForm.value = {
     name: '',
     type: '',
@@ -272,6 +324,19 @@ const commandAddLesson = () => {
 
   closeMenu()
 }
+
+const editModalTitle = computed(() =>
+  isCreatingLesson.value ? 'Добавить пару' : 'Редактирование занятия'
+)
+
+const contextMenuStyle = computed(() =>
+  isMobileLayout.value
+    ? {}
+    : {
+        top: `${menuY.value}px`,
+        left: `${menuX.value}px`,
+      }
+)
 
 const backToSelection = async () => {
   await router.push({
@@ -391,12 +456,21 @@ const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
 // Проверка, может ли текущий пользователь редактировать
 const canEdit = computed(() => authStore.currentUser?.role === 'education_department')
 
+const syncMobileLayout = (queryList: MediaQueryList | MediaQueryListEvent) => {
+  isMobileLayout.value = queryList.matches
+}
+
 onMounted(() => {
   document.addEventListener('click', closeMenu)
+
+  mobileMediaQuery = window.matchMedia('(max-width: 640px)')
+  syncMobileLayout(mobileMediaQuery)
+  mobileMediaQuery.addEventListener('change', syncMobileLayout)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', closeMenu)
+  mobileMediaQuery?.removeEventListener('change', syncMobileLayout)
 })
 </script>
 
@@ -478,6 +552,7 @@ onUnmounted(() => {
                 v-for="day in days"
                 :key="day"
                 class="cell"
+                @click.stop="handleCellTap(day, time, getLessons(day, time), $event)"
                 @contextmenu.prevent="showEmptyContextMenu($event, day, time)"
             >
               <div
@@ -485,7 +560,7 @@ onUnmounted(() => {
                 :key="`${lesson.group}-${lesson.id}`"
                 class="lesson"
                 :class="getLessonClass(lesson.type)"
-                @click="openModal(lesson)"
+                @click.stop="handleLessonTap(lesson, $event)"
                 @contextmenu.prevent.stop="showContextMenu($event, lesson)"
               >
                 <div class="subject">{{ lesson.subject }}</div>
@@ -556,7 +631,7 @@ onUnmounted(() => {
         <div class="modal edit-modal" @click.stop>
           <button class="close-btn" type="button" @click="closeEditModal">✕</button>
 
-          <h2 class="modal-title">Редактирование занятия</h2>
+          <h2 class="modal-title">{{ editModalTitle }}</h2>
 
           <div class="modal-body">
             <div class="edit-form">
@@ -670,10 +745,7 @@ onUnmounted(() => {
     <ul
         v-if="isMenuVisible"
         class="context-menu"
-        :style="{
-    top: menuY + 'px',
-    left: menuX + 'px'
-  }"
+        :style="contextMenuStyle"
     >
       <!-- Если слот пустой -->
       <template v-if="!contextLesson">
@@ -687,11 +759,15 @@ onUnmounted(() => {
       <!-- Если есть пара -->
       <template v-else>
 
+        <li @click="viewLesson">
+          Просмотр
+        </li>
+
         <li @click="EditLesson">
           Внести изменения
         </li>
 
-        <li @click="commandTwo">
+        <li @click="cancelLesson">
           Отменить пару
         </li>
 
@@ -704,425 +780,3 @@ onUnmounted(() => {
   </PageFrame>
 </template>
 
-<style scoped>
-.schedule-page {
-  @apply pt-[36px] px-[24px] pb-[56px];
-}
-
-.page-head {
-  @apply flex flex-col items-center gap-[12px] max-w-[1460px] mx-auto mb-[26px] text-center;
-}
-
-.title {
-  @apply m-0 text-[clamp(28px,4vw,42px)] font-extrabold text-[#101215];
-}
-
-.week-nav {
-  @apply max-w-[1460px] mx-auto mb-[24px] flex flex-col items-center gap-[14px];
-}
-
-.week-label {
-  @apply py-[10px] px-[16px] rounded-[12px] bg-[rgba(255,255,255,0.92)] border border-[#d7e0e9] font-bold;
-}
-
-.week-buttons {
-  @apply flex gap-[12px] flex-wrap justify-center;
-}
-
-.week-buttons button {
-  @apply min-h-[44px] px-[16px] border-0 rounded-[12px] bg-[#4ea3d7] text-white cursor-pointer transition-colors duration-[200ms];
-}
-
-.week-buttons button:disabled {
-  @apply opacity-[0.55] cursor-not-allowed;
-}
-
-.week-buttons button:hover:not(:disabled) {
-  @apply bg-[#3f93c7];
-}
-
-.legend {
-  @apply max-w-[1460px] mx-auto mb-[24px] flex gap-[18px] flex-wrap justify-center;
-}
-
-.legend-item {
-  @apply flex items-center gap-[8px] text-[#24313f];
-}
-
-.box {
-  @apply w-[14px] h-[14px] rounded-[4px];
-}
-
-.table {
-  @apply max-w-[1460px] mx-auto grid gap-[6px];
-}
-
-.header,
-.row {
-  @apply grid gap-[6px];
-  grid-template-columns: 120px repeat(6, minmax(130px, 1fr));
-}
-
-.header div {
-  @apply bg-[#dfe7ef] p-[10px] text-center font-extrabold text-[#18212a];
-}
-
-.time {
-  @apply flex justify-center items-center bg-[#dfe7ef] text-[#18212a] font-bold;
-}
-
-.cell {
-  @apply min-h-[92px] min-w-0 p-[4px] border border-[#d7dee6] bg-[rgba(255,255,255,0.78)];
-}
-
-.lesson {
-  @apply min-w-0 p-[8px] rounded-[8px] mb-[4px] cursor-pointer transition-transform duration-[200ms] ease-in-out overflow-hidden;
-}
-
-.lesson:hover {
-  @apply translate-y-[-1px];
-}
-
-.subject {
-  @apply font-bold text-[12px] break-words whitespace-normal leading-[1.2] [overflow-wrap:anywhere];
-}
-
-.meta {
-  @apply mt-[4px] text-[11px] opacity-[0.76] break-words whitespace-normal leading-[1.2] [overflow-wrap:anywhere];
-}
-
-.lecture {
-  @apply bg-[#c8e6c9];
-}
-
-.practice {
-  @apply bg-[#b3e5fc];
-}
-
-.lab {
-  @apply bg-[#fff9c4];
-}
-
-.exam {
-  @apply bg-[#f8bbd0];
-}
-
-.consultation {
-  @apply bg-[#9773bd] text-white;
-}
-
-.consult-online {
-  @apply bg-[#b39dc7] text-white;
-}
-
-.box.consultation {
-  @apply bg-[#9773bd];
-}
-
-.box.consult-online {
-  @apply bg-[#b39dc7];
-}
-
-.empty-state {
-  @apply max-w-[720px] mx-auto my-[80px] py-[36px] px-[28px] rounded-[24px] bg-[rgba(255,255,255,0.9)] shadow-[0_20px_40px_rgba(18,38,63,0.08)] text-center;
-}
-
-.empty-state h2 {
-  @apply m-0 mb-[12px] text-[28px];
-}
-
-.empty-state p {
-  @apply m-0 text-[#5f6975] leading-[1.55];
-}
-
-.modal-overlay {
-  @apply fixed inset-0 bg-[rgba(0,0,0,0.18)] flex items-center justify-center z-[999];
-}
-
-.modal {
-  @apply relative w-[876px] max-w-[96%] min-h-[468px] overflow-hidden border border-[#999999] rounded-[10px] bg-[#f4f4f4] shadow-[0_12px_28px_rgba(0,0,0,0.18)];
-}
-
-.edit-modal {
-  min-height: auto;
-  @apply max-h-[90vh] overflow-y-auto;
-}
-
-.modal-header-actions {
-  @apply absolute top-[23px] right-[17px] flex items-center gap-[8px] z-[10];
-}
-
-/* Кнопка редактирования */
-.edit-btn {
-  @apply static w-[34px] h-[34px] border border-[#4ea3d7] rounded-[8px] bg-white flex items-center justify-center cursor-pointer transition-all duration-[200ms] p-[4px];
-}
-
-.edit-btn:hover {
-  @apply bg-[#4ea3d7] border-[#4ea3d7];
-}
-
-.edit-btn img {
-  @apply w-[30px] h-[30px] opacity-70 transition-opacity duration-[200ms];
-}
-
-.edit-btn:hover img {
-  @apply opacity-100;
-  filter: brightness(0) invert(1);
-}
-
-.modal-title {
-  @apply m-0 py-[17px] px-[22px] border-b border-[#999999] text-[25px] italic font-normal;
-}
-
-.modal-body {
-  @apply py-[29px] px-[22px];
-}
-
-.close-btn {
-  @apply absolute top-[23px] right-[17px] w-[34px] h-[34px] border-0 bg-transparent text-red-600 text-[32px] leading-[1] cursor-pointer flex items-center justify-center;
-}
-
-.close-btn-main {
-  @apply static w-[34px] h-[34px] border-0 bg-transparent text-red-600 text-[32px] leading-[1] cursor-pointer flex items-center justify-center;
-}
-
-.type-badge {
-  @apply inline-block min-w-[174px] mb-[28px] py-[10px] px-[14px] rounded-[8px] text-[16px] font-normal;
-}
-
-.type-badge.lecture {
-  @apply bg-[rgba(76,175,80,0.14)] border-2 border-[#4caf50] text-[#388e3c];
-}
-
-.type-badge.practice {
-  @apply bg-[rgba(33,150,243,0.14)] border-2 border-[#2196f3] text-[#1976d2];
-}
-
-.type-badge.lab {
-  @apply bg-[rgba(255,193,7,0.14)] border-2 border-[#ffc107] text-[#f57f17];
-}
-
-.type-badge.exam {
-  @apply bg-[rgba(233,30,99,0.14)] border-2 border-[#e91e63] text-[#c2185b];
-}
-
-.type-badge.consultation {
-  @apply bg-[rgba(151,115,189,0.16)] border-2 border-[#9773bd] text-[#6e5092];
-}
-
-.type-badge.consult-online {
-  @apply bg-[rgba(179,157,199,0.22)] border-2 border-[#b39dc7] text-[#7c6794];
-}
-
-.modal-info p {
-  @apply m-0 mb-[24px] text-[18px] leading-[1.35];
-}
-
-.modal-info strong {
-  @apply block mb-[8px] font-normal italic;
-}
-
-.edit-form {
-  @apply flex flex-col gap-[20px] mb-[24px];
-}
-
-.form-row {
-  @apply grid gap-[16px];
-  grid-template-columns: 1fr 1fr;
-}
-
-.form-group {
-  @apply flex flex-col gap-[6px];
-}
-
-.form-label {
-  @apply text-[14px] font-medium text-[#24313f];
-}
-
-.form-input,
-.form-select {
-  @apply py-[10px] px-[14px] border border-[#d7e0e9] rounded-[8px] text-[14px] bg-white transition-all duration-[200ms];
-}
-
-.form-input:hover,
-.form-select:hover {
-  @apply border-[#4ea3d7];
-}
-
-.form-input:focus,
-.form-select:focus {
-  @apply outline-none border-[#4ea3d7] shadow-[0_0_0_3px_rgba(78,163,215,0.1)];
-}
-
-.edit-actions {
-  @apply flex gap-[16px] justify-end pt-[20px] border-t border-[#d7e0e9];
-}
-
-.btn {
-  @apply py-[12px] px-[24px] border-0 rounded-[8px] text-[14px] font-semibold cursor-pointer transition-all duration-[200ms];
-}
-
-.btn-primary {
-  @apply bg-[#4caf50] text-white;
-}
-
-.btn-primary:hover {
-  @apply bg-[#43a047] translate-y-[-1px] shadow-[0_4px_8px_rgba(76,175,80,0.3)];
-}
-
-.btn-secondary {
-  @apply bg-white text-[#24313f] border border-[#d7e0e9];
-}
-
-.btn-secondary:hover {
-  @apply bg-[#f5f5f5] border-[#4ea3d7];
-}
-
-.context-menu {
-  @apply fixed min-w-[220px] py-[6px] m-0 list-none bg-white border border-[#d9dfe5] rounded-[12px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-[3000];
-}
-
-.context-menu li {
-  @apply py-[12px] px-[18px] cursor-pointer transition-colors duration-[150ms] ease-in-out;
-}
-
-.context-menu li:hover {
-  @apply bg-[#f3f6f9];
-}
-
-@media (max-width: 960px) {
-  .schedule-page {
-    @apply pt-[22px] px-[12px] pb-[40px];
-  }
-
-  .week-nav {
-    align-items: center;
-  }
-
-  .table {
-    overflow-x: auto;
-  }
-
-  .header,
-  .row {
-    min-width: 920px;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .schedule-page {
-    @apply pt-[16px] px-[10px] pb-[28px];
-  }
-
-  .page-head {
-    @apply mb-[18px];
-  }
-
-  .title {
-    @apply text-[clamp(22px,7vw,30px)];
-  }
-
-  .week-label {
-    @apply w-full text-center text-[14px] py-[8px] px-[12px];
-  }
-
-  .week-buttons {
-    @apply w-full flex-col gap-[10px];
-  }
-
-  .week-buttons button {
-    @apply w-full min-h-[42px] text-[14px];
-  }
-
-  .legend {
-    @apply gap-[10px] mb-[18px] justify-start;
-  }
-
-  .legend-item {
-    @apply text-[13px];
-  }
-
-  .table {
-    @apply -mx-[10px] px-[10px];
-  }
-
-  .header,
-  .row {
-    min-width: 860px;
-  }
-
-  .cell {
-    @apply overflow-hidden;
-  }
-
-  .lesson {
-    @apply p-[7px];
-  }
-
-  .subject {
-    @apply text-[11px];
-  }
-
-  .meta {
-    @apply text-[10px];
-  }
-
-  .empty-state {
-    @apply my-[40px] py-[24px] px-[18px] rounded-[18px];
-  }
-
-  .empty-state h2 {
-    @apply text-[22px];
-  }
-
-  .empty-state p {
-    @apply text-[14px];
-  }
-
-  .modal {
-    @apply w-[100%] max-w-[calc(100%-20px)] min-h-0 rounded-[14px];
-  }
-
-  .modal-title {
-    @apply text-[20px] py-[14px] px-[16px];
-  }
-
-  .modal-body {
-    @apply py-[18px] px-[16px];
-  }
-
-  .modal-header-actions {
-    @apply top-[14px] right-[12px] gap-[6px];
-  }
-
-  .edit-btn,
-  .close-btn,
-  .close-btn-main {
-    @apply w-[30px] h-[30px] text-[24px];
-  }
-
-  .type-badge {
-    @apply mb-[18px] min-w-0 text-[14px] py-[8px] px-[12px];
-  }
-
-  .modal-info p {
-    @apply mb-[16px] text-[15px];
-  }
-
-  .edit-actions {
-    @apply flex-col;
-  }
-
-  .btn {
-    @apply w-full;
-  }
-
-  .context-menu {
-    @apply min-w-[180px];
-  }
-}
-</style>

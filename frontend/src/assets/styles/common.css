@@ -1,0 +1,243 @@
+.app-shell {
+  @apply min-h-screen flex flex-col bg-[#e8e8e8] text-[#101215];
+}
+
+.page-content {
+  @apply flex-1 flex flex-col;
+}
+
+.topbar {
+  @apply sticky top-0 z-[1000] min-h-[72px] px-[28px] bg-[#333840] grid grid-cols-[auto_1fr_auto] items-center gap-[18px];
+}
+
+.brand img {
+  @apply h-[58px];
+}
+
+.menu {
+  @apply flex justify-center gap-[18px];
+}
+
+.menu a {
+  @apply text-[#f0f4f7] no-underline text-[16px] py-[14px] px-[16px] pb-[12px] rounded-[14px];
+}
+
+.profile-wrapper {
+  @apply relative;
+}
+
+.profile-actions {
+  @apply justify-self-end;
+}
+
+.profile-btn {
+  @apply bg-transparent border-0 cursor-pointer text-[#eaf3f9] flex items-center gap-[10px] text-[15px] py-[6px] px-[10px] rounded-[10px];
+}
+
+.profile-role {
+  @apply text-[12px] text-[rgba(234,243,249,0.7)];
+}
+
+.profile-icon {
+  @apply w-[24px] h-[24px];
+}
+
+.caret {
+  @apply w-[12px] h-[8px];
+}
+
+.profile-dropdown {
+  @apply absolute top-[calc(100%+10px)] right-0 bg-white rounded-[12px] min-w-[180px] shadow-[0_10px_25px_rgba(0,0,0,0.15)] overflow-hidden z-[2000] flex flex-col;
+}
+
+.dropdown-item {
+  @apply w-full py-[12px] px-[14px] border-0 bg-transparent text-left cursor-pointer text-[14px];
+}
+
+.dropdown-item:hover {
+  @apply bg-[rgba(0,0,0,0.05)];
+}
+
+.dropdown-item.danger {
+  @apply text-[#c43636];
+}
+
+.signin-btn {
+  @apply min-w-[120px] h-[40px] bg-[#4ea3d7] border-0 rounded-[10px] text-white cursor-pointer;
+}
+
+.bottombar {
+  @apply h-[85px] bg-[#333840];
+}
+
+.page-frame {
+  @apply relative min-h-[calc(100vh-180px)] bg-[#efefef] overflow-hidden;
+}
+
+.frame-content {
+  @apply relative z-[2];
+}
+
+.decor-layer {
+  @apply absolute inset-0 z-[1] opacity-100 transition-opacity duration-[600ms] ease-in-out;
+}
+
+.decor-layer.fade {
+  @apply opacity-0;
+}
+
+.decor-card {
+  @apply absolute w-[160px] opacity-50 pointer-events-none;
+}
+
+.item {
+  @apply mt-[2rem] flex relative;
+}
+
+.item .details {
+  @apply flex-1 ml-[1rem];
+}
+
+.item i {
+  @apply flex items-center justify-center w-[32px] h-[32px] text-[var(--color-text)];
+}
+
+.item h3 {
+  @apply text-[1.2rem] font-medium mb-[0.4rem] text-[var(--color-heading)];
+}
+
+.greetings h1,
+.greetings h3 {
+  @apply text-center;
+}
+
+.greetings h1 {
+  @apply font-medium text-[2.6rem] relative top-[-10px];
+}
+
+.greetings h3 {
+  @apply text-[1.2rem];
+}
+
+@media (min-width: 1024px) {
+  .item {
+    @apply mt-0 pt-[0.4rem] pb-[1rem];
+    padding-left: calc(var(--section-gap) / 2);
+  }
+
+  .item i {
+    @apply absolute border border-[var(--color-border)] bg-[var(--color-background)] rounded-[8px] w-[50px] h-[50px];
+    top: calc(50% - 25px);
+    left: -26px;
+  }
+
+  .item:before {
+    content: ' ';
+    @apply border-l border-[var(--color-border)] absolute left-0;
+    bottom: calc(50% + 25px);
+    height: calc(50% - 25px);
+  }
+
+  .item:after {
+    content: ' ';
+    @apply border-l border-[var(--color-border)] absolute left-0;
+    top: calc(50% + 25px);
+    height: calc(50% - 25px);
+  }
+
+  .item:first-of-type:before {
+    display: none;
+  }
+
+  .item:last-of-type:after {
+    display: none;
+  }
+
+  .greetings h1,
+  .greetings h3 {
+    text-align: left;
+  }
+}
+
+@media (max-width: 900px) {
+  .decor-card {
+    @apply w-[125px];
+  }
+}
+
+@media (max-width: 640px) {
+  .decor-card:nth-child(n + 5) {
+    display: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .topbar {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'brand auth'
+      'menu menu';
+    padding: 14px 18px;
+  }
+
+  .brand {
+    grid-area: brand;
+  }
+
+  .profile-actions {
+    grid-area: auth;
+    justify-self: end;
+  }
+
+  .menu {
+    grid-area: menu;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'brand auth'
+      'menu menu';
+    gap: 10px;
+    padding: 10px 12px;
+    min-height: auto;
+  }
+
+  .brand img {
+    @apply h-[44px];
+  }
+
+  .menu,
+  .signin-btn,
+  .header-spacer {
+    display: none;
+  }
+
+  .profile-actions {
+    @apply justify-self-end;
+  }
+
+  .profile-btn {
+    @apply gap-[6px] px-[8px] py-[4px] text-[13px];
+  }
+
+  .profile-role {
+    @apply hidden;
+  }
+
+  .profile-icon {
+    @apply w-[20px] h-[20px];
+  }
+
+  .caret {
+    @apply w-[10px] h-[7px];
+  }
+
+  .bottombar {
+    @apply h-[56px];
+  }
+}

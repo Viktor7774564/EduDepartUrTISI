@@ -1,0 +1,363 @@
+.admin-panel-page,
+.admin-edit-page {
+  @apply min-h-[calc(100vh-180px)] flex justify-center items-center py-[40px] px-[20px];
+}
+
+.admin-panel-page .admin-card {
+  @apply w-full max-w-[450px] min-h-[280px] bg-[#ececec] border border-[#4ea3d7] rounded-[18px] shadow-[0_6px_14px_rgba(0,0,0,0.15)] flex flex-col items-center gap-[36px] p-[48px] px-[42px] relative z-[2];
+}
+
+.admin-panel-page .admin-title {
+  @apply text-[26px] font-medium m-0 text-center;
+}
+
+.admin-panel-page .admin-actions {
+  @apply flex flex-col gap-[20px] w-full;
+}
+
+.admin-panel-page .admin-btn {
+  @apply w-full h-[52px] border-0 rounded-[14px] bg-[#4ea3d7] text-white text-[15px] cursor-pointer transition-[transform,background-color] duration-[200ms];
+}
+
+.admin-panel-page .admin-btn:hover {
+  @apply bg-[#3f96cb] translate-y-[-2px];
+}
+
+.admin-edit-page {
+  @apply items-start;
+}
+
+.admin-edit-page .admin-card {
+  @apply w-full max-w-[1100px] bg-[#ececec] border border-[#4ea3d7] rounded-[14px] shadow-[0_4px_12px_rgba(0,0,0,0.12)] py-[40px] px-[48px] relative z-[2];
+}
+
+.admin-edit-page .card-header {
+  @apply flex items-center gap-[20px] mb-[32px] relative;
+}
+
+.admin-edit-page .back-btn {
+  @apply w-[40px] h-[40px] border-0 rounded-[10px] bg-[#4ea3d7] flex items-center justify-center cursor-pointer transition-colors duration-[200ms] shrink-0 relative z-[1];
+}
+
+.admin-edit-page .back-btn:hover {
+  @apply bg-[#3f96cb];
+}
+
+.admin-edit-page .card-title {
+  @apply m-0 text-[24px] font-semibold text-[#101215] text-center absolute left-1/2 -translate-x-1/2 w-full pointer-events-none;
+}
+
+.admin-edit-page .user-form {
+  @apply flex flex-col gap-[32px];
+}
+
+.admin-edit-page .form-section {
+  @apply bg-white border border-[#d7e0e9] rounded-[10px] p-[24px];
+}
+
+.admin-edit-page .section-title {
+  @apply m-0 mb-[20px] text-[18px] font-semibold text-[#24313f] pb-[12px] border-b-2 border-[#4ea3d7];
+}
+
+.admin-edit-page .form-row {
+  @apply grid gap-[20px] mb-[20px];
+  grid-template-columns: 1fr 1fr;
+}
+
+.admin-edit-page .form-row:last-child {
+  margin-bottom: 0;
+}
+
+.admin-edit-page .form-group {
+  @apply flex flex-col gap-[6px];
+}
+
+.admin-edit-page .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.admin-edit-page .form-label {
+  @apply text-[14px] font-medium text-[#24313f];
+}
+
+.admin-edit-page .required {
+  @apply text-[#e74c3c];
+}
+
+.admin-edit-page .form-input,
+.admin-edit-page .form-select {
+  @apply py-[10px] px-[14px] border border-[#d7e0e9] rounded-[8px] text-[14px] bg-white transition-all duration-[200ms];
+}
+
+.admin-edit-page .form-input:hover,
+.admin-edit-page .form-select:hover {
+  @apply border-[#4ea3d7];
+}
+
+.admin-edit-page .form-input:focus,
+.admin-edit-page .form-select:focus {
+  @apply outline-none border-[#4ea3d7] shadow-[0_0_0_3px_rgba(78,163,215,0.1)];
+}
+
+.admin-edit-page .form-input.error,
+.admin-edit-page .form-select.error {
+  @apply border-[#e74c3c];
+}
+
+.admin-edit-page .form-input.error:focus,
+.admin-edit-page .form-select.error:focus {
+  @apply shadow-[0_0_0_3px_rgba(231,76,60,0.1)];
+}
+
+.admin-edit-page .error-message {
+  @apply text-[12px] text-[#e74c3c] mt-[2px];
+}
+
+.admin-edit-page .form-actions {
+  @apply flex gap-[16px] justify-end pt-[20px] border-t border-[#d7e0e9];
+}
+
+.admin-edit-page .btn {
+  @apply py-[12px] px-[24px] border-0 rounded-[8px] text-[14px] font-semibold cursor-pointer transition-all duration-[200ms];
+}
+
+.admin-edit-page .btn-primary {
+  @apply bg-[#4ea3d7] text-white;
+}
+
+.admin-edit-page .btn-primary:hover {
+  @apply bg-[#3f96cb] translate-y-[-1px] shadow-[0_4px_8px_rgba(78,163,215,0.3)];
+}
+
+.admin-edit-page .btn-secondary {
+  @apply bg-white text-[#24313f] border border-[#d7e0e9];
+}
+
+.admin-edit-page .btn-secondary:hover {
+  @apply bg-[#f5f5f5] border-[#4ea3d7];
+}
+
+.admin-edit-page .btn:disabled {
+  @apply opacity-60 cursor-not-allowed;
+  transform: none !important;
+}
+
+.admin-edit-page .form-input:disabled,
+.admin-edit-page .form-select:disabled {
+  @apply bg-[#f5f5f5] cursor-not-allowed;
+}
+
+.admin-edit-page .submit-message {
+  @apply py-[12px] px-[16px] rounded-[8px] mb-[24px] text-[14px] font-medium;
+}
+
+.admin-edit-page .submit-message.success {
+  @apply bg-[#d4edda] text-[#155724] border border-[#c3e6cb];
+}
+
+.admin-edit-page .submit-message.error {
+  @apply bg-[#f8d7da] text-[#721c24] border border-[#f5c6cb];
+}
+
+.admin-edit-page .card-subtitle {
+  @apply text-[16px] text-[#5f6975] text-center mb-[32px] pb-[16px] border-b border-[#d7e0e9];
+}
+
+.admin-edit-page .users-table {
+  @apply flex flex-col gap-[12px];
+}
+
+.admin-edit-page .table-header {
+  @apply grid gap-[16px] py-[14px] px-[18px] bg-[rgba(78,163,215,0.15)] rounded-[10px] font-semibold text-[14px] text-[#24313f];
+  grid-template-columns: 1.5fr 1.5fr 1.5fr 1fr 100px;
+}
+
+.admin-edit-page .table-row {
+  @apply grid gap-[16px] py-[16px] px-[18px] bg-white border border-[#d7e0e9] rounded-[10px] items-center transition-shadow duration-[200ms];
+  grid-template-columns: 1.5fr 1.5fr 1.5fr 1fr 100px;
+}
+
+.admin-edit-page .table-row:hover {
+  @apply shadow-[0_4px_12px_rgba(0,0,0,0.08)];
+}
+
+.admin-edit-page .col-name,
+.admin-edit-page .col-login,
+.admin-edit-page .col-role,
+.admin-edit-page .col-password {
+  @apply text-[14px] text-[#24313f] whitespace-nowrap overflow-hidden text-ellipsis;
+}
+
+.admin-edit-page .col-name {
+  @apply font-medium;
+}
+
+.admin-edit-page .col-login,
+.admin-edit-page .col-password {
+  font-family: monospace;
+  @apply text-[#5f6975];
+}
+
+.admin-edit-page .col-role {
+  @apply text-[#4ea3d7] font-medium;
+}
+
+.admin-edit-page .col-actions {
+  @apply flex gap-[10px] justify-end;
+}
+
+.admin-edit-page .edit-btn {
+  @apply w-[34px] h-[34px] border border-[#4ea3d7] rounded-[8px] bg-white flex items-center justify-center cursor-pointer transition-all duration-[200ms] p-[6px];
+}
+
+.admin-edit-page .edit-btn:hover {
+  @apply bg-[#4ea3d7] border-[#4ea3d7];
+}
+
+.admin-edit-page .edit-btn img {
+  @apply w-[22px] h-[22px] opacity-70 transition-opacity duration-[200ms];
+}
+
+.admin-edit-page .edit-btn:hover img {
+  @apply opacity-100;
+}
+
+.admin-edit-page .close-btn {
+  @apply w-[34px] h-[34px] border border-[#e74c3c] rounded-[8px] bg-white text-[#e74c3c] text-[20px] leading-[1] flex items-center justify-center cursor-pointer transition-all duration-[200ms];
+}
+
+.admin-edit-page .close-btn:hover {
+  @apply bg-[#e74c3c] text-white;
+}
+
+@media (max-width: 768px) {
+  .admin-panel-page .admin-card {
+    @apply py-[32px] px-[24px];
+  }
+
+  .admin-panel-page .admin-title,
+  .admin-edit-page .card-title {
+    @apply text-[20px];
+  }
+
+  .admin-edit-page .form-section {
+    @apply p-[20px];
+  }
+
+  .admin-edit-page .form-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .admin-edit-page .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .admin-edit-page .btn {
+    @apply w-full;
+  }
+
+  .admin-edit-page .card-subtitle {
+    @apply text-[15px];
+  }
+
+  .admin-edit-page .table-header,
+  .admin-edit-page .table-row {
+    grid-template-columns: 1.5fr 1fr 1fr 90px;
+    gap: 12px;
+    font-size: 13px;
+    padding: 14px 16px;
+  }
+
+  .admin-edit-page .col-login {
+    display: none;
+  }
+
+  .admin-edit-page .table-header .col-login {
+    display: none;
+  }
+
+  .admin-edit-page .col-actions {
+    justify-content: center;
+  }
+
+  .admin-edit-page .edit-btn,
+  .admin-edit-page .close-btn {
+    @apply w-[32px] h-[32px];
+  }
+
+  .admin-edit-page .edit-btn img {
+    @apply w-[18px] h-[18px];
+  }
+
+  .admin-edit-page .close-btn {
+    @apply text-[18px];
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-panel-page {
+    @apply py-[24px] px-[16px];
+  }
+
+  .admin-edit-page {
+    @apply py-[24px] px-[16px];
+  }
+
+  .admin-edit-page .card-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .admin-edit-page .back-btn {
+    @apply self-start w-[38px] h-[38px];
+  }
+
+  .admin-edit-page .card-subtitle {
+    @apply text-[14px];
+  }
+
+  .admin-edit-page .section-title {
+    @apply text-[16px];
+  }
+
+  .admin-edit-page .form-input,
+  .admin-edit-page .form-select {
+    @apply py-[9px] px-[12px] text-[13px];
+  }
+
+  .admin-edit-page .table-header,
+  .admin-edit-page .table-row {
+    grid-template-columns: 1fr 1fr 80px;
+    gap: 10px;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+
+  .admin-edit-page .col-role,
+  .admin-edit-page .col-login {
+    display: none;
+  }
+
+  .admin-edit-page .table-header .col-role,
+  .admin-edit-page .table-header .col-login {
+    display: none;
+  }
+
+  .admin-edit-page .edit-btn,
+  .admin-edit-page .close-btn {
+    @apply w-[30px] h-[30px];
+  }
+
+  .admin-edit-page .close-btn {
+    @apply text-[16px];
+  }
+
+  .admin-panel-page .admin-card {
+    @apply py-[24px] px-[16px];
+  }
+
+  .admin-panel-page .admin-title {
+    @apply text-[18px];
+  }
+}

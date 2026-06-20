@@ -44,32 +44,3 @@ const goToEditUser = () => {
   </PageFrame>
 </template>
 
-<style scoped>
-.admin-panel-page {
-  @apply min-h-[calc(100vh-180px)] flex justify-center items-center py-[40px] px-[20px];
-}
-
-/* ===================== */
-/* CARD */
-/* ===================== */
-
-.admin-card {
-  @apply w-full max-w-[450px] min-h-[280px] bg-[#ececec] border border-[#4ea3d7] rounded-[18px] shadow-[0_6px_14px_rgba(0,0,0,0.15)] flex flex-col items-center gap-[36px] p-[48px] px-[42px] relative z-[2];
-}
-
-.admin-title {
-  @apply text-[26px] font-medium m-0 text-center;
-}
-
-.admin-actions {
-  @apply flex flex-col gap-[20px] w-full;
-}
-
-.admin-btn {
-  @apply w-full h-[52px] border-0 rounded-[14px] bg-[#4ea3d7] text-white text-[15px] cursor-pointer transition-[transform,background-color] duration-[200ms];
-}
-
-.admin-btn:hover {
-  @apply bg-[#3f96cb] translate-y-[-2px];
-}
-</style>
