@@ -616,20 +616,12 @@
   }
 
   .schedule-page .modal {
-    @apply w-full max-w-full rounded-t-[18px] rounded-b-none flex flex-col;
-
-    max-height: 100vh;
-    max-height: 100svh;
-    max-height: 100dvh;
-
-    min-height: 0;
-
-    overflow: hidden;
-    overscroll-behavior: contain;
+    @apply fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2;
   }
 
   .schedule-page .edit-modal {
-    height: auto;
+    max-height: calc(100dvh - 64px);
+    margin-top: 64px;
   }
 
   .schedule-page .modal-title {
