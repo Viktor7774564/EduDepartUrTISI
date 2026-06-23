@@ -18,6 +18,10 @@
   @apply rotate-[-45deg] text-[18px];
 }
 
+.profile-photo {
+  @apply w-[240px] h-[320px] border-2 border-[#4ea3d7] rounded-[16px] object-cover bg-white shadow-[0_4px_10px_rgba(0,0,0,0.15)];
+}
+
 .profile-info {
   @apply flex-1 flex flex-col;
 }

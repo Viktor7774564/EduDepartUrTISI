@@ -13,9 +13,12 @@ const passport_1 = require("@nestjs/passport");
 const typeorm_1 = require("@nestjs/typeorm");
 const config_1 = require("@nestjs/config");
 const users_module_1 = require("../users/users.module");
+const sessions_module_1 = require("../sessions/sessions.module");
 const auth_controller_1 = require("./auth.controller");
 const auth_service_1 = require("./auth.service");
 const refresh_token_entity_1 = require("./entities/refresh-token.entity");
+const access_token_guard_1 = require("./guards/access-token.guard");
+const refresh_token_guard_1 = require("./guards/refresh-token.guard");
 const access_token_strategy_1 = require("./strategies/access-token.strategy");
 const refresh_token_strategy_1 = require("./strategies/refresh-token.strategy");
 let AuthModule = class AuthModule {
@@ -26,6 +29,7 @@ exports.AuthModule = AuthModule = __decorate([
         imports: [
             config_1.ConfigModule,
             users_module_1.UsersModule,
+            sessions_module_1.SessionsModule,
             passport_1.PassportModule,
             typeorm_1.TypeOrmModule.forFeature([
                 refresh_token_entity_1.RefreshToken,
@@ -45,8 +49,10 @@ exports.AuthModule = AuthModule = __decorate([
             auth_service_1.AuthService,
             access_token_strategy_1.AccessTokenStrategy,
             refresh_token_strategy_1.RefreshTokenStrategy,
+            access_token_guard_1.AccessTokenGuard,
+            refresh_token_guard_1.RefreshTokenGuard,
         ],
-        exports: [auth_service_1.AuthService],
+        exports: [auth_service_1.AuthService, access_token_guard_1.AccessTokenGuard, refresh_token_guard_1.RefreshTokenGuard],
     })
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

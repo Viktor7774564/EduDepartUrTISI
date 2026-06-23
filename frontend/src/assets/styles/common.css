@@ -39,7 +39,7 @@
 }
 
 .profile-icon {
-  @apply w-[24px] h-[24px];
+  @apply w-[32px] h-[32px] rounded-full object-cover;
 }
 
 .caret {

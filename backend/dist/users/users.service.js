@@ -26,6 +26,10 @@ let UsersService = class UsersService {
         const user = this.usersRepository.create(data);
         return this.usersRepository.save(user);
     }
+    async update(id, data) {
+        await this.findById(id);
+        await this.usersRepository.update(id, data);
+    }
     async findById(id) {
         const user = await this.usersRepository.findOne({
             where: { id },
@@ -68,6 +72,12 @@ let UsersService = class UsersService {
     ];
     async findAll() {
         return this.usersRepository.find();
+    }
+    async findAllWithDetails() {
+        return this.usersRepository.find({
+            relations: this.userDetailsRelations,
+            order: { id: 'ASC' },
+        });
     }
     async remove(id) {
         await this.usersRepository.delete(id);

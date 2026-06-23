@@ -1,66 +1,73 @@
-// stores/users.ts
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { mockUsers, type MockUser } from '@/mocks/users'
+import {
+  createAdminUser,
+  deleteAdminUser,
+  fetchAdminUser,
+  fetchAdminUsers,
+  updateAdminUser,
+  type AdminUser,
+  type CreateUserPayload,
+  type UpdateUserPayload,
+} from '@/api/admin'
 
 export const useUsersStore = defineStore('users', () => {
-  const users = ref<MockUser[]>([...mockUsers])
+  const users = ref<AdminUser[]>([])
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
 
-  function addUser(user: Omit<MockUser, 'id'>): MockUser {
-    const newUser: MockUser = {
-      id: Date.now(),
-      login: user.login,
-      password: user.password,
-      role: user.role,
-      surname: user.surname,
-      name: user.name,
-      patronymic: user.patronymic,
-      photo: user.photo,
-      department: user.department,
-      position: user.position,
-      cabinet: user.cabinet,
-      group: user.group,
-      direction: user.direction,
-      educationForm: user.educationForm,
-      course: user.course,
+  async function loadUsers() {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      users.value = await fetchAdminUsers()
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Не удалось загрузить пользователей'
+      throw err
+    } finally {
+      isLoading.value = false
     }
-    users.value.push(newUser)
-    return newUser
   }
 
-  function updateUser(id: number, updates: Partial<MockUser>): boolean {
-    const index = users.value.findIndex((u) => u.id === id)
-    if (index === -1) return false
-    
-    const user = users.value[index]
-    
-    
-    users.value[index] = {
-      ...user,
-      ...updates,
-      id: user!.id, // Гарантируем, что id не изменится
-    } as MockUser
-    
-    return true
+  async function addUser(
+      payload: CreateUserPayload,
+      photo?: File | null,
+  ): Promise<AdminUser> {
+    const createdUser = await createAdminUser(payload, photo)
+    users.value = [...users.value, createdUser]
+    return createdUser
   }
 
-  function deleteUser(id: number): boolean {
-    const index = users.value.findIndex((u) => u.id === id)
-    if (index === -1) return false
-    
-    users.value.splice(index, 1)
-    return true
+  async function removeUser(id: number): Promise<void> {
+    await deleteAdminUser(id)
+    users.value = users.value.filter((user) => user.id !== id)
   }
 
-  function getUserById(id: number): MockUser | undefined {
-    return users.value.find((u) => u.id === id)
+  async function getUser(id: number): Promise<AdminUser> {
+    return fetchAdminUser(id)
+  }
+
+  async function editUser(
+      id: number,
+      payload: UpdateUserPayload,
+      photo?: File | null,
+  ): Promise<AdminUser> {
+    const updatedUser = await updateAdminUser(id, payload, photo)
+    users.value = users.value.map((user) =>
+        user.id === id ? updatedUser : user,
+    )
+    return updatedUser
   }
 
   return {
     users,
+    isLoading,
+    error,
+    loadUsers,
     addUser,
-    updateUser,
-    deleteUser,
-    getUserById,
+    removeUser,
+    getUser,
+    editUser,
   }
 })

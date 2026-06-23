@@ -5,12 +5,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { UsersModule } from '../users/users.module';
+import { SessionsModule } from '../sessions/sessions.module';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
 import { RefreshToken } from './entities/refresh-token.entity';
 
+import { AccessTokenGuard } from './guards/access-token.guard';
+import { RefreshTokenGuard } from './guards/refresh-token.guard';
 import { AccessTokenStrategy } from './strategies/access-token.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 
@@ -19,6 +22,7 @@ import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
         ConfigModule,
 
         UsersModule,
+        SessionsModule,
 
         PassportModule,
 
@@ -41,7 +45,9 @@ import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
         AuthService,
         AccessTokenStrategy,
         RefreshTokenStrategy,
+        AccessTokenGuard,
+        RefreshTokenGuard,
     ],
-    exports: [AuthService],
+    exports: [AuthService, AccessTokenGuard, RefreshTokenGuard],
 })
 export class AuthModule {}

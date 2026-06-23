@@ -4,7 +4,7 @@
 }
 
 .admin-panel-page .admin-card {
-  @apply w-full max-w-[450px] min-h-[280px] bg-[#ececec] border border-[#4ea3d7] rounded-[18px] shadow-[0_6px_14px_rgba(0,0,0,0.15)] flex flex-col items-center gap-[36px] p-[48px] px-[42px] relative z-[2];
+  @apply w-full max-w-[450px] min-h-[320px] bg-[#ececec] border border-[#4ea3d7] rounded-[18px] shadow-[0_6px_14px_rgba(0,0,0,0.15)] flex flex-col items-center gap-[36px] p-[48px] px-[42px] relative z-[2];
 }
 
 .admin-panel-page .admin-title {
@@ -167,14 +167,35 @@
   @apply flex flex-col gap-[12px];
 }
 
+.admin-edit-page .checkbox-label {
+  @apply flex items-center gap-[10px] text-[14px] text-[#24313f] cursor-pointer;
+}
+
+.admin-edit-page .avatar-preview-row {
+  @apply flex items-center gap-[16px] flex-wrap;
+}
+
+.admin-edit-page .avatar-preview {
+  @apply w-[96px] h-[96px] rounded-full object-cover border-2 border-[#4ea3d7] bg-white;
+}
+
+.topbar .profile-icon {
+  @apply object-cover;
+}
+
 .admin-edit-page .table-header {
   @apply grid gap-[16px] py-[14px] px-[18px] bg-[rgba(78,163,215,0.15)] rounded-[10px] font-semibold text-[14px] text-[#24313f];
-  grid-template-columns: 1.5fr 1.5fr 1.5fr 1fr 100px;
+  grid-template-columns: 1.5fr 1.2fr 1.2fr 1fr 100px;
 }
 
 .admin-edit-page .table-row {
   @apply grid gap-[16px] py-[16px] px-[18px] bg-white border border-[#d7e0e9] rounded-[10px] items-center transition-shadow duration-[200ms];
-  grid-template-columns: 1.5fr 1.5fr 1.5fr 1fr 100px;
+  grid-template-columns: 1.5fr 1.2fr 1.2fr 1fr 100px;
+}
+
+.admin-edit-page .sessions-table .table-header,
+.admin-edit-page .sessions-table .table-row {
+  grid-template-columns: 1.4fr 1.2fr 1.1fr 1.3fr 80px;
 }
 
 .admin-edit-page .table-row:hover {
@@ -184,7 +205,8 @@
 .admin-edit-page .col-name,
 .admin-edit-page .col-login,
 .admin-edit-page .col-role,
-.admin-edit-page .col-password {
+.admin-edit-page .col-status,
+.admin-edit-page .col-created {
   @apply text-[14px] text-[#24313f] whitespace-nowrap overflow-hidden text-ellipsis;
 }
 
@@ -192,9 +214,20 @@
   @apply font-medium;
 }
 
-.admin-edit-page .col-login,
-.admin-edit-page .col-password {
+.admin-edit-page .col-login {
   font-family: monospace;
+  @apply text-[#5f6975];
+}
+
+.admin-edit-page .col-status {
+  @apply font-medium text-[#2f855a];
+}
+
+.admin-edit-page .col-status.inactive {
+  @apply text-[#c53030];
+}
+
+.admin-edit-page .col-created {
   @apply text-[#5f6975];
 }
 

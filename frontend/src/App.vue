@@ -6,6 +6,7 @@ import avatarIcon from '@/assets/Avatar.png'
 import caretIcon from '@/assets/Down.png'
 import { useAuthStore } from '@/stores/auth'
 import type { ScheduleKind } from '@/views/schedule/scheduleOptions'
+import { getPhotoUrl } from '@/config/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -13,6 +14,7 @@ const authStore = useAuthStore()
 const showAuthHeader = computed(() => authStore.isAuthenticated)
 const currentUserName = computed(() => authStore.currentUser?.name ?? '')
 const currentUserRole = computed(() => authStore.roleLabel)
+const currentUserPhoto = computed(() => getPhotoUrl(authStore.currentUser?.photoUrl))
 
 const isAdmin = computed(() => authStore.currentUser?.role === 'admin')
 
@@ -70,11 +72,35 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+
+  sessionCheckTimer = window.setInterval(async () => {
+    if (!authStore.isAuthenticated) {
+      return
+    }
+
+    await authStore.validateSession()
+  }, 15000)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+
+  if (sessionCheckTimer !== null) {
+    window.clearInterval(sessionCheckTimer)
+  }
 })
+
+let sessionCheckTimer: number | null = null
+
+const handleVisibilityChange = async () => {
+  if (document.visibilityState !== 'visible' || !authStore.isAuthenticated) {
+    return
+  }
+
+  await authStore.validateSession()
+}
 </script>
 
 <template>
@@ -98,7 +124,11 @@ onBeforeUnmount(() => {
         <div class="profile-actions">
           <div class="profile-wrapper">
             <button class="profile-btn" type="button" @click="toggleProfileMenu">
-              <img class="profile-icon" :src="avatarIcon" alt="" />
+              <img
+                class="profile-icon"
+                :src="currentUserPhoto || avatarIcon"
+                alt=""
+              />
               <span>{{ currentUserName }}</span>
               <span class="profile-role">{{ currentUserRole }}</span>
               <img class="caret" :src="caretIcon" alt="" />

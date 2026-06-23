@@ -43,9 +43,19 @@ const router = createRouter({
           component: () => import('../views/EditUsers.vue'),    
         },
         {
+          path: 'edit-user/:id',
+          name: 'admin-user-edit',
+          component: () => import('../views/EditUser.vue'),
+        },
+        {
           path: 'add-user',
           name: 'admin-add-user',
           component: () => import('../views/AddUser.vue'),    
+        },
+        {
+          path: 'sessions',
+          name: 'admin-sessions',
+          component: () => import('../views/AdminSessions.vue'),
         },
       ]
     },
@@ -59,6 +69,30 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
+  if (typeof window !== 'undefined' && to.path.startsWith('/admin')) {
+    const storedUser = window.localStorage.getItem(AUTH_STORAGE_KEY)
+
+    if (!storedUser) {
+      return {
+        name: 'login',
+        query: { redirect: to.fullPath },
+      }
+    }
+
+    try {
+      const user = JSON.parse(storedUser)
+
+      if (user.role !== 'admin') {
+        return { name: 'home' }
+      }
+    } catch {
+      return {
+        name: 'login',
+        query: { redirect: to.fullPath },
+      }
+    }
+  }
+
   if (!to.path.startsWith('/schedule/')) {
     return true
   }

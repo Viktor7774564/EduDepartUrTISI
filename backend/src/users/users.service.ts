@@ -21,6 +21,11 @@ export class UsersService {
         return this.usersRepository.save(user);
     }
 
+    async update(id: number, data: Partial<User>): Promise<void> {
+        await this.findById(id);
+        await this.usersRepository.update(id, data);
+    }
+
     async findById(id: number): Promise<User> {
         const user = await this.usersRepository.findOne({
             where: { id },
@@ -76,6 +81,13 @@ export class UsersService {
 
     async findAll(): Promise<User[]> {
         return this.usersRepository.find();
+    }
+
+    async findAllWithDetails(): Promise<User[]> {
+        return this.usersRepository.find({
+            relations: this.userDetailsRelations,
+            order: { id: 'ASC' },
+        });
     }
 
     async remove(id: number): Promise<void> {

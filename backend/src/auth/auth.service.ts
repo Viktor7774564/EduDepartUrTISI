@@ -19,6 +19,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { mapUserToAuthResponse } from './auth-user.mapper';
 import { User } from '../users/entities/user.entity';
+import { SessionsNotifierService } from '../sessions/sessions-notifier.service';
 
 @Injectable()
 export class AuthService {
@@ -29,6 +30,8 @@ export class AuthService {
 
         @InjectRepository(RefreshToken)
         private readonly refreshTokenRepository: Repository<RefreshToken>,
+
+        private readonly sessionsNotifier: SessionsNotifierService,
     ) {}
 
     async register(dto: RegisterDto) {
@@ -115,6 +118,8 @@ export class AuthService {
     }
 
     async logout(userId: number) {
+        await this.sessionsNotifier.notifyUserSessionsRemoved(userId);
+
         await this.refreshTokenRepository.update(
             { userId, isActive: true },
             { isActive: false },
@@ -131,16 +136,6 @@ export class AuthService {
             login: user.login,
         };
 
-        const accessToken = await this.jwtService.signAsync(
-            payload,
-            {
-                secret: this.configService.get<string>(
-                    'JWT_ACCESS_SECRET',
-                ),
-                expiresIn: '15m',
-            },
-        );
-
         const refreshToken = await this.jwtService.signAsync(
             payload,
             {
@@ -156,16 +151,33 @@ export class AuthService {
             10,
         );
 
+        await this.sessionsNotifier.notifyUserSessionsRemoved(user.id);
+
         await this.refreshTokenRepository.update(
             { userId: user.id, isActive: true },
             { isActive: false },
         );
 
-        await this.refreshTokenRepository.save({
+        const session = await this.refreshTokenRepository.save({
             userId: user.id,
             tokenHash,
             isActive: true,
         });
+
+        await this.sessionsNotifier.notifySessionCreated(session.id);
+
+        const accessToken = await this.jwtService.signAsync(
+            {
+                ...payload,
+                sid: session.id,
+            },
+            {
+                secret: this.configService.get<string>(
+                    'JWT_ACCESS_SECRET',
+                ),
+                expiresIn: '15m',
+            },
+        );
 
         return {
             accessToken,

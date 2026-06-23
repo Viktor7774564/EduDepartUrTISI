@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import PageFrame from '@/components/PageFrame.vue'
-import { useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
 
-// Проверяем, если активен дочерний маршрут — скрываем контент родителя
 const isChildRouteActive = computed(() => {
-  return route.name === 'admin-edit-user' || route.name === 'admin-add-user'
+  return route.name === 'admin-edit-user'
+      || route.name === 'admin-user-edit'
+      || route.name === 'admin-add-user'
+      || route.name === 'admin-sessions'
 })
 
 const goToAddUser = () => {
@@ -19,11 +20,14 @@ const goToAddUser = () => {
 const goToEditUser = () => {
   router.push({ name: 'admin-edit-user' })
 }
+
+const goToSessions = () => {
+  router.push({ name: 'admin-sessions' })
+}
 </script>
 
 <template>
   <PageFrame>
-    <!-- Показываем контент только если нет активного дочернего маршрута -->
     <section v-if="!isChildRouteActive" class="admin-panel-page">
       <div class="admin-card">
         <h1 class="admin-title">Админ панель</h1>
@@ -33,14 +37,15 @@ const goToEditUser = () => {
             Добавить пользователя
           </button>
           <button class="admin-btn" @click="goToEditUser">
-            Изменить пользователя
+            Управление пользователями
+          </button>
+          <button class="admin-btn" @click="goToSessions">
+            Активные сессии
           </button>
         </div>
       </div>
     </section>
 
-    <!-- RouterView для дочерних маршрутов -->
     <router-view />
   </PageFrame>
 </template>
-

@@ -1,10 +1,8 @@
 import axios from 'axios'
+import { getApiBaseUrl } from '@/config/api'
 
 const api = axios.create({
-    baseURL: 'http://localhost:3000',
-    headers: {
-        'Content-Type': 'application/json',
-    },
+    baseURL: getApiBaseUrl(),
 })
 
 api.interceptors.request.use((config) => {
@@ -12,6 +10,13 @@ api.interceptors.request.use((config) => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`
     }
+
+    if (config.data instanceof FormData) {
+        delete config.headers['Content-Type']
+    } else if (!config.headers['Content-Type']) {
+        config.headers['Content-Type'] = 'application/json'
+    }
+
     return config
 })
 
@@ -23,7 +28,12 @@ api.interceptors.response.use(
 
         if (error.response?.status === 401 && !isAuthRequest) {
             const { useAuthStore } = await import('@/stores/auth')
-            useAuthStore().clearSession()
+            const authStore = useAuthStore()
+            authStore.clearSession()
+
+            if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+                window.location.assign('/login')
+            }
         }
 
         return Promise.reject(error)

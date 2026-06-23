@@ -65,15 +65,33 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (!accessToken) {
       clearSession()
-      return
+      return false
+    }
+
+    return validateSession()
+  }
+
+  async function validateSession(): Promise<boolean> {
+    const accessToken = localStorage.getItem('access_token')
+
+    if (!accessToken) {
+      clearSession()
+      return false
     }
 
     try {
       const response = await api.get<AuthUser>('/auth/me')
       currentUser.value = response.data
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(response.data))
+      return true
     } catch {
       clearSession()
+
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.assign('/login')
+      }
+
+      return false
     }
   }
 
@@ -118,6 +136,7 @@ export const useAuthStore = defineStore('auth', () => {
     setSession,
     clearSession,
     initializeAuth,
+    validateSession,
     login,
     logout,
   }

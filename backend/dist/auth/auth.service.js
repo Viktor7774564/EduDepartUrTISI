@@ -55,16 +55,19 @@ const bcrypt = __importStar(require("bcrypt"));
 const users_service_1 = require("../users/users.service");
 const refresh_token_entity_1 = require("./entities/refresh-token.entity");
 const auth_user_mapper_1 = require("./auth-user.mapper");
+const sessions_notifier_service_1 = require("../sessions/sessions-notifier.service");
 let AuthService = class AuthService {
     usersService;
     jwtService;
     configService;
     refreshTokenRepository;
-    constructor(usersService, jwtService, configService, refreshTokenRepository) {
+    sessionsNotifier;
+    constructor(usersService, jwtService, configService, refreshTokenRepository, sessionsNotifier) {
         this.usersService = usersService;
         this.jwtService = jwtService;
         this.configService = configService;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.sessionsNotifier = sessionsNotifier;
     }
     async register(dto) {
         const existingUser = await this.usersService.findByLogin(dto.login);
@@ -113,6 +116,7 @@ let AuthService = class AuthService {
         return this.generateTokens(user);
     }
     async logout(userId) {
+        await this.sessionsNotifier.notifyUserSessionsRemoved(userId);
         await this.refreshTokenRepository.update({ userId, isActive: true }, { isActive: false });
         return {
             success: true,
@@ -123,20 +127,25 @@ let AuthService = class AuthService {
             sub: user.id,
             login: user.login,
         };
-        const accessToken = await this.jwtService.signAsync(payload, {
-            secret: this.configService.get('JWT_ACCESS_SECRET'),
-            expiresIn: '15m',
-        });
         const refreshToken = await this.jwtService.signAsync(payload, {
             secret: this.configService.get('JWT_REFRESH_SECRET'),
             expiresIn: '30d',
         });
         const tokenHash = await bcrypt.hash(refreshToken, 10);
+        await this.sessionsNotifier.notifyUserSessionsRemoved(user.id);
         await this.refreshTokenRepository.update({ userId: user.id, isActive: true }, { isActive: false });
-        await this.refreshTokenRepository.save({
+        const session = await this.refreshTokenRepository.save({
             userId: user.id,
             tokenHash,
             isActive: true,
+        });
+        await this.sessionsNotifier.notifySessionCreated(session.id);
+        const accessToken = await this.jwtService.signAsync({
+            ...payload,
+            sid: session.id,
+        }, {
+            secret: this.configService.get('JWT_ACCESS_SECRET'),
+            expiresIn: '15m',
         });
         return {
             accessToken,
@@ -152,6 +161,7 @@ exports.AuthService = AuthService = __decorate([
     __metadata("design:paramtypes", [users_service_1.UsersService,
         jwt_1.JwtService,
         config_1.ConfigService,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        sessions_notifier_service_1.SessionsNotifierService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

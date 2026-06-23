@@ -2,11 +2,13 @@
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import PageFrame from '@/components/PageFrame.vue'
+import { getPhotoUrl } from '@/config/api'
 
 const authStore = useAuthStore()
 
 const user = computed(() => authStore.currentUser)
 const role = computed(() => user.value?.role)
+const userPhoto = computed(() => getPhotoUrl(user.value?.photoUrl))
 
 const profileFields = computed(() => {
   if (!user.value) return []
@@ -72,7 +74,13 @@ const buttons = computed(() => {
     <section class="profile-page">
       <div class="profile-card">
         <div class="photo-block">
-          <div class="photo-placeholder">
+          <img
+            v-if="userPhoto"
+            :src="userPhoto"
+            alt="Фото пользователя"
+            class="profile-photo"
+          />
+          <div v-else class="photo-placeholder">
             <span>ФОТО</span>
           </div>
         </div>

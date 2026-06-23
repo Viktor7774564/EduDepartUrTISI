@@ -1,16 +1,35 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageFrame from '@/components/PageFrame.vue'
 import editIcon from '@/assets/edit.svg'
-import { mockUsers, type MockUser } from '@/mocks/users'
+import { useAuthStore } from '@/stores/auth'
+import { useUsersStore } from '@/stores/users'
+import type { AdminUser } from '@/api/admin'
+import type { UserRole } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
+const usersStore = useUsersStore()
 
-const users = ref<MockUser[]>(mockUsers)
+const deletingUserId = ref<number | null>(null)
+const pageError = ref('')
 
-const getRoleLabel = (role: MockUser['role']): string => {
-  const labels: Record<MockUser['role'], string> = {
+onMounted(async () => {
+  if (!authStore.isAuthenticated || authStore.currentUser?.role !== 'admin') {
+    await router.replace({ name: 'home' })
+    return
+  }
+
+  try {
+    await usersStore.loadUsers()
+  } catch {
+    pageError.value = usersStore.error ?? 'Не удалось загрузить пользователей'
+  }
+})
+
+const getRoleLabel = (role: UserRole): string => {
+  const labels: Record<UserRole, string> = {
     admin: 'Администратор',
     student: 'Студент',
     teacher: 'Преподаватель',
@@ -19,25 +38,50 @@ const getRoleLabel = (role: MockUser['role']): string => {
   return labels[role]
 }
 
-const getFullName = (user: MockUser): string => {
-  return `${user.surname} ${user.name.charAt(0)}. ${user.patronymic.charAt(0)}.`
+const getFullName = (user: AdminUser): string => {
+  const patronymicInitial = user.patronymic
+      ? ` ${user.patronymic.charAt(0)}.`
+      : ''
+
+  return `${user.surname} ${user.name.charAt(0)}.${patronymicInitial}`.trim()
 }
 
-// Функция для отображения пароля в виде звездочек
-const maskPassword = (password: string): string => {
-  return '*'.repeat(password.length)
+const formatStatus = (user: AdminUser): string => {
+  return user.isActive ? 'Активен' : 'Неактивен'
 }
 
 const goBack = async () => {
   await router.push({ name: 'admin-panel' })
 }
 
-const editUser = (id: number) => {
-  console.log('Edit user:', id)
+const editUser = async (id: number) => {
+  await router.push({ name: 'admin-user-edit', params: { id } })
 }
 
-const deleteUser = (id: number) => {
-  console.log('Delete user:', id)
+const deleteUser = async (user: AdminUser) => {
+  if (user.id === authStore.currentUser?.id) {
+    pageError.value = 'Нельзя удалить собственную учётную запись'
+    return
+  }
+
+  const confirmed = window.confirm(
+      `Удалить пользователя ${user.login}? Это действие нельзя отменить.`,
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  deletingUserId.value = user.id
+  pageError.value = ''
+
+  try {
+    await usersStore.removeUser(user.id)
+  } catch (err: any) {
+    pageError.value = err.response?.data?.message || 'Не удалось удалить пользователя'
+  } finally {
+    deletingUserId.value = null
+  }
 }
 </script>
 
@@ -54,40 +98,46 @@ const deleteUser = (id: number) => {
           <h1 class="card-title">Управление пользователями</h1>
         </div>
 
-        <div class="card-subtitle">Пользователь</div>
+        <div class="card-subtitle">Список пользователей системы</div>
 
-        <div class="users-table">
+        <p v-if="pageError" class="submit-message error">{{ pageError }}</p>
+        <p v-else-if="usersStore.isLoading" class="card-subtitle">Загрузка...</p>
+        <p v-else-if="usersStore.users.length === 0" class="card-subtitle">
+          Пользователи не найдены
+        </p>
+
+        <div v-else class="users-table">
           <div class="table-header">
             <div class="col-name">ФИО</div>
             <div class="col-login">Логин</div>
             <div class="col-role">Роль</div>
-            <div class="col-password">Пароль</div>
+            <div class="col-status">Статус</div>
             <div class="col-actions"></div>
           </div>
 
-          <div v-for="user in users" :key="user.id" class="table-row">
+          <div v-for="user in usersStore.users" :key="user.id" class="table-row">
             <div class="col-name" :title="`${user.surname} ${user.name} ${user.patronymic}`">
               {{ getFullName(user) }}
             </div>
             <div class="col-login">{{ user.login }}</div>
             <div class="col-role">{{ getRoleLabel(user.role) }}</div>
-            <div class="col-password" :title="user.password">
-              {{ maskPassword(user.password) }}
+            <div class="col-status" :class="{ inactive: !user.isActive }">
+              {{ formatStatus(user) }}
             </div>
             <div class="col-actions">
-              <button 
-                class="edit-btn" 
-                type="button" 
+              <button
+                class="edit-btn"
+                type="button"
                 @click="editUser(user.id)"
                 aria-label="Редактировать"
               >
                 <img :src="editIcon" alt="" aria-hidden="true" />
               </button>
-              
-              <button 
-                class="close-btn" 
-                type="button" 
-                @click="deleteUser(user.id)"
+              <button
+                class="close-btn"
+                type="button"
+                :disabled="deletingUserId === user.id || user.id === authStore.currentUser?.id"
+                @click="deleteUser(user)"
                 aria-label="Удалить"
               >
                 ✕
@@ -99,4 +149,3 @@ const deleteUser = (id: number) => {
     </section>
   </PageFrame>
 </template>
-

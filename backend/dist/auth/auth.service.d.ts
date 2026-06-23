@@ -5,12 +5,14 @@ import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshToken } from './entities/refresh-token.entity';
+import { SessionsNotifierService } from '../sessions/sessions-notifier.service';
 export declare class AuthService {
     private readonly usersService;
     private readonly jwtService;
     private readonly configService;
     private readonly refreshTokenRepository;
-    constructor(usersService: UsersService, jwtService: JwtService, configService: ConfigService, refreshTokenRepository: Repository<RefreshToken>);
+    private readonly sessionsNotifier;
+    constructor(usersService: UsersService, jwtService: JwtService, configService: ConfigService, refreshTokenRepository: Repository<RefreshToken>, sessionsNotifier: SessionsNotifierService);
     register(dto: RegisterDto): Promise<{
         accessToken: string;
         refreshToken: string;

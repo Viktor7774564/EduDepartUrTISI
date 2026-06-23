@@ -1,0 +1,59 @@
+import { Repository } from 'typeorm';
+import { UsersService } from '../users/users.service';
+import { mapUserToAuthResponse } from '../auth/auth-user.mapper';
+import { RefreshToken } from '../auth/entities/refresh-token.entity';
+import { Role } from '../users/entities/role.entity';
+import { StudentProfile } from '../users/entities/student-profile.entity';
+import { TeacherProfile } from '../users/entities/teacher-profile.entity';
+import { StaffProfile } from '../users/entities/staff-profile.entity';
+import { Department } from '../academic/entities/department.entity';
+import { Direction } from '../academic/entities/direction.entity';
+import { Group } from '../academic/entities/group.entity';
+import { AdminSessionResponse } from '../sessions/sessions.types';
+import { SessionsService } from '../sessions/sessions.service';
+import { SessionsNotifierService } from '../sessions/sessions-notifier.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { AvatarService } from '../uploads/avatar.service';
+export type { AdminSessionResponse };
+export type AdminUserResponse = ReturnType<typeof mapUserToAuthResponse> & {
+    isActive: boolean;
+};
+export declare class AdminService {
+    private readonly usersService;
+    private readonly sessionsService;
+    private readonly sessionsNotifier;
+    private readonly avatarService;
+    private readonly roleRepository;
+    private readonly refreshTokenRepository;
+    private readonly studentProfileRepository;
+    private readonly teacherProfileRepository;
+    private readonly staffProfileRepository;
+    private readonly departmentRepository;
+    private readonly directionRepository;
+    private readonly groupRepository;
+    constructor(usersService: UsersService, sessionsService: SessionsService, sessionsNotifier: SessionsNotifierService, avatarService: AvatarService, roleRepository: Repository<Role>, refreshTokenRepository: Repository<RefreshToken>, studentProfileRepository: Repository<StudentProfile>, teacherProfileRepository: Repository<TeacherProfile>, staffProfileRepository: Repository<StaffProfile>, departmentRepository: Repository<Department>, directionRepository: Repository<Direction>, groupRepository: Repository<Group>);
+    listUsers(): Promise<AdminUserResponse[]>;
+    getUser(id: number): Promise<AdminUserResponse>;
+    updateUser(id: number, dto: UpdateUserDto, currentUserId: number, photo?: Express.Multer.File): Promise<AdminUserResponse>;
+    createUser(dto: CreateUserDto, photo?: Express.Multer.File): Promise<AdminUserResponse>;
+    deleteUser(id: number, currentUserId: number): Promise<{
+        success: true;
+    }>;
+    listActiveSessions(): Promise<AdminSessionResponse[]>;
+    revokeSession(id: number): Promise<{
+        success: true;
+    }>;
+    private validateProfileFields;
+    private createProfile;
+    private createStudentProfile;
+    private createTeacherProfile;
+    private createStaffProfile;
+    private updateProfile;
+    private removeAllProfiles;
+    private findOrCreateDepartment;
+    private findOrCreateDirection;
+    private findOrCreateGroup;
+    private mapEducationForm;
+    private formatFullName;
+}

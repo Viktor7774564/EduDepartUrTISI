@@ -1,0 +1,88 @@
+import {
+    IsBoolean,
+    IsEnum,
+    IsInt,
+    IsNotEmpty,
+    IsOptional,
+    IsString,
+    Max,
+    Min,
+    MinLength,
+} from 'class-validator';
+
+import { RoleCode } from '../../users/entities/role.entity';
+
+export class UpdateUserDto {
+    @IsString()
+    @IsNotEmpty()
+    login!: string;
+
+    @IsString()
+    @MinLength(3)
+    @IsOptional()
+    password?: string;
+
+    @IsEnum(RoleCode)
+    role!: RoleCode;
+
+    @IsString()
+    @IsNotEmpty()
+    surname!: string;
+
+    @IsString()
+    @IsNotEmpty()
+    name!: string;
+
+    @IsString()
+    @IsOptional()
+    patronymic?: string;
+
+    @IsBoolean()
+    @IsOptional()
+    isActive?: boolean;
+
+    @IsBoolean()
+    @IsOptional()
+    removePhoto?: boolean;
+
+    @IsString()
+    @IsOptional()
+    group?: string;
+
+    @IsString()
+    @IsOptional()
+    direction?: string;
+
+    @IsString()
+    @IsOptional()
+    educationForm?: string;
+
+    @IsInt()
+    @Min(1)
+    @Max(6)
+    @IsOptional()
+    course?: number;
+
+    @IsString()
+    @IsOptional()
+    department?: string;
+
+    @IsString()
+    @IsOptional()
+    position?: string;
+
+    @IsString()
+    @IsOptional()
+    cabinet?: string;
+}
+
+export type UserProfileInput = {
+    role: RoleCode;
+    group?: string;
+    direction?: string;
+    educationForm?: string;
+    course?: number;
+    department?: string;
+    position?: string;
+    cabinet?: string;
+};

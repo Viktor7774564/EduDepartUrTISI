@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
 import PageFrame from '@/components/PageFrame.vue'
-import type { MockUser } from '@/mocks/users'
+import type { UserRole } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -12,19 +12,17 @@ const usersStore = useUsersStore()
 
 onMounted(() => {
   if (!authStore.isAuthenticated || authStore.currentUser?.role !== 'admin') {
-    router.replace({ name: 'admin-panel' })
+    router.replace({ name: 'home' })
   }
 })
 
-// Тип для формы - все поля опциональны кроме базовых
 interface UserForm {
   login: string
   password: string
-  role: MockUser['role']
+  role: UserRole
   surname: string
   name: string
   patronymic: string
-  photo?: string
   
   // Для admin, teacher, education_department
   department?: string
@@ -47,7 +45,6 @@ const initialForm: UserForm = {
   surname: '',
   name: '',
   patronymic: '',
-  photo: '',
   department: '',
   position: '',
   cabinet: '',
@@ -58,6 +55,8 @@ const initialForm: UserForm = {
 }
 
 const form = ref<UserForm>({ ...initialForm })
+const photoFile = ref<File | null>(null)
+const photoPreview = ref<string | null>(null)
 const errors = ref<Partial<Record<keyof UserForm, string>>>({})
 const isSubmitting = ref(false)
 const submitMessage = ref<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -76,6 +75,19 @@ const educationFormOptions = [
 ]
 
 const courseOptions = [1, 2, 3, 4, 5, 6]
+
+const onPhotoSelected = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+
+  photoFile.value = file
+  photoPreview.value = file ? URL.createObjectURL(file) : null
+}
+
+const clearPhotoSelection = () => {
+  photoFile.value = null
+  photoPreview.value = null
+}
 
 // Очистка специфичных полей при смене роли
 watch(() => form.value.role, (newRole) => {
@@ -168,77 +180,40 @@ const handleSubmit = async () => {
   submitMessage.value = null
   
   try {
-    // Создаем базовый объект пользователя
-    const newUser: Omit<MockUser, 'id'> = {
+    const payload = {
       login: form.value.login.trim(),
       password: form.value.password,
       role: form.value.role,
       surname: form.value.surname.trim(),
       name: form.value.name.trim(),
-      patronymic: form.value.patronymic.trim(),
+      patronymic: form.value.patronymic.trim() || undefined,
+      group: form.value.group?.trim(),
+      direction: form.value.direction?.trim(),
+      educationForm: form.value.educationForm,
+      course: form.value.course,
+      department: form.value.department?.trim(),
+      position: form.value.position?.trim(),
+      cabinet: form.value.cabinet?.trim(),
     }
+
+    await usersStore.addUser(payload, photoFile.value)
     
-    // Добавляем опциональное фото
-    if (form.value.photo?.trim()) {
-      newUser.photo = form.value.photo.trim()
-    }
-    
-    // Добавляем поля в зависимости от роли
-    if (form.value.role === 'student') {
-      newUser.group = form.value.group?.trim()
-      newUser.direction = form.value.direction?.trim()
-      newUser.educationForm = form.value.educationForm
-      newUser.course = form.value.course
-    }
-    
-    if (form.value.role === 'teacher') {
-      newUser.position = form.value.position?.trim()
-      newUser.department = form.value.department?.trim()
-      if (form.value.cabinet?.trim()) {
-        newUser.cabinet = form.value.cabinet.trim()
-      }
-    }
-    
-    if (form.value.role === 'education_department') {
-      newUser.position = form.value.position?.trim()
-      newUser.department = form.value.department?.trim()
-      if (form.value.cabinet?.trim()) {
-        newUser.cabinet = form.value.cabinet.trim()
-      }
-    }
-    
-    if (form.value.role === 'admin') {
-      newUser.department = form.value.department?.trim()
-      // Для админа тоже можно указать должность и кабинет (опционально)
-      if (form.value.position?.trim()) {
-        newUser.position = form.value.position.trim()
-      }
-      if (form.value.cabinet?.trim()) {
-        newUser.cabinet = form.value.cabinet.trim()
-      }
-    }
-    
-    // Добавляем через стор
-    usersStore.addUser(newUser)
-    
-    // Успешное сообщение
     const roleLabel = roleOptions.find(r => r.value === form.value.role)?.label
     submitMessage.value = {
       type: 'success',
       text: `${roleLabel} ${form.value.surname} ${form.value.name.charAt(0)}. успешно добавлен(а)!`,
     }
     
-    // Очистка и редирект
     setTimeout(() => {
       form.value = { ...initialForm }
-      router.push({ name: 'admin-users' })
+      router.push({ name: 'admin-edit-user' })
     }, 1500)
     
-  } catch (err) {
+  } catch (err: any) {
     console.error('Ошибка при добавлении:', err)
     submitMessage.value = {
       type: 'error',
-      text: 'Не удалось добавить пользователя. Попробуйте ещё раз.',
+      text: err.response?.data?.message || 'Не удалось добавить пользователя. Попробуйте ещё раз.',
     }
   } finally {
     isSubmitting.value = false
@@ -249,6 +224,7 @@ const goBack = () => router.push({ name: 'admin-panel' })
 
 const resetForm = () => {
   form.value = { ...initialForm }
+  clearPhotoSelection()
   errors.value = {}
   submitMessage.value = null
 }
@@ -328,18 +304,29 @@ const resetForm = () => {
                 </select>
               </div>
 
-              <div class="form-group">
+              <div class="form-group full-width">
                 <label for="photo" class="form-label">
-                  Фото (URL)
+                  Фото пользователя
                 </label>
                 <input
                   id="photo"
-                  v-model="form.photo"
-                  type="text"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
                   class="form-input"
-                  placeholder="https://example.com/photo.jpg"
                   :disabled="isSubmitting"
+                  @change="onPhotoSelected"
                 />
+                <div v-if="photoPreview" class="avatar-preview-row">
+                  <img :src="photoPreview" alt="Предпросмотр фото" class="avatar-preview" />
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    :disabled="isSubmitting"
+                    @click="clearPhotoSelection"
+                  >
+                    Убрать фото
+                  </button>
+                </div>
               </div>
             </div>
           </div>
