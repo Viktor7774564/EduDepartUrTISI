@@ -15,8 +15,12 @@ const menuCards = [
 ]
 
 const visibleMenuCards = computed(() => {
-  if (authStore.currentUser?.role === 'student') {
-    return menuCards.filter((item) => item.id === 'students' || item.id === 'consults')
+  const role = authStore.currentUser?.role
+
+  if (role === 'student') {
+    return menuCards.filter(
+        (item) => item.id === 'students' || item.id === 'consults'
+    )
   }
 
   return menuCards

@@ -14,14 +14,18 @@ export declare class AuthService {
     register(dto: RegisterDto): Promise<{
         accessToken: string;
         refreshToken: string;
+        user: import("./auth-user.mapper").AuthUserResponse;
     }>;
     login(dto: LoginDto): Promise<{
         accessToken: string;
         refreshToken: string;
+        user: import("./auth-user.mapper").AuthUserResponse;
     }>;
+    getCurrentUser(userId: number): Promise<import("./auth-user.mapper").AuthUserResponse>;
     refresh(userId: number, refreshToken: string): Promise<{
         accessToken: string;
         refreshToken: string;
+        user: import("./auth-user.mapper").AuthUserResponse;
     }>;
     logout(userId: number): Promise<{
         success: boolean;

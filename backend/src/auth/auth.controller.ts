@@ -42,6 +42,12 @@ export class AuthController {
         return this.authService.login(dto);
     }
 
+    @UseGuards(AccessTokenGuard)
+    @Get('me')
+    me(@Req() req: AuthenticatedRequest) {
+        return this.authService.getCurrentUser(req.user.sub);
+    }
+
     @UseGuards(RefreshTokenGuard)
     @Post('refresh')
     refresh(@Req() req: AuthenticatedRequest) { // Используем наш интерфейс

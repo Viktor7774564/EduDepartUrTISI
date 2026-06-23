@@ -40,6 +40,32 @@ let UsersService = class UsersService {
             where: { login },
         });
     }
+    async findByLoginWithDetails(login) {
+        return this.usersRepository.findOne({
+            where: { login },
+            relations: this.userDetailsRelations,
+        });
+    }
+    async findByIdWithDetails(id) {
+        const user = await this.usersRepository.findOne({
+            where: { id },
+            relations: this.userDetailsRelations,
+        });
+        if (!user) {
+            throw new common_1.NotFoundException(`Пользователь с id ${id} не найден`);
+        }
+        return user;
+    }
+    userDetailsRelations = [
+        'role',
+        'studentProfile',
+        'studentProfile.group',
+        'studentProfile.group.direction',
+        'teacherProfile',
+        'teacherProfile.department',
+        'staffProfile',
+        'staffProfile.department',
+    ];
     async findAll() {
         return this.usersRepository.find();
     }

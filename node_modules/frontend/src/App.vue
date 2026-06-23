@@ -37,8 +37,8 @@ const getScheduleRoute = (type: string) => ({
 })
 
 const onLogout = async () => {
-  authStore.logout()
   isProfileOpen.value = false
+  await authStore.logout()
   await router.push({ name: 'home' })
 }
 

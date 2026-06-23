@@ -4,11 +4,23 @@ import api from '@/api/client'
 
 const AUTH_STORAGE_KEY = 'edu-depart-auth-user'
 
+export type UserRole = 'admin' | 'student' | 'teacher' | 'education_department'
+
 export type AuthUser = {
   id: number
   login: string
-  role: 'admin' | 'student' | 'teacher' | 'education_department'
-  // можно добавить fullName, email и другие поля позже
+  role: UserRole
+  surname: string
+  name: string
+  patronymic: string
+  photoUrl?: string | null
+  group?: string
+  direction?: string
+  educationForm?: string
+  course?: number
+  position?: string
+  department?: string
+  cabinet?: string
 }
 
 interface LoginResult {
@@ -31,14 +43,37 @@ export const useAuthStore = defineStore('auth', () => {
     }
   })
 
-  function loadStoredUser() {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY)
-    if (stored) {
-      try {
-        currentUser.value = JSON.parse(stored)
-      } catch (e) {
-        localStorage.removeItem(AUTH_STORAGE_KEY)
-      }
+  function setSession(user: AuthUser, accessToken: string, refreshToken?: string | null) {
+    currentUser.value = user
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
+    localStorage.setItem('access_token', accessToken)
+
+    if (refreshToken) {
+      localStorage.setItem('refresh_token', refreshToken)
+    }
+  }
+
+  function clearSession() {
+    currentUser.value = null
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+  }
+
+  async function initializeAuth() {
+    const accessToken = localStorage.getItem('access_token')
+
+    if (!accessToken) {
+      clearSession()
+      return
+    }
+
+    try {
+      const response = await api.get<AuthUser>('/auth/me')
+      currentUser.value = response.data
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(response.data))
+    } catch {
+      clearSession()
     }
   }
 
@@ -51,11 +86,11 @@ export const useAuthStore = defineStore('auth', () => {
 
       const { accessToken, refreshToken, user } = response.data
 
-      localStorage.setItem('access_token', accessToken)
-      if (refreshToken) localStorage.setItem('refresh_token', refreshToken)
+      if (!accessToken || !user) {
+        return { success: false, message: 'Некорректный ответ сервера' }
+      }
 
-      currentUser.value = user
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
+      setSession(user, accessToken, refreshToken)
 
       return { success: true, user }
     } catch (error: any) {
@@ -66,20 +101,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function logout() {
-    currentUser.value = null
-    localStorage.removeItem(AUTH_STORAGE_KEY)
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
+  async function logout() {
+    try {
+      await api.get('/auth/logout')
+    } catch {
+      // Даже если сервер недоступен, очищаем локальную сессию.
+    } finally {
+      clearSession()
+    }
   }
-
-  // Загружаем пользователя при инициализации
-  loadStoredUser()
 
   return {
     currentUser,
     isAuthenticated,
     roleLabel,
+    setSession,
+    clearSession,
+    initializeAuth,
     login,
     logout,
   }

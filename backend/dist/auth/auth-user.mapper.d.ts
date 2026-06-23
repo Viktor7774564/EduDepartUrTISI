@@ -1,0 +1,19 @@
+import { RoleCode } from '../users/entities/role.entity';
+import { User } from '../users/entities/user.entity';
+export type AuthUserResponse = {
+    id: number;
+    login: string;
+    role: RoleCode;
+    surname: string;
+    name: string;
+    patronymic: string;
+    photoUrl: string | null;
+    group?: string;
+    direction?: string;
+    educationForm?: string;
+    course?: number;
+    position?: string;
+    department?: string;
+    cabinet?: string;
+};
+export declare function mapUserToAuthResponse(user: User): AuthUserResponse;

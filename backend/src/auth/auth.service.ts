@@ -17,6 +17,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
 import { RefreshToken } from './entities/refresh-token.entity';
+import { mapUserToAuthResponse } from './auth-user.mapper';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -45,12 +47,14 @@ export class AuthService {
             passwordHash: passwordHash,
         });
 
+        const userWithDetails =
+            await this.usersService.findByIdWithDetails(user.id);
 
-        return this.generateTokens(user.id, user.login);
+        return this.generateTokens(userWithDetails);
     }
 
     async login(dto: LoginDto) {
-        const user = await this.usersService.findByLogin(dto.login);
+        const user = await this.usersService.findByLoginWithDetails(dto.login);
 
         if (!user) {
             throw new UnauthorizedException(
@@ -69,7 +73,13 @@ export class AuthService {
             );
         }
 
-        return this.generateTokens(user.id, user.login);
+        return this.generateTokens(user);
+    }
+
+    async getCurrentUser(userId: number) {
+        const user = await this.usersService.findByIdWithDetails(userId);
+
+        return mapUserToAuthResponse(user);
     }
 
     async refresh(userId: number, refreshToken: string) {
@@ -94,14 +104,14 @@ export class AuthService {
             throw new UnauthorizedException();
         }
 
-        const user = await this.usersService.findById(userId);
+        const user = await this.usersService.findByIdWithDetails(userId);
 
         await this.refreshTokenRepository.update(
             { userId, isActive: true },
             { isActive: false },
         );
 
-        return this.generateTokens(user.id, user.login);
+        return this.generateTokens(user);
     }
 
     async logout(userId: number) {
@@ -115,13 +125,10 @@ export class AuthService {
         };
     }
 
-    private async generateTokens(
-        userId: number,
-        login: string,
-    ) {
+    private async generateTokens(user: User) {
         const payload = {
-            sub: userId,
-            login,
+            sub: user.id,
+            login: user.login,
         };
 
         const accessToken = await this.jwtService.signAsync(
@@ -150,12 +157,12 @@ export class AuthService {
         );
 
         await this.refreshTokenRepository.update(
-            { userId, isActive: true },
+            { userId: user.id, isActive: true },
             { isActive: false },
         );
 
         await this.refreshTokenRepository.save({
-            userId,
+            userId: user.id,
             tokenHash,
             isActive: true,
         });
@@ -163,6 +170,7 @@ export class AuthService {
         return {
             accessToken,
             refreshToken,
+            user: mapUserToAuthResponse(user),
         };
     }
 }

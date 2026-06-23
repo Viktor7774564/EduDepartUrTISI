@@ -41,6 +41,39 @@ export class UsersService {
         });
     }
 
+    async findByLoginWithDetails(login: string): Promise<User | null> {
+        return this.usersRepository.findOne({
+            where: { login },
+            relations: this.userDetailsRelations,
+        });
+    }
+
+    async findByIdWithDetails(id: number): Promise<User> {
+        const user = await this.usersRepository.findOne({
+            where: { id },
+            relations: this.userDetailsRelations,
+        });
+
+        if (!user) {
+            throw new NotFoundException(
+                `Пользователь с id ${id} не найден`,
+            );
+        }
+
+        return user;
+    }
+
+    private readonly userDetailsRelations = [
+        'role',
+        'studentProfile',
+        'studentProfile.group',
+        'studentProfile.group.direction',
+        'teacherProfile',
+        'teacherProfile.department',
+        'staffProfile',
+        'staffProfile.department',
+    ];
+
     async findAll(): Promise<User[]> {
         return this.usersRepository.find();
     }

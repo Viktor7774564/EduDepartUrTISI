@@ -54,6 +54,7 @@ const typeorm_2 = require("typeorm");
 const bcrypt = __importStar(require("bcrypt"));
 const users_service_1 = require("../users/users.service");
 const refresh_token_entity_1 = require("./entities/refresh-token.entity");
+const auth_user_mapper_1 = require("./auth-user.mapper");
 let AuthService = class AuthService {
     usersService;
     jwtService;
@@ -75,10 +76,11 @@ let AuthService = class AuthService {
             login: dto.login,
             passwordHash: passwordHash,
         });
-        return this.generateTokens(user.id, user.login);
+        const userWithDetails = await this.usersService.findByIdWithDetails(user.id);
+        return this.generateTokens(userWithDetails);
     }
     async login(dto) {
-        const user = await this.usersService.findByLogin(dto.login);
+        const user = await this.usersService.findByLoginWithDetails(dto.login);
         if (!user) {
             throw new common_1.UnauthorizedException('Неверный login или пароль');
         }
@@ -86,7 +88,11 @@ let AuthService = class AuthService {
         if (!isPasswordValid) {
             throw new common_1.UnauthorizedException('Неверный login или пароль');
         }
-        return this.generateTokens(user.id, user.login);
+        return this.generateTokens(user);
+    }
+    async getCurrentUser(userId) {
+        const user = await this.usersService.findByIdWithDetails(userId);
+        return (0, auth_user_mapper_1.mapUserToAuthResponse)(user);
     }
     async refresh(userId, refreshToken) {
         const storedToken = await this.refreshTokenRepository.findOne({
@@ -102,9 +108,9 @@ let AuthService = class AuthService {
         if (!isValid) {
             throw new common_1.UnauthorizedException();
         }
-        const user = await this.usersService.findById(userId);
+        const user = await this.usersService.findByIdWithDetails(userId);
         await this.refreshTokenRepository.update({ userId, isActive: true }, { isActive: false });
-        return this.generateTokens(user.id, user.login);
+        return this.generateTokens(user);
     }
     async logout(userId) {
         await this.refreshTokenRepository.update({ userId, isActive: true }, { isActive: false });
@@ -112,10 +118,10 @@ let AuthService = class AuthService {
             success: true,
         };
     }
-    async generateTokens(userId, login) {
+    async generateTokens(user) {
         const payload = {
-            sub: userId,
-            login,
+            sub: user.id,
+            login: user.login,
         };
         const accessToken = await this.jwtService.signAsync(payload, {
             secret: this.configService.get('JWT_ACCESS_SECRET'),
@@ -126,15 +132,16 @@ let AuthService = class AuthService {
             expiresIn: '30d',
         });
         const tokenHash = await bcrypt.hash(refreshToken, 10);
-        await this.refreshTokenRepository.update({ userId, isActive: true }, { isActive: false });
+        await this.refreshTokenRepository.update({ userId: user.id, isActive: true }, { isActive: false });
         await this.refreshTokenRepository.save({
-            userId,
+            userId: user.id,
             tokenHash,
             isActive: true,
         });
         return {
             accessToken,
             refreshToken,
+            user: (0, auth_user_mapper_1.mapUserToAuthResponse)(user),
         };
     }
 };

@@ -17,12 +17,15 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            localStorage.removeItem('access_token')
-            localStorage.removeItem('refresh_token')
-            localStorage.removeItem('edu-depart-auth-user')
+    async (error) => {
+        const requestUrl = error.config?.url ?? ''
+        const isAuthRequest = requestUrl.includes('/auth/login')
+
+        if (error.response?.status === 401 && !isAuthRequest) {
+            const { useAuthStore } = await import('@/stores/auth')
+            useAuthStore().clearSession()
         }
+
         return Promise.reject(error)
     }
 )

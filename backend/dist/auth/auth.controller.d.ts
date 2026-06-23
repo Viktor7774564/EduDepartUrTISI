@@ -15,14 +15,18 @@ export declare class AuthController {
     register(dto: RegisterDto): Promise<{
         accessToken: string;
         refreshToken: string;
+        user: import("./auth-user.mapper").AuthUserResponse;
     }>;
     login(dto: LoginDto): Promise<{
         accessToken: string;
         refreshToken: string;
+        user: import("./auth-user.mapper").AuthUserResponse;
     }>;
+    me(req: AuthenticatedRequest): Promise<import("./auth-user.mapper").AuthUserResponse>;
     refresh(req: AuthenticatedRequest): Promise<{
         accessToken: string;
         refreshToken: string;
+        user: import("./auth-user.mapper").AuthUserResponse;
     }>;
     logout(req: AuthenticatedRequest): Promise<{
         success: boolean;

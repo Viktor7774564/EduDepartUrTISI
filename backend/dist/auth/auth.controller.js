@@ -30,6 +30,9 @@ let AuthController = class AuthController {
     login(dto) {
         return this.authService.login(dto);
     }
+    me(req) {
+        return this.authService.getCurrentUser(req.user.sub);
+    }
     refresh(req) {
         return this.authService.refresh(req.user.sub, req.user.refreshToken);
     }
@@ -52,6 +55,14 @@ __decorate([
     __metadata("design:paramtypes", [login_dto_1.LoginDto]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "login", null);
+__decorate([
+    (0, common_1.UseGuards)(access_token_guard_1.AccessTokenGuard),
+    (0, common_1.Get)('me'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "me", null);
 __decorate([
     (0, common_1.UseGuards)(refresh_token_guard_1.RefreshTokenGuard),
     (0, common_1.Post)('refresh'),
