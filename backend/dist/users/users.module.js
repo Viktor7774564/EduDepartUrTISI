@@ -9,9 +9,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const users_service_1 = require("./users.service");
 const user_entity_1 = require("./entities/user.entity");
 const role_entity_1 = require("./entities/role.entity");
-const refresh_token_entity_1 = require("./entities/refresh-token.entity");
 const student_profile_entity_1 = require("./entities/student-profile.entity");
 const teacher_profile_entity_1 = require("./entities/teacher-profile.entity");
 const staff_profile_entity_1 = require("./entities/staff-profile.entity");
@@ -24,13 +24,13 @@ exports.UsersModule = UsersModule = __decorate([
             typeorm_1.TypeOrmModule.forFeature([
                 user_entity_1.User,
                 role_entity_1.Role,
-                refresh_token_entity_1.RefreshToken,
                 student_profile_entity_1.StudentProfile,
                 teacher_profile_entity_1.TeacherProfile,
                 staff_profile_entity_1.StaffProfile,
             ]),
         ],
-        exports: [typeorm_1.TypeOrmModule],
+        providers: [users_service_1.UsersService],
+        exports: [users_service_1.UsersService],
     })
 ], UsersModule);
 //# sourceMappingURL=users.module.js.map

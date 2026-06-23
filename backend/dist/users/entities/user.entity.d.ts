@@ -1,5 +1,5 @@
 import { Role } from './role.entity';
-import { RefreshToken } from './refresh-token.entity';
+import { RefreshToken } from '../../auth/entities/refresh-token.entity';
 import { StudentProfile } from './student-profile.entity';
 import { TeacherProfile } from './teacher-profile.entity';
 import { StaffProfile } from './staff-profile.entity';

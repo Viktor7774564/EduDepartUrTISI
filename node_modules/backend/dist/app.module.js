@@ -10,6 +10,7 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const config_1 = require("@nestjs/config");
+const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const schedule_module_1 = require("./schedule/schedule.module");
 const academic_module_1 = require("./academic/academic.module");
@@ -19,14 +20,17 @@ exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            config_1.ConfigModule.forRoot({ isGlobal: true }),
+            config_1.ConfigModule.forRoot({
+                isGlobal: true,
+                envFilePath: '.env',
+            }),
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
                 inject: [config_1.ConfigService],
                 useFactory: (config) => ({
                     type: 'postgres',
                     host: config.getOrThrow('DB_HOST'),
-                    port: parseInt(config.getOrThrow('DB_PORT')),
+                    port: parseInt(config.getOrThrow('DB_PORT'), 10),
                     username: config.getOrThrow('DB_USERNAME'),
                     password: config.getOrThrow('DB_PASSWORD'),
                     database: config.getOrThrow('DB_DATABASE'),
@@ -34,6 +38,7 @@ exports.AppModule = AppModule = __decorate([
                     synchronize: true,
                 }),
             }),
+            auth_module_1.AuthModule,
             users_module_1.UsersModule,
             schedule_module_1.ScheduleModule,
             academic_module_1.AcademicModule,

@@ -6,7 +6,7 @@ import maxIcon from '@/assets/max.png'
 import bgCard from '@/assets/bg-card.png'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { mockUsers } from '@/mocks/users'
+// import { mockUsers } from '@/mocks/users'   // можно закомментировать или удалить позже
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -17,6 +17,7 @@ const formData = reactive({
 })
 
 const errorMessage = ref('')
+const isLoading = ref(false)
 
 const helpfulLinks = [
   {
@@ -49,38 +50,30 @@ const openLink = (url: string) => {
   window.open(url, '_blank')
 }
 
-const leftDecor = [
-  { id: 'left-top-right', className: 'left-top-right', rotate: 3 },
-  { id: 'left-mid-left', className: 'left-mid-left', rotate: -32 },
-  { id: 'left-mid-right', className: 'left-mid-right', rotate: -18 },
-  { id: 'left-bottom-left', className: 'left-bottom-left', rotate: 24 },
-  { id: 'left-bottom-right', className: 'left-bottom-right', rotate: -12 },
-]
-
-const rightDecor = [
-  { id: 'right-top-right', className: 'right-top-right', rotate: 31 },
-  { id: 'right-top-left', className: 'right-top-left', rotate: -22 },
-  { id: 'right-mid-right', className: 'right-mid-right', rotate: 14 },
-  { id: 'right-mid-left', className: 'right-mid-left', rotate: -28 },
-  { id: 'right-bottom-center', className: 'right-bottom-center', rotate: 34 },
-  { id: 'right-bottom-right', className: 'right-bottom-right', rotate: -10 },
-]
-
-const demoAccountsText = computed(() =>
-    mockUsers.map((user) => `${user.login} / ${user.password}`).join(' | '),
-)
+// const demoAccountsText = computed(() =>   // можно закомментировать
+//   mockUsers.map((user) => `${user.login} / ${user.password}`).join(' | '),
+// )
 
 const onFormSubmit = async () => {
   errorMessage.value = ''
+  isLoading.value = true
 
-  const result = authStore.login(formData.login, formData.password)
+  try {
+    const result = await authStore.login(formData.login, formData.password)
 
-  if (!result.success) {
-    errorMessage.value = result.message ?? 'Не удалось выполнить вход.'
-    return
+    if (!result.success) {
+      errorMessage.value = result.message ?? 'Не удалось выполнить вход.'
+      return
+    }
+
+    // Успешный вход
+    await router.push({ name: 'home' })
+  } catch (err) {
+    errorMessage.value = 'Произошла ошибка при входе. Попробуйте позже.'
+    console.error(err)
+  } finally {
+    isLoading.value = false
   }
-
-  await router.push({ name: 'home' })
 }
 </script>
 
@@ -109,7 +102,9 @@ const onFormSubmit = async () => {
 
         <p v-if="errorMessage" class="form-error">{{ errorMessage }}</p>
 
-        <button class="action-btn" type="submit">Войти</button>
+        <button class="action-btn" type="submit" :disabled="isLoading">
+          {{ isLoading ? 'Вход...' : 'Войти' }}
+        </button>
       </form>
     </section>
 

@@ -1,102 +1,80 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { mockUsers, type MockUser } from '@/mocks/users'
+import api from '@/api/client'
 
 const AUTH_STORAGE_KEY = 'edu-depart-auth-user'
 
-export type AuthUser = Omit<MockUser, 'password'>
+export type AuthUser = {
+  id: number
+  login: string
+  role: 'admin' | 'student' | 'teacher' | 'education_department'
+  // можно добавить fullName, email и другие поля позже
+}
 
 interface LoginResult {
   success: boolean
   message?: string
-}
-
-function sanitizeUser(user: MockUser): AuthUser {
-  const { password: _password, ...safeUser } = user
-  return safeUser
-}
-
-function readStoredUser(): AuthUser | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  const rawUser = window.localStorage.getItem(AUTH_STORAGE_KEY)
-
-  if (!rawUser) {
-    return null
-  }
-
-  try {
-    return JSON.parse(rawUser) as AuthUser
-  } catch {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY)
-    return null
-  }
+  user?: AuthUser
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const currentUser = ref<AuthUser | null>(readStoredUser())
-
+  const currentUser = ref<AuthUser | null>(null)
   const isAuthenticated = computed(() => currentUser.value !== null)
+
   const roleLabel = computed(() => {
-    if (currentUser.value?.role === 'admin') {
-      return 'Администратор'
+    switch (currentUser.value?.role) {
+      case 'admin': return 'Администратор'
+      case 'student': return 'Студент'
+      case 'teacher': return 'Преподаватель'
+      case 'education_department': return 'Учебный отдел'
+      default: return ''
     }
-
-    if (currentUser.value?.role === 'student') {
-      return 'Студент'
-    }
-
-    if (currentUser.value?.role === 'teacher') {
-      return 'Преподаватель'
-    }
-
-    if (currentUser.value?.role === 'education_department') {
-      return 'Учебный отдел'
-    }
-
-    return ''
   })
 
-  function persistUser(user: AuthUser | null) {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    if (user) {
-      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
-      return
-    }
-
-    window.localStorage.removeItem(AUTH_STORAGE_KEY)
-  }
-
-  function login(login: string, password: string): LoginResult {
-    const normalizedLogin = login.trim()
-
-    const user = mockUsers.find(
-      (item) => item.login === normalizedLogin && item.password === password,
-    )
-
-    if (!user) {
-      return {
-        success: false,
-        message: 'Неверный логин или пароль.',
+  function loadStoredUser() {
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY)
+    if (stored) {
+      try {
+        currentUser.value = JSON.parse(stored)
+      } catch (e) {
+        localStorage.removeItem(AUTH_STORAGE_KEY)
       }
     }
+  }
 
-    const safeUser = sanitizeUser(user)
-    currentUser.value = safeUser
-    persistUser(safeUser)
+  async function login(loginInput: string, password: string): Promise<LoginResult> {
+    try {
+      const response = await api.post('/auth/login', {
+        login: loginInput.trim(),
+        password,
+      })
 
-    return { success: true }
+      const { accessToken, refreshToken, user } = response.data
+
+      localStorage.setItem('access_token', accessToken)
+      if (refreshToken) localStorage.setItem('refresh_token', refreshToken)
+
+      currentUser.value = user
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
+
+      return { success: true, user }
+    } catch (error: any) {
+      const message = error.response?.data?.message ||
+          error.response?.data ||
+          'Неверный логин или пароль'
+      return { success: false, message }
+    }
   }
 
   function logout() {
     currentUser.value = null
-    persistUser(null)
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
   }
+
+  // Загружаем пользователя при инициализации
+  loadStoredUser()
 
   return {
     currentUser,

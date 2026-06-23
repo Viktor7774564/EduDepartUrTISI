@@ -1,0 +1,59 @@
+import {
+    Body,
+    Controller,
+    Get,
+    Post,
+    Req,
+    UseGuards,
+} from '@nestjs/common';
+
+import { Request } from 'express';
+
+import { AuthService } from './auth.service';
+
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+
+import { RefreshTokenGuard } from './guards/refresh-token.guard';
+import { AccessTokenGuard } from './guards/access-token.guard';
+
+// Создаем интерфейс, который сообщает TypeScript о наличии поля user
+interface AuthenticatedRequest extends Request {
+    user: {
+        sub: number;
+        login: string;
+        refreshToken?: string;
+    };
+}
+
+@Controller('auth')
+export class AuthController {
+    constructor(
+        private readonly authService: AuthService,
+    ) {}
+
+    @Post('register')
+    register(@Body() dto: RegisterDto) {
+        return this.authService.register(dto);
+    }
+
+    @Post('login')
+    login(@Body() dto: LoginDto) {
+        return this.authService.login(dto);
+    }
+
+    @UseGuards(RefreshTokenGuard)
+    @Post('refresh')
+    refresh(@Req() req: AuthenticatedRequest) { // Используем наш интерфейс
+        return this.authService.refresh(
+            req.user.sub,
+            req.user.refreshToken!,
+        );
+    }
+
+    @UseGuards(AccessTokenGuard)
+    @Get('logout')
+    logout(@Req() req: AuthenticatedRequest) { // Используем наш интерфейс
+        return this.authService.logout(req.user.sub);
+    }
+}
