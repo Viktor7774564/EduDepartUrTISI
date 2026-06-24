@@ -33,6 +33,11 @@ const router = createRouter({
       component: () => import('../views/ProfileView.vue'),
     },
     {
+      path: '/education-department/schedule-upload',
+      name: 'schedule-upload',
+      component: () => import('../views/ScheduleUpload.vue'),
+    },
+    {
       path: '/admin',
       name: 'admin-panel',
       component: () => import('../views/AdminPanel.vue'),
@@ -83,6 +88,30 @@ router.beforeEach((to) => {
       const user = JSON.parse(storedUser)
 
       if (user.role !== 'admin') {
+        return { name: 'home' }
+      }
+    } catch {
+      return {
+        name: 'login',
+        query: { redirect: to.fullPath },
+      }
+    }
+  }
+
+  if (typeof window !== 'undefined' && to.path.startsWith('/education-department')) {
+    const storedUser = window.localStorage.getItem(AUTH_STORAGE_KEY)
+
+    if (!storedUser) {
+      return {
+        name: 'login',
+        query: { redirect: to.fullPath },
+      }
+    }
+
+    try {
+      const user = JSON.parse(storedUser)
+
+      if (user.role !== 'education_department') {
         return { name: 'home' }
       }
     } catch {

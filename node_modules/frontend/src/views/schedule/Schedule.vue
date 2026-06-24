@@ -2,11 +2,10 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { fetchGroupSchedule, fetchRoomSchedule, fetchTeacherSchedule } from '@/api/schedule'
 import PageFrame from '@/components/PageFrame.vue'
 import editIcon from '@/assets/edit.svg'
 import {
-  getConsultationSchedulesForTeacher,
-  getWeeklySchedulesForSelection,
   type DisplayScheduleItem,
   type ScheduleKind,
 } from './scheduleOptions'
@@ -28,6 +27,9 @@ type CellLesson = DisplayScheduleItem & {
 const selectedLesson = ref<CellLesson | null>(null)
 const editingLesson = ref<CellLesson | null>(null)
 const currentWeekIndex = ref(0)
+const studentWeeklySchedules = ref<Record<string, DisplayScheduleItem[]>>({})
+const isLoadingSchedule = ref(false)
+const scheduleLoadError = ref<string | null>(null)
 
 const isMenuVisible = ref(false)
 const menuX = ref(0)
@@ -49,16 +51,55 @@ const editForm = ref({
   additional: '',
 })
 
+const loadSchedule = async () => {
+  if (!secondValue.value) {
+    studentWeeklySchedules.value = {}
+    scheduleLoadError.value = null
+    isLoadingSchedule.value = false
+    return
+  }
+
+  isLoadingSchedule.value = true
+  scheduleLoadError.value = null
+
+  try {
+    if (scheduleType.value === 'students') {
+      const response = await fetchGroupSchedule(secondValue.value)
+      studentWeeklySchedules.value = response.weeks
+      return
+    }
+
+    if (scheduleType.value === 'teachers' || scheduleType.value === 'consults') {
+      const response = await fetchTeacherSchedule(secondValue.value)
+      studentWeeklySchedules.value = response.weeks
+      return
+    }
+
+    if (scheduleType.value === 'auditories') {
+      const response = await fetchRoomSchedule(secondValue.value)
+      studentWeeklySchedules.value = response.weeks
+      return
+    }
+
+    studentWeeklySchedules.value = {}
+  } catch {
+    studentWeeklySchedules.value = {}
+    scheduleLoadError.value = 'Не удалось загрузить расписание'
+  } finally {
+    isLoadingSchedule.value = false
+  }
+}
+
+watch([scheduleType, secondValue], () => {
+  void loadSchedule()
+}, { immediate: true })
+
 const weeklySchedules = computed(() => {
   if (!secondValue.value) {
     return {}
   }
 
-  if (scheduleType.value === 'consults') {
-    return getConsultationSchedulesForTeacher(secondValue.value)
-  }
-
-  return getWeeklySchedulesForSelection(scheduleType.value, secondValue.value)
+  return studentWeeklySchedules.value
 })
 
 const weekKeys = computed(() => Object.keys(weeklySchedules.value))
@@ -116,7 +157,7 @@ watch(weekKeys, syncWeekIndex, { immediate: true })
 
 const currentWeekKey = computed(() => weekKeys.value[currentWeekIndex.value] ?? '')
 const weekLabel = computed(() => currentWeekKey.value)
-const isEmptySchedule = computed(() => weekKeys.value.length === 0)
+const isEmptySchedule = computed(() => !isLoadingSchedule.value && weekKeys.value.length === 0)
 
 const pageTitle = computed(() => {
   if (scheduleType.value === 'students') {
@@ -455,15 +496,55 @@ const getTypeName = (type: string) => {
 }
 
 const getLessonMeta = (lesson: CellLesson) => {
+  const subgroupLabel = lesson.subgroup ? `п/гр ${lesson.subgroup} • ` : ''
+
   if (scheduleType.value === 'students') {
-    return `${lesson.teacher} • ${lesson.room}`
+    return `${subgroupLabel}${lesson.teacher} • ${lesson.room}`
   }
 
   if (scheduleType.value === 'auditories') {
-    return `${lesson.groups.join(', ')} • ${lesson.teacher}`
+    return `${subgroupLabel}${lesson.groups.join(', ')} • ${lesson.teacher}`
   }
 
-  return `${lesson.groups.join(', ')} • ${lesson.room}`
+  return `${subgroupLabel}${lesson.groups.join(', ')} • ${lesson.room}`
+}
+
+const currentWeekLessons = computed(() => weeklySchedules.value[currentWeekKey.value] ?? [])
+
+const parallelPairWarnings = computed(() => {
+  const slots = new Map<string, { day: string; time: string; subjects: string[] }>()
+
+  for (const lesson of currentWeekLessons.value) {
+    if (!lesson.isSameCellParallel) {
+      continue
+    }
+
+    const key = `${lesson.day}|${lesson.startTime}`
+    const existing = slots.get(key)
+
+    if (existing) {
+      if (!existing.subjects.includes(lesson.subject)) {
+        existing.subjects.push(lesson.subject)
+      }
+      continue
+    }
+
+    slots.set(key, {
+      day: lesson.day,
+      time: lesson.startTime,
+      subjects: [lesson.subject],
+    })
+  }
+
+  return Array.from(slots.values()).filter((slot) => slot.subjects.length > 1)
+})
+
+const hasParallelPairsInWeek = computed(() => parallelPairWarnings.value.length > 0)
+
+const isParallelCell = (day: string, time: string) => {
+  const lessons = getLessons(day, time)
+
+  return lessons.some((lesson) => lesson.isSameCellParallel) && lessons.length > 1
 }
 
 const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
@@ -496,7 +577,16 @@ onUnmounted(() => {
         <h1 class="title">{{ pageTitle }}</h1>
       </div>
 
-      <template v-if="!isEmptySchedule">
+      <div v-if="isLoadingSchedule" class="empty-state">
+        <h2>Загрузка расписания...</h2>
+      </div>
+
+      <div v-else-if="scheduleLoadError" class="empty-state">
+        <h2>{{ scheduleLoadError }}</h2>
+        <p>Попробуйте обновить страницу или вернуться назад и выбрать группу снова.</p>
+      </div>
+
+      <template v-else-if="!isEmptySchedule">
         <div class="week-nav">
           <span class="week-label">Неделя: {{ weekLabel }}</span>
 
@@ -513,6 +603,15 @@ onUnmounted(() => {
               Следующая неделя →
             </button>
           </div>
+        </div>
+
+        <div v-if="hasParallelPairsInWeek" class="parallel-warning">
+          <strong>Внимание:</strong> в эту неделю в одно время стоят две разные дисциплины (параллельные пары).
+          <ul>
+            <li v-for="(slot, index) in parallelPairWarnings" :key="index">
+              {{ slot.day }}, {{ slot.time }} — {{ slot.subjects.join(' / ') }}
+            </li>
+          </ul>
         </div>
 
         <div class="legend">
@@ -567,6 +666,7 @@ onUnmounted(() => {
                 v-for="day in days"
                 :key="day"
                 class="cell"
+                :class="{ 'cell--parallel': isParallelCell(day, time) }"
                 @click.stop="handleCellTap(day, time, getLessons(day, time), $event)"
                 @contextmenu.prevent="showEmptyContextMenu($event, day, time)"
             >
@@ -588,7 +688,18 @@ onUnmounted(() => {
 
       <div v-else class="empty-state">
         <h2>По выбранным параметрам расписание пока не найдено</h2>
-        <p>Попробуйте вернуться назад и выбрать другой факультет, преподавателя или аудиторию.</p>
+        <p v-if="scheduleType === 'students'">
+          Для группы {{ secondValue }} расписание ещё не загружено учебным отделом.
+        </p>
+        <p v-else-if="scheduleType === 'teachers' || scheduleType === 'consults'">
+          Для преподавателя {{ secondValue }} расписание ещё не найдено в загруженных файлах.
+        </p>
+        <p v-else-if="scheduleType === 'auditories'">
+          Для аудитории {{ secondValue }} расписание ещё не найдено в загруженных файлах.
+        </p>
+        <p v-else>
+          Попробуйте вернуться назад и выбрать другие параметры.
+        </p>
       </div>
 
       <!-- Первое модальное окно (просмотр) -->
@@ -611,6 +722,10 @@ onUnmounted(() => {
 
           <h2 class="modal-title">{{ selectedLesson.subject }}</h2>
 
+          <div v-if="selectedLesson.isSameCellParallel" class="parallel-notice">
+            В это время идёт параллельная пара — в ячейке расписания показаны две разные дисциплины.
+          </div>
+
           <div class="modal-body">
             <div class="type-badge" :class="getLessonClass(selectedLesson.type)">
               {{ getTypeName(selectedLesson.type) }}
@@ -625,6 +740,11 @@ onUnmounted(() => {
               <p>
                 <strong>Преподаватель:</strong>
                 {{ selectedLesson.teacher }}
+              </p>
+
+              <p v-if="selectedLesson.subgroup">
+                <strong>Подгруппа:</strong>
+                {{ selectedLesson.subgroup }}
               </p>
 
               <p>

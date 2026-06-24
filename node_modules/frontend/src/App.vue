@@ -17,6 +17,7 @@ const currentUserRole = computed(() => authStore.roleLabel)
 const currentUserPhoto = computed(() => getPhotoUrl(authStore.currentUser?.photoUrl))
 
 const isAdmin = computed(() => authStore.currentUser?.role === 'admin')
+const isEducationDepartment = computed(() => authStore.currentUser?.role === 'education_department')
 
 const mainLinks = [
   { id: 'teachers', title: 'Расписание преподавателей' },
@@ -54,6 +55,12 @@ const goToAdminPanel = async () => {
   isProfileOpen.value = false
 
   await router.push({ name: 'admin-panel' })
+}
+
+const goToScheduleUpload = async () => {
+  isProfileOpen.value = false
+
+  await router.push({ name: 'schedule-upload' })
 }
 
 const isProfileOpen = ref(false)
@@ -150,6 +157,15 @@ const handleVisibilityChange = async () => {
                 @click="goToAdminPanel"
               >
                 Админ панель
+              </button>
+
+              <button
+                v-if="isEducationDepartment"
+                class="dropdown-item"
+                type="button"
+                @click="goToScheduleUpload"
+              >
+                Загрузка расписания
               </button>
 
               <button

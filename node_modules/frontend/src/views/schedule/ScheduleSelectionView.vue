@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import PageFrame from '@/components/PageFrame.vue'
 import {
-  buildingOptions,
-  departmentOptions,
-  getConsultationTeachersByDepartment,
-  getGroupsByFaculty,
-  getRoomsByBuilding,
-  getTeachersByDepartment,
-  scheduleTypeMeta,
-  type ScheduleKind,
-} from './scheduleOptions'
+  fetchScheduleBuildings,
+  fetchScheduleGroups,
+  fetchScheduleRooms,
+  fetchScheduleTeachers,
+  type ScheduleGroupInfo,
+} from '@/api/schedule'
+import PageFrame from '@/components/PageFrame.vue'
+import { getGroupFaculty, scheduleTypeMeta, type ScheduleKind } from './scheduleOptions'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,10 +20,15 @@ const meta = computed(() => scheduleTypeMeta[scheduleType.value])
 const firstChoice = ref('')
 const secondChoice = ref('')
 
-// Состояния для кастомных выпадающих списков
+const uploadedGroups = ref<ScheduleGroupInfo[]>([])
+const teachers = ref<string[]>([])
+const buildings = ref<string[]>([])
+const rooms = ref<string[]>([])
+
 const isFirstOpen = ref(false)
 const isSecondOpen = ref(false)
-const isFacultyGroupOpen = ref(false) // Для вложенного списка факультетов
+const isFacultyGroupOpen = ref(false)
+const isLoadingOptions = ref(false)
 
 const studentFacultyOptions = [
   { label: 'СПО', value: 'СПО' },
@@ -40,34 +43,49 @@ const studentFacultyOptions = [
   { label: 'Аспирантура', value: 'Аспирантура' },
 ]
 
-const firstLabel = computed(() => {
-  if (scheduleType.value === 'students') return 'Выбор факультета'
-  if (scheduleType.value === 'auditories') return 'Выбор учебного корпуса'
-  return 'Выбор кафедры'
-})
+const isStudents = computed(() => scheduleType.value === 'students')
+const isTeachers = computed(() => scheduleType.value === 'teachers' || scheduleType.value === 'consults')
+const isAuditories = computed(() => scheduleType.value === 'auditories')
 
-const secondLabel = computed(() => {
-  if (scheduleType.value === 'students') return 'Выбор группы'
-  if (scheduleType.value === 'auditories') return 'Выбор аудитории'
+const firstLabel = computed(() => {
+  if (isStudents.value) return 'Выбор факультета'
+  if (isAuditories.value) return 'Выбор учебного корпуса'
   return 'Выбор преподавателя'
 })
 
-const firstOptions = computed(() => {
-  if (scheduleType.value === 'auditories') return buildingOptions
-  return departmentOptions
+const secondLabel = computed(() => {
+  if (isStudents.value) return 'Выбор группы'
+  if (isAuditories.value) return 'Выбор аудитории'
+  return ''
 })
 
-const secondOptions = computed(() => {
-  if (!firstChoice.value) return []
-  if (scheduleType.value === 'students') return getGroupsByFaculty(firstChoice.value)
-  if (scheduleType.value === 'auditories') return getRoomsByBuilding(firstChoice.value)
-  if (scheduleType.value === 'consults') return getConsultationTeachersByDepartment(firstChoice.value)
-  return getTeachersByDepartment(firstChoice.value)
+const groupOptions = computed(() => {
+  if (!firstChoice.value) {
+    return []
+  }
+
+  return uploadedGroups.value
+    .filter((group) => {
+      const faculty = group.facultyName ?? getGroupFaculty(group.groupName)
+      return faculty === firstChoice.value
+    })
+    .map((group) => group.groupName)
 })
 
-const isSubmitDisabled = computed(() => !firstChoice.value || !secondChoice.value)
+const showSecondPicker = computed(() => isStudents.value || isAuditories.value)
 
-// Универсальные методы выбора
+const isSubmitDisabled = computed(() => {
+  if (isStudents.value) {
+    return !firstChoice.value.trim() || !secondChoice.value.trim()
+  }
+
+  if (isTeachers.value) {
+    return !firstChoice.value.trim()
+  }
+
+  return !firstChoice.value.trim() || !secondChoice.value.trim()
+})
+
 const selectFirst = (value: string) => {
   firstChoice.value = value
   isFirstOpen.value = false
@@ -92,34 +110,118 @@ const closeDropdownsOnOutside = (event: MouseEvent) => {
   }
 }
 
+const loadUploadedGroups = async () => {
+  if (!isStudents.value) {
+    uploadedGroups.value = []
+    return
+  }
+
+  isLoadingOptions.value = true
+
+  try {
+    uploadedGroups.value = await fetchScheduleGroups()
+  } catch {
+    uploadedGroups.value = []
+  } finally {
+    isLoadingOptions.value = false
+  }
+}
+
+const loadTeachers = async () => {
+  if (!isTeachers.value) {
+    teachers.value = []
+    return
+  }
+
+  isLoadingOptions.value = true
+
+  try {
+    teachers.value = await fetchScheduleTeachers()
+  } catch {
+    teachers.value = []
+  } finally {
+    isLoadingOptions.value = false
+  }
+}
+
+const loadBuildings = async () => {
+  if (!isAuditories.value) {
+    buildings.value = []
+    return
+  }
+
+  isLoadingOptions.value = true
+
+  try {
+    buildings.value = await fetchScheduleBuildings()
+  } catch {
+    buildings.value = []
+  } finally {
+    isLoadingOptions.value = false
+  }
+}
+
+const loadRooms = async () => {
+  if (!isAuditories.value || !firstChoice.value) {
+    rooms.value = []
+    return
+  }
+
+  isLoadingOptions.value = true
+
+  try {
+    rooms.value = await fetchScheduleRooms(firstChoice.value)
+  } catch {
+    rooms.value = []
+  } finally {
+    isLoadingOptions.value = false
+  }
+}
+
 watch(
-    () => scheduleType.value,
-    () => {
-      firstChoice.value = ''
-      secondChoice.value = ''
-      isFirstOpen.value = false
-      isSecondOpen.value = false
-    },
+  () => scheduleType.value,
+  () => {
+    firstChoice.value = ''
+    secondChoice.value = ''
+    isFirstOpen.value = false
+    isSecondOpen.value = false
+    void loadUploadedGroups()
+    void loadTeachers()
+    void loadBuildings()
+  },
 )
 
 watch(firstChoice, () => {
   secondChoice.value = ''
+  if (isAuditories.value) {
+    void loadRooms()
+  }
 })
 
 const openSchedule = async () => {
   if (isSubmitDisabled.value) return
+
+  const second = isStudents.value
+    ? secondChoice.value.trim()
+    : isTeachers.value
+      ? firstChoice.value.trim()
+      : secondChoice.value.trim()
+
   await router.push({
     name: 'schedule-view',
     params: { type: scheduleType.value },
     query: {
       first: firstChoice.value,
-      second: secondChoice.value,
+      second,
     },
   })
 }
 
 onMounted(() => {
   document.addEventListener('click', closeDropdownsOnOutside)
+  void loadUploadedGroups()
+  void loadTeachers()
+  void loadBuildings()
 })
 
 onBeforeUnmount(() => {
@@ -146,92 +248,167 @@ onBeforeUnmount(() => {
         <p>{{ meta.caption }}</p>
 
         <div class="form-grid">
-          <!-- Первый список (Факультет / Корпус / Кафедра) -->
           <label class="field">
             <span>{{ firstLabel }}</span>
-            <div class="custom-picker">
-              <button
+
+            <template v-if="isStudents">
+              <div class="custom-picker">
+                <button
                   class="picker-trigger"
                   :class="{ open: isFirstOpen }"
                   type="button"
                   @click.stop="isFirstOpen = !isFirstOpen; isSecondOpen = false"
-              >
-                <span>{{ firstChoice || 'Выберите' }}</span>
-                <span class="picker-arrow" :class="{ open: isFirstOpen }"></span>
-              </button>
+                >
+                  <span>{{ firstChoice || 'Выберите' }}</span>
+                  <span class="picker-arrow" :class="{ open: isFirstOpen }"></span>
+                </button>
 
-              <div v-if="isFirstOpen" class="picker-panel" @click.stop>
-                <template v-if="scheduleType === 'students'">
+                <div v-if="isFirstOpen" class="picker-panel" @click.stop>
                   <template v-for="option in studentFacultyOptions" :key="option.label">
                     <button
-                        v-if="'value' in option"
-                        class="picker-option"
-                        type="button"
-                        @click="selectFirst(String(option.value))"
+                      v-if="'value' in option"
+                      class="picker-option"
+                      type="button"
+                      @click="selectFirst(String(option.value))"
                     >
                       {{ option.label }}
                     </button>
 
                     <div v-else class="picker-group">
-                      <button class="picker-option group-toggle" type="button" @click="isFacultyGroupOpen = !isFacultyGroupOpen">
+                      <button
+                        class="picker-option group-toggle"
+                        type="button"
+                        @click="isFacultyGroupOpen = !isFacultyGroupOpen"
+                      >
                         <span>{{ option.label }}</span>
                         <span class="picker-arrow small" :class="{ open: isFacultyGroupOpen }">▲</span>
                       </button>
 
                       <div v-if="isFacultyGroupOpen" class="picker-subgroup">
                         <button
-                            v-for="nestedOption in option.options"
-                            :key="nestedOption.value"
-                            class="picker-option nested"
-                            type="button"
-                            @click="selectFirst(nestedOption.value)"
+                          v-for="nestedOption in option.options"
+                          :key="nestedOption.value"
+                          class="picker-option nested"
+                          type="button"
+                          @click="selectFirst(nestedOption.value)"
                         >
                           {{ nestedOption.label }}
                         </button>
                       </div>
                     </div>
                   </template>
-                </template>
-                <template v-else>
-                  <button
-                      v-for="option in firstOptions"
-                      :key="option"
-                      class="picker-option"
-                      type="button"
-                      @click="selectFirst(option)"
-                  >
-                    {{ option }}
-                  </button>
-                </template>
+                </div>
               </div>
-            </div>
+            </template>
+
+            <template v-else-if="isTeachers">
+              <div class="custom-picker">
+                <button
+                  class="picker-trigger"
+                  :class="{ open: isFirstOpen }"
+                  type="button"
+                  @click.stop="isFirstOpen = !isFirstOpen"
+                >
+                  <span>{{ firstChoice || (isLoadingOptions ? 'Загрузка...' : 'Выберите') }}</span>
+                  <span class="picker-arrow" :class="{ open: isFirstOpen }"></span>
+                </button>
+
+                <div v-if="isFirstOpen" class="picker-panel" @click.stop>
+                  <p v-if="teachers.length === 0" class="picker-empty">
+                    Преподаватели появятся после загрузки расписаний групп
+                  </p>
+                  <button
+                    v-for="teacher in teachers"
+                    :key="teacher"
+                    class="picker-option"
+                    type="button"
+                    @click="selectFirst(teacher)"
+                  >
+                    {{ teacher }}
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <template v-else>
+              <div class="custom-picker">
+                <button
+                  class="picker-trigger"
+                  :class="{ open: isFirstOpen }"
+                  type="button"
+                  @click.stop="isFirstOpen = !isFirstOpen; isSecondOpen = false"
+                >
+                  <span>{{ firstChoice || (isLoadingOptions ? 'Загрузка...' : 'Выберите') }}</span>
+                  <span class="picker-arrow" :class="{ open: isFirstOpen }"></span>
+                </button>
+
+                <div v-if="isFirstOpen" class="picker-panel" @click.stop>
+                  <p v-if="buildings.length === 0" class="picker-empty">
+                    Корпуса появятся после загрузки расписаний групп
+                  </p>
+                  <button
+                    v-for="building in buildings"
+                    :key="building"
+                    class="picker-option"
+                    type="button"
+                    @click="selectFirst(building)"
+                  >
+                    {{ building }}
+                  </button>
+                </div>
+              </div>
+            </template>
           </label>
 
-          <!-- Второй список (Группа / Аудитория / Преподаватель) -->
-          <label class="field">
+          <label v-if="showSecondPicker" class="field">
             <span>{{ secondLabel }}</span>
             <div class="custom-picker" :class="{ disabled: !firstChoice }">
               <button
-                  class="picker-trigger"
-                  :class="{ open: isSecondOpen }"
-                  type="button"
-                  :disabled="!firstChoice"
-                  @click.stop="isSecondOpen = !isSecondOpen; isFirstOpen = false"
+                class="picker-trigger"
+                :class="{ open: isSecondOpen }"
+                type="button"
+                :disabled="!firstChoice"
+                @click.stop="isSecondOpen = !isSecondOpen; isFirstOpen = false"
               >
-                <span>{{ secondChoice || 'Выберите' }}</span>
+                <span>{{
+                  secondChoice
+                    || (firstChoice
+                      ? (isLoadingOptions ? 'Загрузка...' : 'Выберите')
+                      : (isStudents ? 'Сначала выберите факультет' : 'Сначала выберите корпус'))
+                }}</span>
                 <span class="picker-arrow" :class="{ open: isSecondOpen }"></span>
               </button>
 
               <div v-if="isSecondOpen" class="picker-panel" @click.stop>
-                <button
-                    v-for="option in secondOptions"
-                    :key="option"
+                <template v-if="isStudents">
+                  <p v-if="groupOptions.length === 0" class="picker-empty">
+                    Группы появятся после загрузки расписаний учебным отделом
+                  </p>
+                  <button
+                    v-for="group in groupOptions"
+                    :key="group"
                     class="picker-option"
                     type="button"
-                    @click="selectSecond(option)"
-                >
-                  {{ option }}
-                </button>
+                    @click="selectSecond(group)"
+                  >
+                    {{ group }}
+                  </button>
+                </template>
+
+                <template v-else>
+                  <p v-if="rooms.length === 0" class="picker-empty">
+                    Аудитории появятся после загрузки расписаний групп
+                  </p>
+                  <button
+                    v-for="room in rooms"
+                    :key="room"
+                    class="picker-option"
+                    type="button"
+                    @click="selectSecond(room)"
+                  >
+                    {{ room }}
+                  </button>
+                </template>
               </div>
             </div>
           </label>
@@ -245,3 +422,11 @@ onBeforeUnmount(() => {
   </PageFrame>
 </template>
 
+<style scoped>
+.picker-empty {
+  margin: 0;
+  padding: 12px 16px;
+  color: #5f6770;
+  font-size: 14px;
+}
+</style>

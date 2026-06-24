@@ -7,3 +7,7 @@ export function getStorageRoot(): string {
 export function getAvatarsDir(): string {
     return join(getStorageRoot(), 'avatars');
 }
+
+export function getSchedulesDir(): string {
+    return join(getStorageRoot(), 'schedules');
+}

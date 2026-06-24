@@ -428,7 +428,7 @@ const resetForm = () => {
             <div class="form-row">
               <div class="form-group full-width">
                 <label for="direction" class="form-label">
-                  Направление подготовки <span class="required">*</span>
+                  Направление <span class="required">*</span>
                 </label>
                 <input
                   id="direction"
@@ -436,7 +436,7 @@ const resetForm = () => {
                   type="text"
                   class="form-input"
                   :class="{ error: errors.direction }"
-                  placeholder="Например: Информатика и вычислительная техника"
+                  placeholder="Например: 09.03.01 Информатика и вычислительная техника"
                   :disabled="isSubmitting"
                 />
                 <span v-if="errors.direction" class="error-message">{{ errors.direction }}</span>

@@ -197,6 +197,26 @@
   @apply min-h-[92px] min-w-0 p-[4px] border border-[#d7dee6] bg-[rgba(255,255,255,0.78)];
 }
 
+.schedule-page .cell--parallel {
+  @apply border-[#e6a817] bg-[rgba(255,248,225,0.92)];
+}
+
+.schedule-page .parallel-warning {
+  @apply max-w-[960px] mx-auto mb-[16px] p-[14px_18px] rounded-[12px] border border-[#f0c14b] bg-[#fff8e1] text-[#5c4a00] text-[14px] leading-[1.45];
+}
+
+.schedule-page .parallel-warning ul {
+  @apply m-[8px_0_0] pl-[20px];
+}
+
+.schedule-page .parallel-warning li {
+  @apply mt-[4px];
+}
+
+.schedule-page .parallel-notice {
+  @apply mx-[22px] mt-[12px] p-[10px_12px] rounded-[8px] border border-[#f0c14b] bg-[#fff8e1] text-[#5c4a00] text-[13px] leading-[1.4];
+}
+
 .schedule-page .lesson {
   @apply min-w-0 p-[8px] rounded-[8px] mb-[4px] cursor-pointer transition-transform duration-[200ms] ease-in-out overflow-hidden;
 }
