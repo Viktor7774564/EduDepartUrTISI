@@ -1,6 +1,7 @@
 import {
     Injectable,
     UnauthorizedException,
+    ConflictException,
 } from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
@@ -38,26 +39,38 @@ export class AuthService {
         const existingUser = await this.usersService.findByLogin(dto.login);
 
         if (existingUser) {
-            throw new UnauthorizedException(
+            throw new ConflictException(
                 'Пользователь уже существует',
             );
         }
 
-        const passwordHash = await bcrypt.hash(dto.password, 10);
+        const passwordHash = await bcrypt.hash(
+            dto.password,
+            10,
+        );
 
         const user = await this.usersService.create({
             login: dto.login,
-            passwordHash: passwordHash,
+            passwordHash,
         });
 
         const userWithDetails =
-            await this.usersService.findByIdWithDetails(user.id);
+            await this.usersService.findByIdWithDetails(
+                user.id,
+            );
+
+        if (!userWithDetails) {
+            throw new UnauthorizedException();
+        }
 
         return this.generateTokens(userWithDetails);
     }
 
     async login(dto: LoginDto) {
-        const user = await this.usersService.findByLoginWithDetails(dto.login);
+        const user =
+            await this.usersService.findByLoginWithDetails(
+                dto.login,
+            );
 
         if (!user) {
             throw new UnauthorizedException(
@@ -80,12 +93,22 @@ export class AuthService {
     }
 
     async getCurrentUser(userId: number) {
-        const user = await this.usersService.findByIdWithDetails(userId);
+        const user =
+            await this.usersService.findByIdWithDetails(
+                userId,
+            );
+
+        if (!user) {
+            throw new UnauthorizedException();
+        }
 
         return mapUserToAuthResponse(user);
     }
 
-    async refresh(userId: number, refreshToken: string) {
+    async refresh(
+        userId: number,
+        refreshToken: string,
+    ) {
         const storedToken =
             await this.refreshTokenRepository.findOne({
                 where: {
@@ -107,22 +130,41 @@ export class AuthService {
             throw new UnauthorizedException();
         }
 
-        const user = await this.usersService.findByIdWithDetails(userId);
+        const user =
+            await this.usersService.findByIdWithDetails(
+                userId,
+            );
+
+        if (!user) {
+            throw new UnauthorizedException();
+        }
 
         await this.refreshTokenRepository.update(
-            { userId, isActive: true },
-            { isActive: false },
+            {
+                userId,
+                isActive: true,
+            },
+            {
+                isActive: false,
+            },
         );
 
         return this.generateTokens(user);
     }
 
     async logout(userId: number) {
-        await this.sessionsNotifier.notifyUserSessionsRemoved(userId);
+        await this.sessionsNotifier.notifyUserSessionsRemoved(
+            userId,
+        );
 
         await this.refreshTokenRepository.update(
-            { userId, isActive: true },
-            { isActive: false },
+            {
+                userId,
+                isActive: true,
+            },
+            {
+                isActive: false,
+            },
         );
 
         return {
@@ -131,58 +173,100 @@ export class AuthService {
     }
 
     private async generateTokens(user: User) {
+        await this.cleanupOldSessions(user.id);
+
         const payload = {
             sub: user.id,
             login: user.login,
         };
 
-        const refreshToken = await this.jwtService.signAsync(
-            payload,
-            {
-                secret: this.configService.get<string>(
-                    'JWT_REFRESH_SECRET',
-                ),
-                expiresIn: '30d',
-            },
-        );
+        const refreshToken =
+            await this.jwtService.signAsync(
+                payload,
+                {
+                    secret:
+                        this.configService.getOrThrow<string>(
+                            'JWT_REFRESH_SECRET',
+                        ),
+                    expiresIn: '30d',
+                },
+            );
 
         const tokenHash = await bcrypt.hash(
             refreshToken,
             10,
         );
 
-        await this.sessionsNotifier.notifyUserSessionsRemoved(user.id);
+        await this.sessionsNotifier.notifyUserSessionsRemoved(
+            user.id,
+        );
 
+        // одна активная сессия
         await this.refreshTokenRepository.update(
-            { userId: user.id, isActive: true },
-            { isActive: false },
-        );
-
-        const session = await this.refreshTokenRepository.save({
-            userId: user.id,
-            tokenHash,
-            isActive: true,
-        });
-
-        await this.sessionsNotifier.notifySessionCreated(session.id);
-
-        const accessToken = await this.jwtService.signAsync(
             {
-                ...payload,
-                sid: session.id,
+                userId: user.id,
+                isActive: true,
             },
             {
-                secret: this.configService.get<string>(
-                    'JWT_ACCESS_SECRET',
-                ),
-                expiresIn: '15m',
+                isActive: false,
             },
         );
+
+        const session =
+            await this.refreshTokenRepository.save({
+                userId: user.id,
+                tokenHash,
+                isActive: true,
+            });
+
+        await this.sessionsNotifier.notifySessionCreated(
+            session.id,
+        );
+
+        const accessToken =
+            await this.jwtService.signAsync(
+                {
+                    ...payload,
+                    sid: session.id,
+                },
+                {
+                    secret:
+                        this.configService.getOrThrow<string>(
+                            'JWT_ACCESS_SECRET',
+                        ),
+                    expiresIn: '15m',
+                },
+            );
 
         return {
             accessToken,
             refreshToken,
             user: mapUserToAuthResponse(user),
         };
+    }
+
+    private async cleanupOldSessions(
+        userId: number,
+    ): Promise<void> {
+        const cutoff = new Date();
+
+        cutoff.setDate(
+            cutoff.getDate() - 90,
+        );
+
+        await this.refreshTokenRepository
+            .createQueryBuilder()
+            .delete()
+            .where('userId = :userId', {
+                userId,
+            })
+            .andWhere('isActive = false')
+            .andWhere(
+                'createdAt < :cutoff',
+                {
+                    cutoff,
+                },
+            )
+            .execute();
     }
 }

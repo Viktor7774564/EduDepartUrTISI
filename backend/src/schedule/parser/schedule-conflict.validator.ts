@@ -144,11 +144,8 @@ export function validateScheduleConflicts(
                 continue;
             }
 
-            if (
-                first.isSameCellParallel
-                && second.isSameCellParallel
-                && first.subject !== second.subject
-            ) {
+            // Две разные дисциплины в одной ячейке (Информатика / Физика) — нормально.
+            if (first.subject !== second.subject) {
                 continue;
             }
 

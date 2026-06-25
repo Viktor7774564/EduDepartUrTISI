@@ -95,9 +95,7 @@ function validateScheduleConflicts(lessons, existingLessons = []) {
             if (!subgroupsConflict(first, second)) {
                 continue;
             }
-            if (first.isSameCellParallel
-                && second.isSameCellParallel
-                && first.subject !== second.subject) {
+            if (first.subject !== second.subject) {
                 continue;
             }
             conflicts.push({

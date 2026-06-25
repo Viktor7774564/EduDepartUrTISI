@@ -72,14 +72,17 @@ let AuthService = class AuthService {
     async register(dto) {
         const existingUser = await this.usersService.findByLogin(dto.login);
         if (existingUser) {
-            throw new common_1.UnauthorizedException('Пользователь уже существует');
+            throw new common_1.ConflictException('Пользователь уже существует');
         }
         const passwordHash = await bcrypt.hash(dto.password, 10);
         const user = await this.usersService.create({
             login: dto.login,
-            passwordHash: passwordHash,
+            passwordHash,
         });
         const userWithDetails = await this.usersService.findByIdWithDetails(user.id);
+        if (!userWithDetails) {
+            throw new common_1.UnauthorizedException();
+        }
         return this.generateTokens(userWithDetails);
     }
     async login(dto) {
@@ -95,6 +98,9 @@ let AuthService = class AuthService {
     }
     async getCurrentUser(userId) {
         const user = await this.usersService.findByIdWithDetails(userId);
+        if (!user) {
+            throw new common_1.UnauthorizedException();
+        }
         return (0, auth_user_mapper_1.mapUserToAuthResponse)(user);
     }
     async refresh(userId, refreshToken) {
@@ -112,28 +118,47 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException();
         }
         const user = await this.usersService.findByIdWithDetails(userId);
-        await this.refreshTokenRepository.update({ userId, isActive: true }, { isActive: false });
+        if (!user) {
+            throw new common_1.UnauthorizedException();
+        }
+        await this.refreshTokenRepository.update({
+            userId,
+            isActive: true,
+        }, {
+            isActive: false,
+        });
         return this.generateTokens(user);
     }
     async logout(userId) {
         await this.sessionsNotifier.notifyUserSessionsRemoved(userId);
-        await this.refreshTokenRepository.update({ userId, isActive: true }, { isActive: false });
+        await this.refreshTokenRepository.update({
+            userId,
+            isActive: true,
+        }, {
+            isActive: false,
+        });
         return {
             success: true,
         };
     }
     async generateTokens(user) {
+        await this.cleanupOldSessions(user.id);
         const payload = {
             sub: user.id,
             login: user.login,
         };
         const refreshToken = await this.jwtService.signAsync(payload, {
-            secret: this.configService.get('JWT_REFRESH_SECRET'),
+            secret: this.configService.getOrThrow('JWT_REFRESH_SECRET'),
             expiresIn: '30d',
         });
         const tokenHash = await bcrypt.hash(refreshToken, 10);
         await this.sessionsNotifier.notifyUserSessionsRemoved(user.id);
-        await this.refreshTokenRepository.update({ userId: user.id, isActive: true }, { isActive: false });
+        await this.refreshTokenRepository.update({
+            userId: user.id,
+            isActive: true,
+        }, {
+            isActive: false,
+        });
         const session = await this.refreshTokenRepository.save({
             userId: user.id,
             tokenHash,
@@ -144,7 +169,7 @@ let AuthService = class AuthService {
             ...payload,
             sid: session.id,
         }, {
-            secret: this.configService.get('JWT_ACCESS_SECRET'),
+            secret: this.configService.getOrThrow('JWT_ACCESS_SECRET'),
             expiresIn: '15m',
         });
         return {
@@ -152,6 +177,21 @@ let AuthService = class AuthService {
             refreshToken,
             user: (0, auth_user_mapper_1.mapUserToAuthResponse)(user),
         };
+    }
+    async cleanupOldSessions(userId) {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 90);
+        await this.refreshTokenRepository
+            .createQueryBuilder()
+            .delete()
+            .where('userId = :userId', {
+            userId,
+        })
+            .andWhere('isActive = false')
+            .andWhere('createdAt < :cutoff', {
+            cutoff,
+        })
+            .execute();
     }
 };
 exports.AuthService = AuthService;

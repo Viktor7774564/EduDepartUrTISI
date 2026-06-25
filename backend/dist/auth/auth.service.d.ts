@@ -33,4 +33,5 @@ export declare class AuthService {
         success: boolean;
     }>;
     private generateTokens;
+    private cleanupOldSessions;
 }
