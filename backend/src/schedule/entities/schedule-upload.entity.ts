@@ -10,7 +10,7 @@ import {
 
 import { User } from '../../users/entities/user.entity';
 import { ParsedScheduleLesson } from './parsed-schedule-lesson.entity';
-import { ScheduleType } from './schedule.entity';
+import { ScheduleType } from './schedule-type.enum';
 
 export enum ScheduleParseStatus {
     SUCCESS = 'success',

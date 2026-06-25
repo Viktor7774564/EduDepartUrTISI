@@ -14,6 +14,7 @@ export type AuthUserResponse = {
     course?: number;
     position?: string;
     department?: string;
+    departmentId?: number;
     cabinet?: string;
 };
 export declare function mapUserToAuthResponse(user: User): AuthUserResponse;

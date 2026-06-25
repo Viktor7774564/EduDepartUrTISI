@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
+import { fetchTeacherDepartments, type TeacherDepartmentInfo } from '@/api/departments'
 import PageFrame from '@/components/PageFrame.vue'
 import type { AdminUser } from '@/api/admin'
 import type { UserRole } from '@/stores/auth'
@@ -25,6 +26,7 @@ interface UserForm {
   patronymic: string
   isActive: boolean
   department?: string
+  departmentId?: number
   position?: string
   cabinet?: string
   group?: string
@@ -60,6 +62,7 @@ const isLoading = ref(true)
 const pageError = ref('')
 const submitMessage = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 const skipRoleReset = ref(false)
+const teacherDepartments = ref<TeacherDepartmentInfo[]>([])
 
 const roleOptions = [
   { value: 'student', label: 'Студент' },
@@ -118,6 +121,7 @@ const fillFormFromUser = (user: AdminUser) => {
     patronymic: user.patronymic || '',
     isActive: user.isActive,
     department: user.department || '',
+    departmentId: user.departmentId,
     position: user.position || '',
     cabinet: user.cabinet || '',
     group: user.group || '',
@@ -134,6 +138,7 @@ watch(() => form.value.role, (newRole) => {
   }
 
   form.value.department = ''
+  form.value.departmentId = undefined
   form.value.position = ''
   form.value.cabinet = ''
   form.value.group = ''
@@ -160,6 +165,7 @@ onMounted(async () => {
   }
 
   try {
+    teacherDepartments.value = await fetchTeacherDepartments()
     const user = await usersStore.getUser(userId.value)
     fillFormFromUser(user)
   } catch (err: any) {
@@ -200,7 +206,7 @@ const validate = (): boolean => {
 
   if (form.value.role === 'teacher') {
     if (!form.value.position?.trim()) errors.value.position = 'Введите должность'
-    if (!form.value.department?.trim()) errors.value.department = 'Введите кафедру'
+    if (!form.value.departmentId) errors.value.departmentId = 'Выберите кафедру'
   }
 
   if (form.value.role === 'education_department') {
@@ -236,6 +242,7 @@ const handleSubmit = async () => {
       educationForm: form.value.educationForm,
       course: form.value.course,
       department: form.value.department?.trim(),
+      departmentId: form.value.role === 'teacher' ? form.value.departmentId : undefined,
       position: form.value.position?.trim(),
       cabinet: form.value.cabinet?.trim(),
     }
@@ -443,9 +450,24 @@ const goBack = () => router.push({ name: 'admin-edit-user' })
               </div>
               <div class="form-row">
                 <div class="form-group full-width">
-                  <label for="department" class="form-label">Кафедра <span class="required">*</span></label>
-                  <input id="department" v-model="form.department" type="text" class="form-input" :class="{ error: errors.department }" :disabled="isSubmitting" />
-                  <span v-if="errors.department" class="error-message">{{ errors.department }}</span>
+                  <label for="departmentId" class="form-label">Кафедра <span class="required">*</span></label>
+                  <select
+                    id="departmentId"
+                    v-model.number="form.departmentId"
+                    class="form-select"
+                    :class="{ error: errors.departmentId }"
+                    :disabled="isSubmitting"
+                  >
+                    <option :value="undefined" disabled>Выберите кафедру</option>
+                    <option
+                      v-for="department in teacherDepartments"
+                      :key="department.id"
+                      :value="department.id"
+                    >
+                      {{ department.shortName }}
+                    </option>
+                  </select>
+                  <span v-if="errors.departmentId" class="error-message">{{ errors.departmentId }}</span>
                 </div>
               </div>
             </div>

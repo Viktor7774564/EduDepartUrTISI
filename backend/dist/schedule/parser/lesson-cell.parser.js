@@ -2,9 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseLessonCell = parseLessonCell;
 exports.isDistanceRoom = isDistanceRoom;
+exports.isAuditoriumRoomLabel = isAuditoriumRoomLabel;
 exports.isSharedMultiHallRoom = isSharedMultiHallRoom;
+exports.splitRoomForSubgroups = splitRoomForSubgroups;
 const TEACHER_POSITIONS = [
-    'преподаватель высш. кат.',
     'ст. преподаватель',
     'доцент',
     'профессор',
@@ -195,7 +196,7 @@ function isDistanceRoom(room) {
     }
     return /дист/i.test(room);
 }
-function isSharedMultiHallRoom(room) {
+function isAuditoriumRoomLabel(room) {
     if (!room?.trim()) {
         return false;
     }
@@ -207,15 +208,39 @@ function isSharedMultiHallRoom(room) {
     if (/^С\.?$/.test(normalized)) {
         return true;
     }
-    if (/С\s*\/\s*З/.test(normalized)) {
+    if (/\bС\s*\/\s*З\b/.test(normalized)) {
         return true;
     }
-    if (/Т\s*\/\s*З/.test(normalized)) {
+    if (/\bТ\s*\/\s*З\b/.test(normalized)) {
         return true;
     }
     if (/^V\s*Р\.?$/.test(normalized)) {
         return true;
     }
     return false;
+}
+function isSharedMultiHallRoom(room) {
+    return isAuditoriumRoomLabel(room);
+}
+function splitRoomForSubgroups(room, partsCount) {
+    const count = Math.max(partsCount, 1);
+    if (!room?.trim()) {
+        return Array.from({ length: count }, () => null);
+    }
+    const trimmed = room.trim();
+    if (isAuditoriumRoomLabel(trimmed)) {
+        return Array.from({ length: count }, () => trimmed);
+    }
+    if (count <= 1) {
+        return [trimmed];
+    }
+    const slashParts = trimmed
+        .split(/\s*\/\s*/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+    if (slashParts.length === count && !slashParts.some((part) => isAuditoriumRoomLabel(part))) {
+        return slashParts;
+    }
+    return Array.from({ length: count }, () => trimmed);
 }
 //# sourceMappingURL=lesson-cell.parser.js.map

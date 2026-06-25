@@ -3,6 +3,7 @@ import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
+import { fetchTeacherDepartments, type TeacherDepartmentInfo } from '@/api/departments'
 import PageFrame from '@/components/PageFrame.vue'
 import type { UserRole } from '@/stores/auth'
 
@@ -10,9 +11,19 @@ const router = useRouter()
 const authStore = useAuthStore()
 const usersStore = useUsersStore()
 
-onMounted(() => {
+const submitMessage = ref<{ type: 'success' | 'error'; text: string } | null>(null)
+const teacherDepartments = ref<TeacherDepartmentInfo[]>([])
+
+onMounted(async () => {
   if (!authStore.isAuthenticated || authStore.currentUser?.role !== 'admin') {
-    router.replace({ name: 'home' })
+    await router.replace({ name: 'home' })
+    return
+  }
+
+  try {
+    teacherDepartments.value = await fetchTeacherDepartments()
+  } catch {
+    teacherDepartments.value = []
   }
 })
 
@@ -26,6 +37,7 @@ interface UserForm {
   
   // Для admin, teacher, education_department
   department?: string
+  departmentId?: number
   
   // Для teacher, education_department
   position?: string
@@ -59,7 +71,6 @@ const photoFile = ref<File | null>(null)
 const photoPreview = ref<string | null>(null)
 const errors = ref<Partial<Record<keyof UserForm, string>>>({})
 const isSubmitting = ref(false)
-const submitMessage = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
 const roleOptions = [
   { value: 'student', label: 'Студент' },
@@ -93,6 +104,7 @@ const clearPhotoSelection = () => {
 watch(() => form.value.role, (newRole) => {
   // Очищаем ВСЕ специфичные поля
   form.value.department = ''
+  form.value.departmentId = undefined
   form.value.position = ''
   form.value.cabinet = ''
   form.value.group = ''
@@ -149,8 +161,8 @@ const validate = (): boolean => {
     if (!form.value.position?.trim()) {
       errors.value.position = 'Введите должность'
     }
-    if (!form.value.department?.trim()) {
-      errors.value.department = 'Введите кафедру'
+    if (!form.value.departmentId) {
+      errors.value.departmentId = 'Выберите кафедру'
     }
   }
   
@@ -192,6 +204,7 @@ const handleSubmit = async () => {
       educationForm: form.value.educationForm,
       course: form.value.course,
       department: form.value.department?.trim(),
+      departmentId: form.value.role === 'teacher' ? form.value.departmentId : undefined,
       position: form.value.position?.trim(),
       cabinet: form.value.cabinet?.trim(),
     }
@@ -500,19 +513,26 @@ const resetForm = () => {
 
             <div class="form-row">
               <div class="form-group full-width">
-                <label for="department" class="form-label">
+                <label for="departmentId" class="form-label">
                   Кафедра <span class="required">*</span>
                 </label>
-                <input
-                  id="department"
-                  v-model="form.department"
-                  type="text"
-                  class="form-input"
-                  :class="{ error: errors.department }"
-                  placeholder="Например: Информационные системы"
+                <select
+                  id="departmentId"
+                  v-model.number="form.departmentId"
+                  class="form-select"
+                  :class="{ error: errors.departmentId }"
                   :disabled="isSubmitting"
-                />
-                <span v-if="errors.department" class="error-message">{{ errors.department }}</span>
+                >
+                  <option :value="undefined" disabled>Выберите кафедру</option>
+                  <option
+                    v-for="department in teacherDepartments"
+                    :key="department.id"
+                    :value="department.id"
+                  >
+                    {{ department.shortName }}
+                  </option>
+                </select>
+                <span v-if="errors.departmentId" class="error-message">{{ errors.departmentId }}</span>
               </div>
             </div>
           </div>

@@ -39,6 +39,12 @@ function hasSameRoom(first, second) {
     const secondRoom = (0, schedule_slot_utils_1.normalizeRoomValue)(second.room);
     return Boolean(firstRoom && secondRoom && firstRoom === secondRoom);
 }
+function isSharedHall(first, second) {
+    return first.isSharedMultiHall === true
+        || second.isSharedMultiHall === true
+        || (0, lesson_cell_parser_1.isSharedMultiHallRoom)(first.room)
+        || (0, lesson_cell_parser_1.isSharedMultiHallRoom)(second.room);
+}
 function formatDayLabel(dayOfWeek) {
     return DAY_LABELS[dayOfWeek] ?? String(dayOfWeek);
 }
@@ -70,7 +76,7 @@ function validateScheduleConflicts(lessons, existingLessons = []) {
             if (first.isDistance || second.isDistance) {
                 continue;
             }
-            if ((0, lesson_cell_parser_1.isSharedMultiHallRoom)(first.room) || (0, lesson_cell_parser_1.isSharedMultiHallRoom)(second.room)) {
+            if (isSharedHall(first, second)) {
                 continue;
             }
             if (first.groupName !== second.groupName) {

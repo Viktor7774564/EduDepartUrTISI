@@ -6,6 +6,7 @@ import { Role } from '../users/entities/role.entity';
 import { StudentProfile } from '../users/entities/student-profile.entity';
 import { TeacherProfile } from '../users/entities/teacher-profile.entity';
 import { StaffProfile } from '../users/entities/staff-profile.entity';
+import { DepartmentsService } from '../academic/departments.service';
 import { Department } from '../academic/entities/department.entity';
 import { Direction } from '../academic/entities/direction.entity';
 import { Group } from '../academic/entities/group.entity';
@@ -24,6 +25,7 @@ export declare class AdminService {
     private readonly sessionsService;
     private readonly sessionsNotifier;
     private readonly avatarService;
+    private readonly departmentsService;
     private readonly roleRepository;
     private readonly refreshTokenRepository;
     private readonly studentProfileRepository;
@@ -32,7 +34,7 @@ export declare class AdminService {
     private readonly departmentRepository;
     private readonly directionRepository;
     private readonly groupRepository;
-    constructor(usersService: UsersService, sessionsService: SessionsService, sessionsNotifier: SessionsNotifierService, avatarService: AvatarService, roleRepository: Repository<Role>, refreshTokenRepository: Repository<RefreshToken>, studentProfileRepository: Repository<StudentProfile>, teacherProfileRepository: Repository<TeacherProfile>, staffProfileRepository: Repository<StaffProfile>, departmentRepository: Repository<Department>, directionRepository: Repository<Direction>, groupRepository: Repository<Group>);
+    constructor(usersService: UsersService, sessionsService: SessionsService, sessionsNotifier: SessionsNotifierService, avatarService: AvatarService, departmentsService: DepartmentsService, roleRepository: Repository<Role>, refreshTokenRepository: Repository<RefreshToken>, studentProfileRepository: Repository<StudentProfile>, teacherProfileRepository: Repository<TeacherProfile>, staffProfileRepository: Repository<StaffProfile>, departmentRepository: Repository<Department>, directionRepository: Repository<Direction>, groupRepository: Repository<Group>);
     listUsers(): Promise<AdminUserResponse[]>;
     getUser(id: number): Promise<AdminUserResponse>;
     updateUser(id: number, dto: UpdateUserDto, currentUserId: number, photo?: Express.Multer.File): Promise<AdminUserResponse>;

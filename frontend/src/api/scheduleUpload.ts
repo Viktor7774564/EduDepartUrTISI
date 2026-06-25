@@ -1,7 +1,7 @@
 import api from '@/api/client'
 import { getApiBaseUrl } from '@/config/api'
 
-export type ScheduleUploadType = 'student' | 'teacher' | 'auditory' | 'consultation'
+export type ScheduleUploadType = 'student' | 'teacher' | 'auditory'
 export type ScheduleParseStatus = 'success' | 'failed'
 
 export interface ScheduleUploadItem {
@@ -32,7 +32,6 @@ export const scheduleUploadTypeOptions = [
   { value: 'student' as const, label: 'Расписание студентов' },
   { value: 'teacher' as const, label: 'Расписание преподавателей' },
   { value: 'auditory' as const, label: 'Расписание аудиторий' },
-  { value: 'consultation' as const, label: 'Расписание консультаций' },
 ]
 
 export function getScheduleUploadTypeLabel(type: ScheduleUploadType): string {

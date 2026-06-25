@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
-import { ParsedScheduleLesson } from './entities/parsed-schedule-lesson.entity';
-import { ScheduleUpload } from './entities/schedule-upload.entity';
+import { ScheduleItem } from './entities/schedule-item.entity';
+import { Schedule } from './entities/schedule.entity';
 export interface ScheduleGroupInfo {
     groupName: string;
     facultyName: string | null;
@@ -31,19 +31,16 @@ export interface RoomScheduleResponse {
     weeks: Record<string, ScheduleDisplayLesson[]>;
 }
 export declare class ScheduleDisplayService {
-    private readonly parsedLessonsRepository;
-    private readonly uploadsRepository;
-    constructor(parsedLessonsRepository: Repository<ParsedScheduleLesson>, uploadsRepository: Repository<ScheduleUpload>);
+    private readonly itemsRepository;
+    private readonly schedulesRepository;
+    constructor(itemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>);
     private normalizeText;
     private parseDateValue;
     private formatWeekLabel;
-    private formatTime;
-    private formatRoom;
-    private mapLesson;
-    private buildWeeksFromLessons;
+    private buildWeeksFromItems;
+    private baseItemsQuery;
     getBuildingFromRoom(room: string): string | null;
     private isDistanceRoom;
-    private getDistinctRooms;
     listGroups(): Promise<ScheduleGroupInfo[]>;
     getGroupSchedule(groupName: string): Promise<GroupScheduleResponse>;
     listTeachers(): Promise<string[]>;

@@ -3,11 +3,24 @@ import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { fetchGroupSchedule, fetchRoomSchedule, fetchTeacherSchedule } from '@/api/schedule'
-import PageFrame from '@/components/PageFrame.vue'
+import {
+  createConsultation,
+  deleteConsultation,
+  fetchDepartmentConsultations,
+  updateConsultation,
+} from '@/api/consultations'
+import {
+  createScheduleItem,
+  disableScheduleItem,
+  updateScheduleItem,
+} from '@/api/scheduleAdmin'
 import editIcon from '@/assets/edit.svg'
 import {
   type DisplayScheduleItem,
   type ScheduleKind,
+  buildConsultationAcademicWeeks,
+  getConsultationAcademicYearStart,
+  getWeekStartFromLabel,
 } from './scheduleOptions'
 
 const route = useRoute()
@@ -17,8 +30,29 @@ const authStore = useAuthStore()
 const days = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ']
 const times = ['08:30', '10:15', '12:00', '14:15', '16:00', '17:40', '19:15']
 
+const PAIR_END_TIMES: Record<string, string> = {
+  '08:30': '10:00',
+  '10:15': '11:45',
+  '12:00': '13:30',
+  '14:15': '15:45',
+  '16:00': '17:30',
+  '17:40': '19:05',
+  '19:15': '20:40',
+}
+
+const DAY_TO_NUMBER: Record<string, number> = {
+  ПН: 1,
+  ВТ: 2,
+  СР: 3,
+  ЧТ: 4,
+  ПТ: 5,
+  СБ: 6,
+}
+
 const scheduleType = computed(() => route.params.type as ScheduleKind)
+const firstValue = computed(() => String(route.query.first ?? ''))
 const secondValue = computed(() => String(route.query.second ?? ''))
+const departmentName = computed(() => secondValue.value)
 
 type CellLesson = DisplayScheduleItem & {
   groups: string[]
@@ -52,7 +86,14 @@ const editForm = ref({
 })
 
 const loadSchedule = async () => {
-  if (!secondValue.value) {
+  if (!secondValue.value && scheduleType.value !== 'consults') {
+    studentWeeklySchedules.value = {}
+    scheduleLoadError.value = null
+    isLoadingSchedule.value = false
+    return
+  }
+
+  if (scheduleType.value === 'consults' && !firstValue.value) {
     studentWeeklySchedules.value = {}
     scheduleLoadError.value = null
     isLoadingSchedule.value = false
@@ -69,8 +110,14 @@ const loadSchedule = async () => {
       return
     }
 
-    if (scheduleType.value === 'teachers' || scheduleType.value === 'consults') {
+    if (scheduleType.value === 'teachers') {
       const response = await fetchTeacherSchedule(secondValue.value)
+      studentWeeklySchedules.value = response.weeks
+      return
+    }
+
+    if (scheduleType.value === 'consults') {
+      const response = await fetchDepartmentConsultations(Number(firstValue.value))
       studentWeeklySchedules.value = response.weeks
       return
     }
@@ -84,17 +131,33 @@ const loadSchedule = async () => {
     studentWeeklySchedules.value = {}
   } catch {
     studentWeeklySchedules.value = {}
-    scheduleLoadError.value = 'Не удалось загрузить расписание'
+
+    if (scheduleType.value !== 'consults') {
+      scheduleLoadError.value = 'Не удалось загрузить расписание'
+    }
   } finally {
     isLoadingSchedule.value = false
   }
 }
 
-watch([scheduleType, secondValue], () => {
+watch([scheduleType, firstValue, secondValue], () => {
   void loadSchedule()
 }, { immediate: true })
 
+const consultationAcademicWeeks = computed(() => buildConsultationAcademicWeeks())
+
 const weeklySchedules = computed(() => {
+  if (scheduleType.value === 'consults' && firstValue.value) {
+    const baseWeeks = Object.fromEntries(
+      consultationAcademicWeeks.value.map((week) => [week.label, [] as DisplayScheduleItem[]]),
+    ) as Record<string, DisplayScheduleItem[]>
+
+    return {
+      ...baseWeeks,
+      ...studentWeeklySchedules.value,
+    }
+  }
+
   if (!secondValue.value) {
     return {}
   }
@@ -102,7 +165,13 @@ const weeklySchedules = computed(() => {
   return studentWeeklySchedules.value
 })
 
-const weekKeys = computed(() => Object.keys(weeklySchedules.value))
+const weekKeys = computed(() => {
+  if (scheduleType.value === 'consults' && firstValue.value) {
+    return consultationAcademicWeeks.value.map((week) => week.label)
+  }
+
+  return Object.keys(weeklySchedules.value)
+})
 
 const parseWeekRange = (key: string) => {
   const parts = key.split(' - ')
@@ -134,9 +203,21 @@ const parseWeekRange = (key: string) => {
 
 const syncWeekIndex = () => {
   const today = new Date()
-
-  // Обнуляем время
   today.setHours(0, 0, 0, 0)
+
+  if (scheduleType.value === 'consults') {
+    const initialIndex = consultationAcademicWeeks.value.findIndex((week) => {
+      const start = new Date(week.start)
+      const end = new Date(week.end)
+      start.setHours(0, 0, 0, 0)
+      end.setHours(0, 0, 0, 0)
+
+      return today >= start && today <= end
+    })
+
+    currentWeekIndex.value = initialIndex !== -1 ? initialIndex : 0
+    return
+  }
 
   const initialIndex = weekKeys.value.findIndex((key) => {
     const { start, end } = parseWeekRange(key)
@@ -157,7 +238,13 @@ watch(weekKeys, syncWeekIndex, { immediate: true })
 
 const currentWeekKey = computed(() => weekKeys.value[currentWeekIndex.value] ?? '')
 const weekLabel = computed(() => currentWeekKey.value)
-const isEmptySchedule = computed(() => !isLoadingSchedule.value && weekKeys.value.length === 0)
+const isEmptySchedule = computed(() => {
+  if (scheduleType.value === 'consults' && firstValue.value) {
+    return false
+  }
+
+  return !isLoadingSchedule.value && weekKeys.value.length === 0
+})
 
 const pageTitle = computed(() => {
   if (scheduleType.value === 'students') {
@@ -172,7 +259,12 @@ const pageTitle = computed(() => {
     return `Расписание аудитории ${secondValue.value}`
   }
 
-  return `Консультации преподавателя ${secondValue.value}`
+  if (scheduleType.value === 'consults') {
+    const startYear = getConsultationAcademicYearStart()
+    return `Консультации кафедры ${departmentName.value} · ${startYear}/${String(startYear + 1).slice(-2)} (сентябрь — июль)`
+  }
+
+  return 'Расписание'
 })
 
 const openModal = (lesson: CellLesson) => {
@@ -213,19 +305,125 @@ const closeEditModal = () => {
   isCreatingLesson.value = false
 }
 
-const saveEdit = () => {
-  // Здесь логика сохранения (API call)
-  console.log('Saving changes:', editForm.value)
+const resolveScheduleGroupName = (): string => {
+  if (scheduleType.value === 'students') {
+    return secondValue.value
+  }
 
-  // Закрываем оба модальных окна
-  closeEditModal()
+  if (editForm.value.group.trim()) {
+    return editForm.value.group.split(',')[0]?.trim() ?? ''
+  }
 
-  // Показываем уведомление (опционально)
-  alert('Изменения сохранены!')
+  return editingLesson.value?.groups[0] ?? editingLesson.value?.group ?? ''
+}
+
+const saveEdit = async () => {
+  if (scheduleType.value !== 'consults') {
+    const groupName = resolveScheduleGroupName()
+    const timeParts = editForm.value.time.split('-').map((part) => part.trim())
+    const startTime = timeParts[0] ?? ''
+    const endTime = timeParts[1] ?? ''
+    const weekStart = getWeekStartFromLabel(currentWeekKey.value)
+    const dayOfWeek = emptyCellData.value
+      ? DAY_TO_NUMBER[emptyCellData.value.day]
+      : editingLesson.value
+        ? DAY_TO_NUMBER[editingLesson.value.day]
+        : undefined
+
+    if (!groupName || !weekStart || !dayOfWeek || !startTime || !endTime || !editForm.value.name.trim()) {
+      alert('Заполните все обязательные поля')
+      return
+    }
+
+    const payload = {
+      subject: editForm.value.name.trim(),
+      lessonType: editForm.value.type.trim(),
+      teacherName: editForm.value.teacher.trim() || undefined,
+      room: editForm.value.room.trim() || undefined,
+      dayOfWeek,
+      startTime,
+      endTime,
+      weekStart,
+      comment: editForm.value.additional.trim() || undefined,
+    }
+
+    try {
+      if (isCreatingLesson.value) {
+        await createScheduleItem({
+          groupName,
+          ...payload,
+        })
+      } else if (editingLesson.value) {
+        await updateScheduleItem(editingLesson.value.id, payload)
+      }
+
+      await loadSchedule()
+      closeEditModal()
+    } catch {
+      alert('Не удалось сохранить занятие')
+    }
+
+    return
+  }
+
+  const departmentId = Number(firstValue.value)
+  if (!departmentId) {
+    alert('Не удалось определить кафедру')
+    return
+  }
+
+  const timeParts = editForm.value.time.split('-').map((part) => part.trim())
+  const startTime = timeParts[0] ?? ''
+  const endTime = timeParts[1] ?? ''
+  const weekStart = getWeekStartFromLabel(currentWeekKey.value)
+  const dayOfWeek = emptyCellData.value
+    ? DAY_TO_NUMBER[emptyCellData.value.day]
+    : editingLesson.value
+      ? DAY_TO_NUMBER[editingLesson.value.day]
+      : undefined
+
+  if (!weekStart || !dayOfWeek || !startTime || !endTime) {
+    alert('Заполните все обязательные поля')
+    return
+  }
+
+  const consultationType = editForm.value.type.includes('Онлайн')
+    ? 'Онлайн-консультация'
+    : 'Консультация'
+
+  try {
+    if (isCreatingLesson.value) {
+      await createConsultation({
+        departmentId,
+        subject: editForm.value.name.trim(),
+        consultationType,
+        dayOfWeek,
+        startTime,
+        endTime,
+        weekStart,
+        room: editForm.value.room.trim() || undefined,
+      })
+    } else if (editingLesson.value) {
+      await updateConsultation(editingLesson.value.id, {
+        subject: editForm.value.name.trim(),
+        consultationType,
+        dayOfWeek,
+        startTime,
+        endTime,
+        weekStart,
+        room: editForm.value.room.trim() || undefined,
+      })
+    }
+
+    await loadSchedule()
+    closeEditModal()
+  } catch {
+    alert('Не удалось сохранить консультацию')
+  }
 }
 
 const showContextMenu = (event: MouseEvent, lesson: CellLesson) => {
-  if (authStore.currentUser?.role !== 'education_department') {
+  if (!canEdit.value) {
     return
   }
 
@@ -252,7 +450,7 @@ const closeMenu = (event?: MouseEvent) => {
 }
 
 const openLessonMenu = (lesson: CellLesson) => {
-  if (authStore.currentUser?.role !== 'education_department') {
+  if (!canEdit.value) {
     return
   }
 
@@ -262,10 +460,7 @@ const openLessonMenu = (lesson: CellLesson) => {
 }
 
 const handleLessonTap = (lesson: CellLesson, event: MouseEvent) => {
-  console.log(authStore.currentUser?.role)
-  console.log(isMobileLayout.value)
-
-  if (isMobileLayout.value && authStore.currentUser?.role === 'education_department') {
+  if (isMobileLayout.value && canEdit.value) {
     event.stopPropagation()
     openLessonMenu(lesson)
     return
@@ -284,7 +479,7 @@ const handleCellTap = (
     return
   }
 
-  if (authStore.currentUser?.role !== 'education_department') {
+  if (!canEdit.value) {
     return
   }
 
@@ -314,18 +509,34 @@ const EditLesson = () => {
   openEditModal()
 }
 
-const cancelLesson = () => {
+const cancelLesson = async () => {
   if (!contextLesson.value) return
 
   const isConfirmed = window.confirm(
-      `Отменить пару "${contextLesson.value.subject}"?`
+      scheduleType.value === 'consults'
+        ? `Удалить консультацию "${contextLesson.value.subject}"?`
+        : `Отменить пару "${contextLesson.value.subject}"?`,
   )
 
   if (!isConfirmed) {
     return
   }
 
-  alert(`Пара "${contextLesson.value.subject}" отменена`)
+  if (scheduleType.value === 'consults') {
+    try {
+      await deleteConsultation(contextLesson.value.id)
+      await loadSchedule()
+    } catch {
+      alert('Не удалось удалить консультацию')
+    }
+  } else {
+    try {
+      await disableScheduleItem(contextLesson.value.id)
+      await loadSchedule()
+    } catch {
+      alert('Не удалось отменить пару')
+    }
+  }
 
   closeMenu()
 }
@@ -340,7 +551,7 @@ const showEmptyContextMenu = (
     day: string,
     time: string
 ) => {
-  if (authStore.currentUser?.role !== 'education_department') {
+  if (!canEdit.value) {
     return
   }
 
@@ -367,12 +578,12 @@ const commandAddLesson = () => {
   isCreatingLesson.value = true
   editForm.value = {
     name: '',
-    type: '',
+    type: scheduleType.value === 'consults' ? 'Консультация' : '',
     group: '',
     teacher: '',
     building: '',
     room: '',
-    time: emptyCellData.value.time,
+    time: `${emptyCellData.value.time} - ${PAIR_END_TIMES[emptyCellData.value.time] ?? ''}`.trim(),
     additional: '',
   }
 
@@ -422,7 +633,14 @@ const getLessons = (day: string, time: string) => {
 
   const lessons = weekData.filter((item) => item.day === day && item.startTime === time)
 
-  if (scheduleType.value !== 'teachers' && scheduleType.value !== 'consults') {
+  if (scheduleType.value === 'consults') {
+    return lessons.map((lesson) => ({
+      ...lesson,
+      groups: lesson.teacher ? [lesson.teacher] : [],
+    }))
+  }
+
+  if (scheduleType.value !== 'teachers') {
     return lessons.map((lesson) => ({
       ...lesson,
       groups: [lesson.group],
@@ -498,6 +716,10 @@ const getTypeName = (type: string) => {
 const getLessonMeta = (lesson: CellLesson) => {
   const subgroupLabel = lesson.subgroup ? `п/гр ${lesson.subgroup} • ` : ''
 
+  if (scheduleType.value === 'consults') {
+    return `${lesson.teacher} • ${lesson.room}`
+  }
+
   if (scheduleType.value === 'students') {
     return `${subgroupLabel}${lesson.teacher} • ${lesson.room}`
   }
@@ -550,7 +772,17 @@ const isParallelCell = (day: string, time: string) => {
 const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
 
 // Проверка, может ли текущий пользователь редактировать
-const canEdit = computed(() => authStore.currentUser?.role === 'education_department')
+const canEdit = computed(() => {
+  if (scheduleType.value === 'consults') {
+    if (authStore.currentUser?.role !== 'teacher') {
+      return false
+    }
+
+    return authStore.currentUser.departmentId === Number(firstValue.value)
+  }
+
+  return authStore.currentUser?.role === 'education_department'
+})
 
 const syncMobileLayout = (queryList: MediaQueryList | MediaQueryListEvent) => {
   isMobileLayout.value = queryList.matches
@@ -577,7 +809,7 @@ onUnmounted(() => {
         <h1 class="title">{{ pageTitle }}</h1>
       </div>
 
-      <div v-if="isLoadingSchedule" class="empty-state">
+      <div v-if="isLoadingSchedule && !isConsultationSchedule" class="empty-state">
         <h2>Загрузка расписания...</h2>
       </div>
 
@@ -691,7 +923,7 @@ onUnmounted(() => {
         <p v-if="scheduleType === 'students'">
           Для группы {{ secondValue }} расписание ещё не загружено учебным отделом.
         </p>
-        <p v-else-if="scheduleType === 'teachers' || scheduleType === 'consults'">
+        <p v-else-if="scheduleType === 'teachers'">
           Для преподавателя {{ secondValue }} расписание ещё не найдено в загруженных файлах.
         </p>
         <p v-else-if="scheduleType === 'auditories'">
@@ -732,7 +964,7 @@ onUnmounted(() => {
             </div>
 
             <div class="modal-info">
-              <p>
+              <p v-if="!isConsultationSchedule">
                 <strong>Группа:</strong>
                 {{ selectedLesson.groups.join(', ') }}
               </p>
@@ -742,7 +974,7 @@ onUnmounted(() => {
                 {{ selectedLesson.teacher }}
               </p>
 
-              <p v-if="selectedLesson.subgroup">
+              <p v-if="selectedLesson.subgroup && !isConsultationSchedule">
                 <strong>Подгруппа:</strong>
                 {{ selectedLesson.subgroup }}
               </p>
@@ -785,15 +1017,21 @@ onUnmounted(() => {
                 <label for="edit-type" class="form-label">Тип занятия</label>
                 <select id="edit-type" v-model="editForm.type" class="form-select">
                   <option value="" disabled>Выберите</option>
-                  <option value="Лекция">Лекция</option>
-                  <option value="Практика">Практика</option>
-                  <option value="Лабораторная">Лабораторная</option>
-                  <option value="Консультация">Консультация</option>
-                  <option value="Зачёт">Зачёт</option>
+                  <template v-if="isConsultationSchedule">
+                    <option value="Консультация">Консультация</option>
+                    <option value="Онлайн-консультация">Онлайн-консультация</option>
+                  </template>
+                  <template v-else>
+                    <option value="Лекция">Лекция</option>
+                    <option value="Практика">Практика</option>
+                    <option value="Лабораторная">Лабораторная</option>
+                    <option value="Консультация">Консультация</option>
+                    <option value="Зачёт">Зачёт</option>
+                  </template>
                 </select>
               </div>
 
-              <div class="form-group">
+              <div v-if="!isConsultationSchedule" class="form-group">
                 <label for="edit-group" class="form-label">Группа</label>
                 <input
                     id="edit-group"
@@ -804,7 +1042,7 @@ onUnmounted(() => {
                 />
               </div>
 
-              <div class="form-group">
+              <div v-if="!isConsultationSchedule" class="form-group">
                 <label for="edit-teacher" class="form-label">Преподаватель</label>
                 <input
                     id="edit-teacher"
@@ -885,8 +1123,8 @@ onUnmounted(() => {
       <!-- Если слот пустой -->
       <template v-if="!contextLesson">
 
-        <li @click="commandAddLesson">
-          Добавить пару
+        <li v-if="canEdit" @click="commandAddLesson">
+          {{ isConsultationSchedule ? 'Добавить консультацию' : 'Добавить пару' }}
         </li>
 
       </template>
@@ -898,12 +1136,12 @@ onUnmounted(() => {
           Просмотр
         </li>
 
-        <li @click="EditLesson">
+        <li v-if="canEdit" @click="EditLesson">
           Внести изменения
         </li>
 
-        <li @click="cancelLesson">
-          Отменить пару
+        <li v-if="canEdit" @click="cancelLesson">
+          {{ isConsultationSchedule ? 'Удалить консультацию' : 'Отменить пару' }}
         </li>
 
       </template>

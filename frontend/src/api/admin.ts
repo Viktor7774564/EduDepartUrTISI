@@ -26,6 +26,7 @@ export type CreateUserPayload = {
   educationForm?: string
   course?: number
   department?: string
+  departmentId?: number
   position?: string
   cabinet?: string
 }
@@ -44,6 +45,7 @@ export type UpdateUserPayload = {
   educationForm?: string
   course?: number
   department?: string
+  departmentId?: number
   position?: string
   cabinet?: string
 }
@@ -70,6 +72,7 @@ function buildUserFormData(payload: UserFormPayload, photo?: File | null): FormD
   appendIfDefined(formData, 'direction', payload.direction)
   appendIfDefined(formData, 'educationForm', payload.educationForm)
   appendIfDefined(formData, 'course', payload.course)
+  appendIfDefined(formData, 'departmentId', payload.departmentId)
   appendIfDefined(formData, 'department', payload.department)
   appendIfDefined(formData, 'position', payload.position)
   appendIfDefined(formData, 'cabinet', payload.cabinet)

@@ -35,6 +35,22 @@ function readRole(body: Record<string, unknown>): RoleCode {
     return role as RoleCode;
 }
 
+function readDepartmentId(body: Record<string, unknown>): number | undefined {
+    const value = readString(body, 'departmentId');
+
+    if (!value) {
+        return undefined;
+    }
+
+    const departmentId = Number(value);
+
+    if (!Number.isInteger(departmentId) || departmentId < 1) {
+        throw new BadRequestException('Некорректная кафедра');
+    }
+
+    return departmentId;
+}
+
 function readCourse(body: Record<string, unknown>): number | undefined {
     const value = readString(body, 'course');
 
@@ -75,6 +91,7 @@ export function parseCreateUserBody(
         direction: readString(body, 'direction'),
         educationForm: readString(body, 'educationForm'),
         course: readCourse(body),
+        departmentId: readDepartmentId(body),
         department: readString(body, 'department'),
         position: readString(body, 'position'),
         cabinet: readString(body, 'cabinet'),
@@ -97,6 +114,7 @@ export function parseUpdateUserBody(
         direction: readString(body, 'direction'),
         educationForm: readString(body, 'educationForm'),
         course: readCourse(body),
+        departmentId: readDepartmentId(body),
         department: readString(body, 'department'),
         position: readString(body, 'position'),
         cabinet: readString(body, 'cabinet'),

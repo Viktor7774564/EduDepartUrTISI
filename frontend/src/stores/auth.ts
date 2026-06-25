@@ -20,6 +20,7 @@ export type AuthUser = {
   course?: number
   position?: string
   department?: string
+  departmentId?: number
   cabinet?: string
 }
 

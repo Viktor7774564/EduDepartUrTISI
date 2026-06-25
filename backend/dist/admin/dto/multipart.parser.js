@@ -26,6 +26,17 @@ function readRole(body) {
     }
     return role;
 }
+function readDepartmentId(body) {
+    const value = readString(body, 'departmentId');
+    if (!value) {
+        return undefined;
+    }
+    const departmentId = Number(value);
+    if (!Number.isInteger(departmentId) || departmentId < 1) {
+        throw new common_1.BadRequestException('Некорректная кафедра');
+    }
+    return departmentId;
+}
 function readCourse(body) {
     const value = readString(body, 'course');
     if (!value) {
@@ -56,6 +67,7 @@ function parseCreateUserBody(body) {
         direction: readString(body, 'direction'),
         educationForm: readString(body, 'educationForm'),
         course: readCourse(body),
+        departmentId: readDepartmentId(body),
         department: readString(body, 'department'),
         position: readString(body, 'position'),
         cabinet: readString(body, 'cabinet'),
@@ -75,6 +87,7 @@ function parseUpdateUserBody(body) {
         direction: readString(body, 'direction'),
         educationForm: readString(body, 'educationForm'),
         course: readCourse(body),
+        departmentId: readDepartmentId(body),
         department: readString(body, 'department'),
         position: readString(body, 'position'),
         cabinet: readString(body, 'cabinet'),

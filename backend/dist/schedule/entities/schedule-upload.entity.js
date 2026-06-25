@@ -13,7 +13,7 @@ exports.ScheduleUpload = exports.ScheduleParseStatus = void 0;
 const typeorm_1 = require("typeorm");
 const user_entity_1 = require("../../users/entities/user.entity");
 const parsed_schedule_lesson_entity_1 = require("./parsed-schedule-lesson.entity");
-const schedule_entity_1 = require("./schedule.entity");
+const schedule_type_enum_1 = require("./schedule-type.enum");
 var ScheduleParseStatus;
 (function (ScheduleParseStatus) {
     ScheduleParseStatus["SUCCESS"] = "success";
@@ -46,7 +46,7 @@ __decorate([
     __metadata("design:type", Number)
 ], ScheduleUpload.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: schedule_entity_1.ScheduleType }),
+    (0, typeorm_1.Column)({ type: 'enum', enum: schedule_type_enum_1.ScheduleType }),
     __metadata("design:type", String)
 ], ScheduleUpload.prototype, "scheduleType", void 0);
 __decorate([

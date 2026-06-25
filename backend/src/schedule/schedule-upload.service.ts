@@ -10,21 +10,19 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 
-import { In, Not, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { getSchedulesDir } from '../config/storage';
-import { ParsedScheduleLesson } from './entities/parsed-schedule-lesson.entity';
 import { ScheduleParseStatus, ScheduleUpload } from './entities/schedule-upload.entity';
-import { ScheduleType } from './entities/schedule.entity';
+import { Schedule, ScheduleType } from './entities/schedule.entity';
+import { ScheduleItem } from './entities/schedule-item.entity';
 import { parseScheduleWorkbook } from './parser/excel-grid.parser';
 import {
     ScheduleLessonSlot,
     validateScheduleConflicts,
 } from './parser/schedule-conflict.validator';
-import {
-    normalizeTime,
-    normalizeWeekStart,
-} from './parser/schedule-slot.utils';
+import { ScheduleImportService } from './schedule-import.service';
+import { mapItemToLessonSlot } from './schedule-item.mapper';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
@@ -68,8 +66,11 @@ export class ScheduleUploadService implements OnModuleInit {
     constructor(
         @InjectRepository(ScheduleUpload)
         private readonly uploadsRepository: Repository<ScheduleUpload>,
-        @InjectRepository(ParsedScheduleLesson)
-        private readonly parsedLessonsRepository: Repository<ParsedScheduleLesson>,
+        @InjectRepository(ScheduleItem)
+        private readonly itemsRepository: Repository<ScheduleItem>,
+        @InjectRepository(Schedule)
+        private readonly schedulesRepository: Repository<Schedule>,
+        private readonly scheduleImportService: ScheduleImportService,
     ) {}
 
     async onModuleInit() {
@@ -140,6 +141,13 @@ export class ScheduleUploadService implements OnModuleInit {
         return value.trim().toUpperCase();
     }
 
+    private toDate(value: string): string {
+        const [day, month, year] = value.split('.');
+        const pad = (part: string) => part.padStart(2, '0');
+
+        return `${year}-${pad(month)}-${pad(day)}`;
+    }
+
     private assertGroupMatches(expectedGroupName: string, parsedGroupName: string): void {
         if (this.normalizeGroupName(expectedGroupName) !== this.normalizeGroupName(parsedGroupName)) {
             throw new BadRequestException({
@@ -179,7 +187,21 @@ export class ScheduleUploadService implements OnModuleInit {
         });
     }
 
+    private async deleteSchedulesByUploadIds(uploadIds: number[]): Promise<void> {
+        if (uploadIds.length === 0) {
+            return;
+        }
+
+        await this.schedulesRepository.delete({
+            uploadId: In(uploadIds),
+        });
+    }
+
     private async removeUploads(uploads: Pick<ScheduleUpload, 'id' | 'storedFileName'>[]): Promise<void> {
+        const uploadIds = uploads.map((upload) => upload.id);
+
+        await this.deleteSchedulesByUploadIds(uploadIds);
+
         for (const obsoleteUpload of uploads) {
             const obsoletePath = join(this.schedulesDir, obsoleteUpload.storedFileName);
             try {
@@ -191,7 +213,7 @@ export class ScheduleUploadService implements OnModuleInit {
 
         if (uploads.length > 0) {
             await this.uploadsRepository.delete({
-                id: In(uploads.map((upload) => upload.id)),
+                id: In(uploadIds),
             });
         }
     }
@@ -222,80 +244,73 @@ export class ScheduleUploadService implements OnModuleInit {
         };
     }
 
-    private mapParsedLesson(uploadId: number, lesson: ScheduleLessonSlot): ParsedScheduleLesson {
-        return this.parsedLessonsRepository.create({
-            uploadId,
-            groupName: lesson.groupName,
-            dayOfWeek: lesson.dayOfWeek,
-            startTime: lesson.startTime,
-            endTime: lesson.endTime,
-            weekStart: lesson.weekStart,
-            subgroup: lesson.subgroup,
-            subject: lesson.subject,
-            lessonType: lesson.lessonType,
-            teacherPosition: lesson.teacherPosition || null,
-            teacherName: lesson.teacherName,
-            room: lesson.room,
-            isDistance: lesson.isDistance,
-            isSameCellParallel: lesson.isSameCellParallel,
-        });
-    }
+    private async loadScheduleItems(
+        excludeUploadIds: number[] = [],
+        groupName?: string,
+        excludePeriod?: { validFrom: string; validTo: string },
+    ): Promise<ScheduleItem[]> {
+        const qb = this.itemsRepository
+            .createQueryBuilder('item')
+            .innerJoinAndSelect('item.schedule', 'schedule')
+            .innerJoinAndSelect('schedule.group', 'group')
+            .leftJoinAndSelect('item.subject', 'subject')
+            .leftJoinAndSelect('item.subgroup', 'subgroup')
+            .leftJoinAndSelect('item.lessonType', 'lessonType')
+            .leftJoinAndSelect('item.teacher', 'teacher')
+            .leftJoinAndSelect('item.room', 'room')
+            .where('item.isDisabled = false')
+            .andWhere('schedule.isActive = true');
 
-    private mapLessonSlot(lesson: ParsedScheduleLesson): ScheduleLessonSlot {
-        return {
-            groupName: lesson.groupName,
-            dayOfWeek: lesson.dayOfWeek,
-            startTime: normalizeTime(String(lesson.startTime)),
-            endTime: normalizeTime(String(lesson.endTime)),
-            weekStart: normalizeWeekStart(String(lesson.weekStart)),
-            subgroup: lesson.subgroup,
-            isDistance: lesson.isDistance,
-            subject: lesson.subject,
-            lessonType: lesson.lessonType,
-            teacherPosition: lesson.teacherPosition ?? '',
-            teacherName: lesson.teacherName,
-            room: lesson.room,
-            isSameCellParallel: lesson.isSameCellParallel,
-        };
+        if (groupName) {
+            qb.andWhere('UPPER(TRIM(group.name)) = :groupName', {
+                groupName: this.normalizeGroupName(groupName),
+            });
+        }
+
+        if (excludeUploadIds.length > 0) {
+            qb.andWhere(
+                '(schedule.uploadId IS NULL OR schedule.uploadId NOT IN (:...excludeUploadIds))',
+                { excludeUploadIds },
+            );
+        }
+
+        if (excludePeriod) {
+            qb.andWhere(
+                'NOT (schedule.validFrom = :validFrom AND schedule.validTo = :validTo)',
+                excludePeriod,
+            );
+        }
+
+        return qb.getMany();
     }
 
     private async loadExistingLessons(
         groupName: string,
         excludeUploadIds: number[] = [],
+        excludePeriod?: { validFrom: string; validTo: string },
     ): Promise<ScheduleLessonSlot[]> {
-        const uploads = await this.uploadsRepository.find({
-            where: {
-                groupName,
-                parseStatus: ScheduleParseStatus.SUCCESS,
-                ...(excludeUploadIds.length > 0 ? { id: Not(In(excludeUploadIds)) } : {}),
-            },
-            select: ['id'],
-        });
+        const items = await this.loadScheduleItems(
+            excludeUploadIds,
+            groupName,
+            excludePeriod,
+        );
 
-        if (uploads.length === 0) {
-            return [];
-        }
-
-        const lessons = await this.parsedLessonsRepository.find({
-            where: {
-                uploadId: In(uploads.map((upload) => upload.id)),
-            },
-        });
-
-        return lessons.map((lesson) => this.mapLessonSlot(lesson));
+        return items.map((item) => mapItemToLessonSlot(item));
     }
 
-    private async loadOtherGroupsLessons(groupName: string): Promise<ScheduleLessonSlot[]> {
+    private async loadOtherGroupsLessons(
+        groupName: string,
+        excludeUploadIds: number[] = [],
+    ): Promise<ScheduleLessonSlot[]> {
         const normalizedGroupName = this.normalizeGroupName(groupName);
 
-        const lessons = await this.parsedLessonsRepository
-            .createQueryBuilder('lesson')
-            .where('UPPER(TRIM(lesson.groupName)) <> :groupName', {
-                groupName: normalizedGroupName,
-            })
-            .getMany();
+        const items = await this.loadScheduleItems(excludeUploadIds);
 
-        return lessons.map((lesson) => this.mapLessonSlot(lesson));
+        return items
+            .filter((item) =>
+                this.normalizeGroupName(item.schedule.group?.name ?? '') !== normalizedGroupName,
+            )
+            .map((item) => mapItemToLessonSlot(item));
     }
 
     async listUploads(): Promise<ScheduleUploadResponse[]> {
@@ -303,6 +318,26 @@ export class ScheduleUploadService implements OnModuleInit {
             relations: ['uploadedBy'],
             order: { uploadedAt: 'DESC' },
         });
+
+        for (const upload of uploads) {
+            if (upload.parseStatus !== ScheduleParseStatus.SUCCESS) {
+                continue;
+            }
+
+            const importWarnings = await this.scheduleImportService.refreshUploadReferences(
+                upload.id,
+            );
+            const mergedWarnings = ScheduleImportService.mergeStoredWarnings(
+                upload.parseWarnings,
+                importWarnings,
+            );
+            const nextWarnings = mergedWarnings.length > 0 ? mergedWarnings : null;
+
+            if (JSON.stringify(upload.parseWarnings ?? []) !== JSON.stringify(nextWarnings ?? [])) {
+                upload.parseWarnings = nextWarnings;
+                await this.uploadsRepository.save(upload);
+            }
+        }
 
         return uploads.map((upload) => this.toResponse(upload));
     }
@@ -337,12 +372,20 @@ export class ScheduleUploadService implements OnModuleInit {
             parsed.periodEnd!,
         );
         const obsoleteUploadIds = obsoleteUploads.map((upload) => upload.id);
+        const excludePeriod = {
+            validFrom: this.toDate(parsed.periodStart!),
+            validTo: this.toDate(parsed.periodEnd!),
+        };
 
         const existingSameGroupLessons = await this.loadExistingLessons(
             parsed.groupName,
             obsoleteUploadIds,
+            excludePeriod,
         );
-        const otherGroupsLessons = await this.loadOtherGroupsLessons(parsed.groupName);
+        const otherGroupsLessons = await this.loadOtherGroupsLessons(
+            parsed.groupName,
+            obsoleteUploadIds,
+        );
         const conflicts = validateScheduleConflicts(
             parsed.lessons,
             [...existingSameGroupLessons, ...otherGroupsLessons],
@@ -387,9 +430,16 @@ export class ScheduleUploadService implements OnModuleInit {
 
         const savedUpload = await this.uploadsRepository.save(upload);
 
-        await this.parsedLessonsRepository.save(
-            parsed.lessons.map((lesson) => this.mapParsedLesson(savedUpload.id, lesson)),
+        const importResult = await this.scheduleImportService.importParsedSchedule(
+            parsed,
+            savedUpload,
         );
+
+        savedUpload.lessonsCount = importResult.itemsCount;
+        savedUpload.parseWarnings = importResult.warnings.length > 0
+            ? importResult.warnings
+            : null;
+        await this.uploadsRepository.save(savedUpload);
 
         const uploadWithUser = await this.uploadsRepository.findOne({
             where: { id: savedUpload.id },
@@ -409,6 +459,8 @@ export class ScheduleUploadService implements OnModuleInit {
         if (!upload) {
             throw new NotFoundException('Файл не найден');
         }
+
+        await this.deleteSchedulesByUploadIds([id]);
 
         const filePath = join(this.schedulesDir, upload.storedFileName);
 

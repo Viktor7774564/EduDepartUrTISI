@@ -15,6 +15,7 @@ export interface ScheduleLessonSlot {
     subgroup: number | null;
     isDistance: boolean;
     isSameCellParallel: boolean;
+    isSharedMultiHall?: boolean;
     subject: string;
     lessonType: string;
     teacherPosition: string;
@@ -70,6 +71,13 @@ function hasSameRoom(first: ScheduleLessonSlot, second: ScheduleLessonSlot): boo
     return Boolean(firstRoom && secondRoom && firstRoom === secondRoom);
 }
 
+function isSharedHall(first: ScheduleLessonSlot, second: ScheduleLessonSlot): boolean {
+    return first.isSharedMultiHall === true
+        || second.isSharedMultiHall === true
+        || isSharedMultiHallRoom(first.room)
+        || isSharedMultiHallRoom(second.room);
+}
+
 function formatDayLabel(dayOfWeek: number): string {
     return DAY_LABELS[dayOfWeek] ?? String(dayOfWeek);
 }
@@ -112,7 +120,7 @@ export function validateScheduleConflicts(
                 continue;
             }
 
-            if (isSharedMultiHallRoom(first.room) || isSharedMultiHallRoom(second.room)) {
+            if (isSharedHall(first, second)) {
                 continue;
             }
 

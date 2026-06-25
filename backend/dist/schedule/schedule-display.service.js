@@ -16,25 +16,26 @@ exports.ScheduleDisplayService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
-const parsed_schedule_lesson_entity_1 = require("./entities/parsed-schedule-lesson.entity");
-const schedule_upload_entity_1 = require("./entities/schedule-upload.entity");
+const schedule_item_entity_1 = require("./entities/schedule-item.entity");
 const schedule_entity_1 = require("./entities/schedule.entity");
-const DAY_LABELS = {
-    1: 'ПН',
-    2: 'ВТ',
-    3: 'СР',
-    4: 'ЧТ',
-    5: 'ПТ',
-    6: 'СБ',
-    7: 'ВС',
-};
+const schedule_item_mapper_1 = require("./schedule-item.mapper");
 const BUILDING_OPTIONS = ['УК1', 'УК2', 'УК3', 'УК4', 'УК5'];
+const ITEM_RELATIONS = [
+    'schedule',
+    'schedule.group',
+    'schedule.upload',
+    'subject',
+    'subgroup',
+    'lessonType',
+    'teacher',
+    'room',
+];
 let ScheduleDisplayService = class ScheduleDisplayService {
-    parsedLessonsRepository;
-    uploadsRepository;
-    constructor(parsedLessonsRepository, uploadsRepository) {
-        this.parsedLessonsRepository = parsedLessonsRepository;
-        this.uploadsRepository = uploadsRepository;
+    itemsRepository;
+    schedulesRepository;
+    constructor(itemsRepository, schedulesRepository) {
+        this.itemsRepository = itemsRepository;
+        this.schedulesRepository = schedulesRepository;
     }
     normalizeText(value) {
         return value.trim().toUpperCase();
@@ -57,49 +58,39 @@ let ScheduleDisplayService = class ScheduleDisplayService {
         const pad = (part) => String(part).padStart(2, '0');
         return `${pad(start.getDate())}.${pad(start.getMonth() + 1)} - ${pad(end.getDate())}.${pad(end.getMonth() + 1)}`;
     }
-    formatTime(value) {
-        return value.slice(0, 5);
-    }
-    formatRoom(lesson) {
-        if (lesson.room?.trim()) {
-            return lesson.room.trim();
-        }
-        if (lesson.isDistance) {
-            return 'дист. форм. об.';
-        }
-        return '';
-    }
-    mapLesson(lesson) {
-        return {
-            id: lesson.id,
-            day: DAY_LABELS[lesson.dayOfWeek] ?? '',
-            startTime: this.formatTime(lesson.startTime),
-            endTime: this.formatTime(lesson.endTime),
-            subject: lesson.subject,
-            teacher: lesson.teacherName,
-            type: lesson.lessonType,
-            room: this.formatRoom(lesson),
-            group: lesson.groupName,
-            subgroup: lesson.subgroup,
-            isSameCellParallel: lesson.isSameCellParallel,
-        };
-    }
-    buildWeeksFromLessons(lessons) {
+    buildWeeksFromItems(items) {
         const weeks = new Map();
         const weekOrder = [];
-        for (const lesson of lessons) {
-            const weekLabel = this.formatWeekLabel(String(lesson.weekStart));
+        for (const item of items) {
+            const weekLabel = this.formatWeekLabel(String(item.weekStart));
             if (!weeks.has(weekLabel)) {
                 weeks.set(weekLabel, []);
                 weekOrder.push(weekLabel);
             }
-            weeks.get(weekLabel)?.push(this.mapLesson(lesson));
+            weeks.get(weekLabel)?.push((0, schedule_item_mapper_1.mapItemToDisplayLesson)(item));
         }
         const orderedWeeks = {};
         for (const weekLabel of weekOrder) {
             orderedWeeks[weekLabel] = weeks.get(weekLabel) ?? [];
         }
         return orderedWeeks;
+    }
+    baseItemsQuery() {
+        return this.itemsRepository
+            .createQueryBuilder('item')
+            .innerJoinAndSelect('item.schedule', 'schedule')
+            .innerJoinAndSelect('schedule.group', 'group')
+            .leftJoinAndSelect('schedule.upload', 'upload')
+            .leftJoinAndSelect('item.subject', 'subject')
+            .leftJoinAndSelect('item.subgroup', 'subgroup')
+            .leftJoinAndSelect('item.lessonType', 'lessonType')
+            .leftJoinAndSelect('item.teacher', 'teacher')
+            .leftJoinAndSelect('item.room', 'room')
+            .where('item.isDisabled = false')
+            .andWhere('schedule.isActive = true')
+            .orderBy('item.weekStart', 'ASC')
+            .addOrderBy('item.dayOfWeek', 'ASC')
+            .addOrderBy('item.startTime', 'ASC');
     }
     getBuildingFromRoom(room) {
         const normalized = room.trim().toUpperCase();
@@ -143,37 +134,25 @@ let ScheduleDisplayService = class ScheduleDisplayService {
     isDistanceRoom(room) {
         return /дист/i.test(room);
     }
-    async getDistinctRooms() {
-        const rows = await this.parsedLessonsRepository
-            .createQueryBuilder('lesson')
-            .select('DISTINCT lesson.room', 'room')
-            .where('lesson.room IS NOT NULL')
-            .andWhere("TRIM(lesson.room) <> ''")
-            .getRawMany();
-        return rows
-            .map((row) => row.room?.trim())
-            .filter((room) => Boolean(room) && !this.isDistanceRoom(room))
-            .sort((left, right) => left.localeCompare(right, 'ru', { sensitivity: 'base', numeric: true }));
-    }
     async listGroups() {
-        const uploads = await this.uploadsRepository.find({
+        const schedules = await this.schedulesRepository.find({
             where: {
-                parseStatus: schedule_upload_entity_1.ScheduleParseStatus.SUCCESS,
                 scheduleType: schedule_entity_1.ScheduleType.STUDENT,
+                isActive: true,
             },
-            select: ['groupName', 'facultyName'],
-            order: { uploadedAt: 'DESC' },
+            relations: ['group', 'upload'],
+            order: { validFrom: 'DESC' },
         });
         const groups = new Map();
-        for (const upload of uploads) {
-            if (!upload.groupName) {
+        for (const schedule of schedules) {
+            if (!schedule.group?.name) {
                 continue;
             }
-            const key = this.normalizeText(upload.groupName);
+            const key = this.normalizeText(schedule.group.name);
             if (!groups.has(key)) {
                 groups.set(key, {
-                    groupName: upload.groupName,
-                    facultyName: upload.facultyName,
+                    groupName: schedule.group.name,
+                    facultyName: schedule.upload?.facultyName ?? null,
                 });
             }
         }
@@ -184,49 +163,52 @@ let ScheduleDisplayService = class ScheduleDisplayService {
     }
     async getGroupSchedule(groupName) {
         const normalizedGroupName = this.normalizeText(groupName);
-        const lessons = await this.parsedLessonsRepository
-            .createQueryBuilder('lesson')
-            .where('UPPER(TRIM(lesson.groupName)) = :groupName', {
+        const items = await this.baseItemsQuery()
+            .andWhere('UPPER(TRIM(group.name)) = :groupName', {
             groupName: normalizedGroupName,
         })
-            .orderBy('lesson.weekStart', 'ASC')
-            .addOrderBy('lesson.dayOfWeek', 'ASC')
-            .addOrderBy('lesson.startTime', 'ASC')
             .getMany();
         return {
-            groupName: lessons[0]?.groupName ?? groupName.trim(),
-            weeks: this.buildWeeksFromLessons(lessons),
+            groupName: items[0]?.schedule?.group?.name ?? groupName.trim(),
+            weeks: this.buildWeeksFromItems(items),
         };
     }
     async listTeachers() {
-        const rows = await this.parsedLessonsRepository
-            .createQueryBuilder('lesson')
-            .select('DISTINCT lesson.teacherName', 'teacherName')
-            .where("TRIM(lesson.teacherName) <> ''")
-            .orderBy('lesson.teacherName', 'ASC')
-            .getRawMany();
-        return rows
-            .map((row) => row.teacherName?.trim())
-            .filter((teacher) => Boolean(teacher));
+        const items = await this.baseItemsQuery().getMany();
+        const teachers = new Set();
+        for (const item of items) {
+            if (item.teacher) {
+                teachers.add((0, schedule_item_mapper_1.formatTeacherName)(item.teacher));
+                continue;
+            }
+            const legacyName = item.legacyTeacherName?.trim();
+            if (legacyName) {
+                teachers.add(legacyName);
+            }
+        }
+        return Array.from(teachers).sort((left, right) => left.localeCompare(right, 'ru', { sensitivity: 'base' }));
     }
     async getTeacherSchedule(teacherName) {
         const normalizedTeacherName = this.normalizeText(teacherName);
-        const lessons = await this.parsedLessonsRepository
-            .createQueryBuilder('lesson')
-            .where('UPPER(TRIM(lesson.teacherName)) = :teacherName', {
-            teacherName: normalizedTeacherName,
-        })
-            .orderBy('lesson.weekStart', 'ASC')
-            .addOrderBy('lesson.dayOfWeek', 'ASC')
-            .addOrderBy('lesson.startTime', 'ASC')
-            .getMany();
+        const items = await this.baseItemsQuery().getMany();
+        const matchedItems = items.filter((item) => {
+            const resolvedName = item.teacher
+                ? (0, schedule_item_mapper_1.formatTeacherName)(item.teacher)
+                : item.legacyTeacherName?.trim() ?? '';
+            return this.normalizeText(resolvedName) === normalizedTeacherName;
+        });
+        const resolvedTeacherName = matchedItems[0]
+            ? (matchedItems[0].teacher
+                ? (0, schedule_item_mapper_1.formatTeacherName)(matchedItems[0].teacher)
+                : matchedItems[0].legacyTeacherName?.trim() ?? teacherName.trim())
+            : teacherName.trim();
         return {
-            teacherName: lessons[0]?.teacherName ?? teacherName.trim(),
-            weeks: this.buildWeeksFromLessons(lessons),
+            teacherName: resolvedTeacherName,
+            weeks: this.buildWeeksFromItems(matchedItems),
         };
     }
     async listBuildings() {
-        const rooms = await this.getDistinctRooms();
+        const rooms = await this.listRooms();
         const buildings = new Set();
         for (const room of rooms) {
             const building = this.getBuildingFromRoom(room);
@@ -237,35 +219,38 @@ let ScheduleDisplayService = class ScheduleDisplayService {
         return BUILDING_OPTIONS.filter((building) => buildings.has(building));
     }
     async listRooms(building) {
-        const rooms = await this.getDistinctRooms();
+        const items = await this.baseItemsQuery().getMany();
+        const rooms = new Set();
+        for (const item of items) {
+            const label = (0, schedule_item_mapper_1.formatRoomLabel)(item.room);
+            if (label && !this.isDistanceRoom(label)) {
+                rooms.add(label);
+            }
+        }
+        const roomList = Array.from(rooms).sort((left, right) => left.localeCompare(right, 'ru', { sensitivity: 'base', numeric: true }));
         if (!building?.trim()) {
-            return rooms;
+            return roomList;
         }
         const normalizedBuilding = building.trim().toUpperCase();
-        return rooms.filter((room) => this.getBuildingFromRoom(room)?.toUpperCase() === normalizedBuilding);
+        return roomList.filter((room) => this.getBuildingFromRoom(room)?.toUpperCase() === normalizedBuilding);
     }
     async getRoomSchedule(roomName) {
         const normalizedRoomName = this.normalizeText(roomName);
-        const lessons = await this.parsedLessonsRepository
-            .createQueryBuilder('lesson')
-            .where('UPPER(TRIM(lesson.room)) = :roomName', {
-            roomName: normalizedRoomName,
-        })
-            .orderBy('lesson.weekStart', 'ASC')
-            .addOrderBy('lesson.dayOfWeek', 'ASC')
-            .addOrderBy('lesson.startTime', 'ASC')
-            .getMany();
+        const items = await this.baseItemsQuery().getMany();
+        const matchedItems = items.filter((item) => this.normalizeText((0, schedule_item_mapper_1.formatRoomLabel)(item.room)) === normalizedRoomName);
         return {
-            room: lessons[0]?.room?.trim() ?? roomName.trim(),
-            weeks: this.buildWeeksFromLessons(lessons),
+            room: matchedItems[0]
+                ? (0, schedule_item_mapper_1.formatRoomLabel)(matchedItems[0].room)
+                : roomName.trim(),
+            weeks: this.buildWeeksFromItems(matchedItems),
         };
     }
 };
 exports.ScheduleDisplayService = ScheduleDisplayService;
 exports.ScheduleDisplayService = ScheduleDisplayService = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, typeorm_1.InjectRepository)(parsed_schedule_lesson_entity_1.ParsedScheduleLesson)),
-    __param(1, (0, typeorm_1.InjectRepository)(schedule_upload_entity_1.ScheduleUpload)),
+    __param(0, (0, typeorm_1.InjectRepository)(schedule_item_entity_1.ScheduleItem)),
+    __param(1, (0, typeorm_1.InjectRepository)(schedule_entity_1.Schedule)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository])
 ], ScheduleDisplayService);

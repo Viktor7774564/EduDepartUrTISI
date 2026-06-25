@@ -12,6 +12,7 @@ export declare class UpdateUserDto {
     direction?: string;
     educationForm?: string;
     course?: number;
+    departmentId?: number;
     department?: string;
     position?: string;
     cabinet?: string;
@@ -22,6 +23,7 @@ export type UserProfileInput = {
     direction?: string;
     educationForm?: string;
     course?: number;
+    departmentId?: number;
     department?: string;
     position?: string;
     cabinet?: string;

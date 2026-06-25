@@ -18,6 +18,7 @@ let Room = class Room {
     number;
     name;
     isOnline;
+    isSharedMultiHall;
     scheduleItems;
 };
 exports.Room = Room;
@@ -41,6 +42,10 @@ __decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], Room.prototype, "isOnline", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], Room.prototype, "isSharedMultiHall", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => schedule_item_entity_1.ScheduleItem, (item) => item.room),
     __metadata("design:type", Array)

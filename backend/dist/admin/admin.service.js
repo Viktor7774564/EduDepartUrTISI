@@ -57,6 +57,7 @@ const role_entity_1 = require("../users/entities/role.entity");
 const student_profile_entity_1 = require("../users/entities/student-profile.entity");
 const teacher_profile_entity_1 = require("../users/entities/teacher-profile.entity");
 const staff_profile_entity_1 = require("../users/entities/staff-profile.entity");
+const departments_service_1 = require("../academic/departments.service");
 const department_entity_1 = require("../academic/entities/department.entity");
 const direction_entity_1 = require("../academic/entities/direction.entity");
 const group_entity_1 = require("../academic/entities/group.entity");
@@ -68,6 +69,7 @@ let AdminService = class AdminService {
     sessionsService;
     sessionsNotifier;
     avatarService;
+    departmentsService;
     roleRepository;
     refreshTokenRepository;
     studentProfileRepository;
@@ -76,11 +78,12 @@ let AdminService = class AdminService {
     departmentRepository;
     directionRepository;
     groupRepository;
-    constructor(usersService, sessionsService, sessionsNotifier, avatarService, roleRepository, refreshTokenRepository, studentProfileRepository, teacherProfileRepository, staffProfileRepository, departmentRepository, directionRepository, groupRepository) {
+    constructor(usersService, sessionsService, sessionsNotifier, avatarService, departmentsService, roleRepository, refreshTokenRepository, studentProfileRepository, teacherProfileRepository, staffProfileRepository, departmentRepository, directionRepository, groupRepository) {
         this.usersService = usersService;
         this.sessionsService = sessionsService;
         this.sessionsNotifier = sessionsNotifier;
         this.avatarService = avatarService;
+        this.departmentsService = departmentsService;
         this.roleRepository = roleRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.studentProfileRepository = studentProfileRepository;
@@ -225,7 +228,7 @@ let AdminService = class AdminService {
             }
         }
         if (dto.role === role_entity_1.RoleCode.TEACHER) {
-            if (!dto.position?.trim() || !dto.department?.trim()) {
+            if (!dto.position?.trim() || !dto.departmentId) {
                 throw new common_1.BadRequestException('Для преподавателя нужны должность и кафедра');
             }
         }
@@ -267,7 +270,7 @@ let AdminService = class AdminService {
         });
     }
     async createTeacherProfile(userId, dto) {
-        const department = await this.findOrCreateDepartment(dto.department.trim());
+        const department = await this.departmentsService.resolveTeacherDepartmentId(dto.departmentId);
         await this.teacherProfileRepository.save({
             userId,
             departmentId: department.id,
@@ -312,7 +315,7 @@ let AdminService = class AdminService {
                     await this.createTeacherProfile(userId, dto);
                     return;
                 }
-                const department = await this.findOrCreateDepartment(dto.department.trim());
+                const department = await this.departmentsService.resolveTeacherDepartmentId(dto.departmentId);
                 await this.teacherProfileRepository.update(profile.id, {
                     departmentId: department.id,
                     position: dto.position.trim(),
@@ -411,18 +414,19 @@ let AdminService = class AdminService {
 exports.AdminService = AdminService;
 exports.AdminService = AdminService = __decorate([
     (0, common_1.Injectable)(),
-    __param(4, (0, typeorm_1.InjectRepository)(role_entity_1.Role)),
-    __param(5, (0, typeorm_1.InjectRepository)(refresh_token_entity_1.RefreshToken)),
-    __param(6, (0, typeorm_1.InjectRepository)(student_profile_entity_1.StudentProfile)),
-    __param(7, (0, typeorm_1.InjectRepository)(teacher_profile_entity_1.TeacherProfile)),
-    __param(8, (0, typeorm_1.InjectRepository)(staff_profile_entity_1.StaffProfile)),
-    __param(9, (0, typeorm_1.InjectRepository)(department_entity_1.Department)),
-    __param(10, (0, typeorm_1.InjectRepository)(direction_entity_1.Direction)),
-    __param(11, (0, typeorm_1.InjectRepository)(group_entity_1.Group)),
+    __param(5, (0, typeorm_1.InjectRepository)(role_entity_1.Role)),
+    __param(6, (0, typeorm_1.InjectRepository)(refresh_token_entity_1.RefreshToken)),
+    __param(7, (0, typeorm_1.InjectRepository)(student_profile_entity_1.StudentProfile)),
+    __param(8, (0, typeorm_1.InjectRepository)(teacher_profile_entity_1.TeacherProfile)),
+    __param(9, (0, typeorm_1.InjectRepository)(staff_profile_entity_1.StaffProfile)),
+    __param(10, (0, typeorm_1.InjectRepository)(department_entity_1.Department)),
+    __param(11, (0, typeorm_1.InjectRepository)(direction_entity_1.Direction)),
+    __param(12, (0, typeorm_1.InjectRepository)(group_entity_1.Group)),
     __metadata("design:paramtypes", [users_service_1.UsersService,
         sessions_service_1.SessionsService,
         sessions_notifier_service_1.SessionsNotifierService,
         avatar_service_1.AvatarService,
+        departments_service_1.DepartmentsService,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

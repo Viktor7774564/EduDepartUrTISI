@@ -17,6 +17,7 @@ import { Role, RoleCode } from '../users/entities/role.entity';
 import { StudentProfile } from '../users/entities/student-profile.entity';
 import { TeacherProfile } from '../users/entities/teacher-profile.entity';
 import { StaffProfile } from '../users/entities/staff-profile.entity';
+import { DepartmentsService } from '../academic/departments.service';
 import { Department } from '../academic/entities/department.entity';
 import { Direction } from '../academic/entities/direction.entity';
 import { EducationForm, Group } from '../academic/entities/group.entity';
@@ -40,6 +41,7 @@ export class AdminService {
         private readonly sessionsService: SessionsService,
         private readonly sessionsNotifier: SessionsNotifierService,
         private readonly avatarService: AvatarService,
+        private readonly departmentsService: DepartmentsService,
 
         @InjectRepository(Role)
         private readonly roleRepository: Repository<Role>,
@@ -284,6 +286,7 @@ export class AdminService {
         group?: string;
         direction?: string;
         course?: number;
+        departmentId?: number;
         department?: string;
         position?: string;
     }): void {
@@ -296,7 +299,7 @@ export class AdminService {
         }
 
         if (dto.role === RoleCode.TEACHER) {
-            if (!dto.position?.trim() || !dto.department?.trim()) {
+            if (!dto.position?.trim() || !dto.departmentId) {
                 throw new BadRequestException(
                     'Для преподавателя нужны должность и кафедра',
                 );
@@ -370,8 +373,8 @@ export class AdminService {
         userId: number,
         dto: CreateUserDto | UpdateUserDto,
     ): Promise<void> {
-        const department = await this.findOrCreateDepartment(
-            dto.department!.trim(),
+        const department = await this.departmentsService.resolveTeacherDepartmentId(
+            dto.departmentId!,
         );
 
         await this.teacherProfileRepository.save({
@@ -442,8 +445,8 @@ export class AdminService {
                     return;
                 }
 
-                const department = await this.findOrCreateDepartment(
-                    dto.department!.trim(),
+                const department = await this.departmentsService.resolveTeacherDepartmentId(
+                    dto.departmentId!,
                 );
 
                 await this.teacherProfileRepository.update(profile.id, {

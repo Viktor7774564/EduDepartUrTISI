@@ -18,8 +18,8 @@ export declare class ScheduleItem {
     subgroup: Subgroup | null;
     lessonTypeId: number;
     lessonType: LessonType;
-    teacherId: number;
-    teacher: User;
+    teacherId: number | null;
+    teacher: User | null;
     roomId: number | null;
     room: Room | null;
     dayOfWeek: number;
@@ -27,4 +27,9 @@ export declare class ScheduleItem {
     endTime: string;
     weekType: WeekType | null;
     comment: string | null;
+    weekStart: string;
+    isDisabled: boolean;
+    isSameCellParallel: boolean;
+    teacherPosition: string | null;
+    legacyTeacherName: string | null;
 }

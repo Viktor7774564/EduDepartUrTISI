@@ -8,7 +8,6 @@ export interface ParsedLessonPart {
 }
 
 const TEACHER_POSITIONS = [
-    'преподаватель высш. кат.',
     'ст. преподаватель',
     'доцент',
     'профессор',
@@ -246,7 +245,7 @@ export function isDistanceRoom(room: string | null | undefined): boolean {
     return /дист/i.test(room);
 }
 
-export function isSharedMultiHallRoom(room: string | null | undefined): boolean {
+export function isAuditoriumRoomLabel(room: string | null | undefined): boolean {
     if (!room?.trim()) {
         return false;
     }
@@ -261,11 +260,11 @@ export function isSharedMultiHallRoom(room: string | null | undefined): boolean 
         return true;
     }
 
-    if (/С\s*\/\s*З/.test(normalized)) {
+    if (/\bС\s*\/\s*З\b/.test(normalized)) {
         return true;
     }
 
-    if (/Т\s*\/\s*З/.test(normalized)) {
+    if (/\bТ\s*\/\s*З\b/.test(normalized)) {
         return true;
     }
 
@@ -274,4 +273,40 @@ export function isSharedMultiHallRoom(room: string | null | undefined): boolean 
     }
 
     return false;
+}
+
+export function isSharedMultiHallRoom(room: string | null | undefined): boolean {
+    return isAuditoriumRoomLabel(room);
+}
+
+export function splitRoomForSubgroups(
+    room: string | null | undefined,
+    partsCount: number,
+): (string | null)[] {
+    const count = Math.max(partsCount, 1);
+
+    if (!room?.trim()) {
+        return Array.from({ length: count }, () => null);
+    }
+
+    const trimmed = room.trim();
+
+    if (isAuditoriumRoomLabel(trimmed)) {
+        return Array.from({ length: count }, () => trimmed);
+    }
+
+    if (count <= 1) {
+        return [trimmed];
+    }
+
+    const slashParts = trimmed
+        .split(/\s*\/\s*/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+    if (slashParts.length === count && !slashParts.some((part) => isAuditoriumRoomLabel(part))) {
+        return slashParts;
+    }
+
+    return Array.from({ length: count }, () => trimmed);
 }

@@ -9,6 +9,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AcademicModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const departments_controller_1 = require("./departments.controller");
+const departments_seed_service_1 = require("./departments-seed.service");
+const departments_service_1 = require("./departments.service");
 const department_entity_1 = require("./entities/department.entity");
 const direction_entity_1 = require("./entities/direction.entity");
 const group_entity_1 = require("./entities/group.entity");
@@ -28,7 +31,9 @@ exports.AcademicModule = AcademicModule = __decorate([
                 subject_entity_1.Subject,
             ]),
         ],
-        exports: [typeorm_1.TypeOrmModule],
+        controllers: [departments_controller_1.DepartmentsController],
+        providers: [departments_service_1.DepartmentsService, departments_seed_service_1.DepartmentsSeedService],
+        exports: [typeorm_1.TypeOrmModule, departments_service_1.DepartmentsService],
     })
 ], AcademicModule);
 //# sourceMappingURL=academic.module.js.map

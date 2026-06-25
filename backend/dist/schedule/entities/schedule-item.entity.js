@@ -41,6 +41,11 @@ let ScheduleItem = class ScheduleItem {
     endTime;
     weekType;
     comment;
+    weekStart;
+    isDisabled;
+    isSameCellParallel;
+    teacherPosition;
+    legacyTeacherName;
 };
 exports.ScheduleItem = ScheduleItem;
 __decorate([
@@ -84,13 +89,13 @@ __decorate([
     __metadata("design:type", lesson_type_entity_1.LessonType)
 ], ScheduleItem.prototype, "lessonType", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Object)
 ], ScheduleItem.prototype, "teacherId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { nullable: false }),
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { nullable: true }),
     (0, typeorm_1.JoinColumn)({ name: 'teacherId' }),
-    __metadata("design:type", user_entity_1.User)
+    __metadata("design:type", Object)
 ], ScheduleItem.prototype, "teacher", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
@@ -121,6 +126,26 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)
 ], ScheduleItem.prototype, "comment", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'date' }),
+    __metadata("design:type", String)
+], ScheduleItem.prototype, "weekStart", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'boolean', default: false }),
+    __metadata("design:type", Boolean)
+], ScheduleItem.prototype, "isDisabled", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], ScheduleItem.prototype, "isSameCellParallel", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
+    __metadata("design:type", Object)
+], ScheduleItem.prototype, "teacherPosition", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
+    __metadata("design:type", Object)
+], ScheduleItem.prototype, "legacyTeacherName", void 0);
 exports.ScheduleItem = ScheduleItem = __decorate([
     (0, typeorm_1.Entity)('schedule_items')
 ], ScheduleItem);

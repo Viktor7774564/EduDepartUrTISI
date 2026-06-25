@@ -5,5 +5,6 @@ export declare class Room {
     number: string;
     name: string | null;
     isOnline: boolean;
+    isSharedMultiHall: boolean;
     scheduleItems: ScheduleItem[];
 }

@@ -18,6 +18,9 @@ export class Room {
     @Column({ default: false })
     isOnline!: boolean;
 
+    @Column({ default: false })
+    isSharedMultiHall!: boolean;
+
     @OneToMany(() => ScheduleItem, (item) => item.room)
     scheduleItems!: ScheduleItem[];
 }

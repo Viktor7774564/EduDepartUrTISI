@@ -1,6 +1,6 @@
 import { User } from '../../users/entities/user.entity';
 import { ParsedScheduleLesson } from './parsed-schedule-lesson.entity';
-import { ScheduleType } from './schedule.entity';
+import { ScheduleType } from './schedule-type.enum';
 export declare enum ScheduleParseStatus {
     SUCCESS = "success",
     FAILED = "failed"

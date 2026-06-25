@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 
 import { extractGroupNameFromTitle } from './group-parallel.utils';
-import { isDistanceRoom, parseLessonCell } from './lesson-cell.parser';
+import { isDistanceRoom, isSharedMultiHallRoom, parseLessonCell, splitRoomForSubgroups } from './lesson-cell.parser';
 import type { ScheduleLessonSlot } from './schedule-conflict.validator';
 
 const DAY_NAMES: Record<string, number> = {
@@ -343,11 +343,11 @@ function parseSheetGrid(
                         );
                     }
 
-                    const roomParts = room
-                        ? room.split(/\s*\/\s*/).map((part) => part.trim()).filter(Boolean)
-                        : [];
+                    const roomParts = splitRoomForSubgroups(room, parsedParts.length);
 
                     for (const [index, part] of parsedParts.entries()) {
+                        const assignedRoom = roomParts[index] ?? roomParts[0] ?? room;
+
                         lessons.push({
                             groupName,
                             dayOfWeek,
@@ -355,13 +355,14 @@ function parseSheetGrid(
                             endTime: pairTime.endTime,
                             weekStart,
                             subgroup: part.subgroup,
-                            isDistance: isDistanceRoom(roomParts[index] ?? room),
+                            isDistance: isDistanceRoom(assignedRoom),
                             isSameCellParallel: part.isSameCellParallel,
+                            isSharedMultiHall: isSharedMultiHallRoom(assignedRoom),
                             subject: part.subject,
                             lessonType: part.lessonType,
                             teacherPosition: part.teacherPosition,
                             teacherName: part.teacherName,
-                            room: roomParts[index] ?? room,
+                            room: assignedRoom,
                         });
                     }
                 }

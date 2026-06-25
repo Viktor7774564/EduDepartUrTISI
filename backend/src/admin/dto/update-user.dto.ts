@@ -63,6 +63,10 @@ export class UpdateUserDto {
     @IsOptional()
     course?: number;
 
+    @IsInt()
+    @IsOptional()
+    departmentId?: number;
+
     @IsString()
     @IsOptional()
     department?: string;
@@ -82,6 +86,7 @@ export type UserProfileInput = {
     direction?: string;
     educationForm?: string;
     course?: number;
+    departmentId?: number;
     department?: string;
     position?: string;
     cabinet?: string;

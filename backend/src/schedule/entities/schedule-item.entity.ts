@@ -44,12 +44,12 @@ export class ScheduleItem {
     @JoinColumn({ name: 'lessonTypeId' })
     lessonType!: LessonType;
 
-    @Column()
-    teacherId!: number;
+    @Column({ nullable: true })
+    teacherId!: number | null;
 
-    @ManyToOne(() => User, { nullable: false })
+    @ManyToOne(() => User, { nullable: true })
     @JoinColumn({ name: 'teacherId' })
-    teacher!: User;
+    teacher!: User | null;
 
     @Column({ nullable: true })
     roomId!: number | null;
@@ -72,4 +72,19 @@ export class ScheduleItem {
 
     @Column({ type: 'text', nullable: true })
     comment!: string | null;
+
+    @Column({ type: 'date' })
+    weekStart!: string;
+
+    @Column({ type: 'boolean', default: false })
+    isDisabled!: boolean;
+
+    @Column({ default: false })
+    isSameCellParallel!: boolean;
+
+    @Column({ type: 'varchar', nullable: true })
+    teacherPosition!: string | null;
+
+    @Column({ type: 'varchar', nullable: true })
+    legacyTeacherName!: string | null;
 }

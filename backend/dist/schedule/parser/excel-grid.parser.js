@@ -283,10 +283,9 @@ function parseSheetGrid(grid, groupName, period, warnings) {
                             + `${pairTime.startTime}, неделя ${weekStart}): `
                             + subjects.join(' / '));
                     }
-                    const roomParts = room
-                        ? room.split(/\s*\/\s*/).map((part) => part.trim()).filter(Boolean)
-                        : [];
+                    const roomParts = (0, lesson_cell_parser_1.splitRoomForSubgroups)(room, parsedParts.length);
                     for (const [index, part] of parsedParts.entries()) {
+                        const assignedRoom = roomParts[index] ?? roomParts[0] ?? room;
                         lessons.push({
                             groupName,
                             dayOfWeek,
@@ -294,13 +293,14 @@ function parseSheetGrid(grid, groupName, period, warnings) {
                             endTime: pairTime.endTime,
                             weekStart,
                             subgroup: part.subgroup,
-                            isDistance: (0, lesson_cell_parser_1.isDistanceRoom)(roomParts[index] ?? room),
+                            isDistance: (0, lesson_cell_parser_1.isDistanceRoom)(assignedRoom),
                             isSameCellParallel: part.isSameCellParallel,
+                            isSharedMultiHall: (0, lesson_cell_parser_1.isSharedMultiHallRoom)(assignedRoom),
                             subject: part.subject,
                             lessonType: part.lessonType,
                             teacherPosition: part.teacherPosition,
                             teacherName: part.teacherName,
-                            room: roomParts[index] ?? room,
+                            room: assignedRoom,
                         });
                     }
                 }

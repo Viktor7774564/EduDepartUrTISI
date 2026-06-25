@@ -16,6 +16,7 @@ export type AuthUserResponse = {
     course?: number;
     position?: string;
     department?: string;
+    departmentId?: number;
     cabinet?: string;
 };
 
@@ -50,6 +51,7 @@ export function mapUserToAuthResponse(user: User): AuthUserResponse {
         return {
             ...base,
             position: user.teacherProfile.position,
+            departmentId: user.teacherProfile.departmentId,
             department: user.teacherProfile.department.name,
             cabinet: user.teacherProfile.cabinet ?? undefined,
         };

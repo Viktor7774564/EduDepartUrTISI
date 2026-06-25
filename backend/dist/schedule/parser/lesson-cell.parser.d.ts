@@ -8,4 +8,6 @@ export interface ParsedLessonPart {
 }
 export declare function parseLessonCell(rawText: string): ParsedLessonPart[];
 export declare function isDistanceRoom(room: string | null | undefined): boolean;
+export declare function isAuditoriumRoomLabel(room: string | null | undefined): boolean;
 export declare function isSharedMultiHallRoom(room: string | null | undefined): boolean;
+export declare function splitRoomForSubgroups(room: string | null | undefined, partsCount: number): (string | null)[];

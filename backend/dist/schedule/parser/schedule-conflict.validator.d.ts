@@ -7,6 +7,7 @@ export interface ScheduleLessonSlot {
     subgroup: number | null;
     isDistance: boolean;
     isSameCellParallel: boolean;
+    isSharedMultiHall?: boolean;
     subject: string;
     lessonType: string;
     teacherPosition: string;

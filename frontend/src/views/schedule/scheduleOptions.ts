@@ -38,7 +38,7 @@ export const scheduleTypeMeta: Record<ScheduleKind, ScheduleTypeMeta> = {
   },
   consults: {
     title: 'Расписание консультаций',
-    caption: 'Выберите преподавателя из загруженных расписаний.',
+    caption: 'Выберите кафедру преподавателей, чтобы посмотреть консультации.',
     actionLabel: 'Показать консультации',
   },
 }
@@ -154,4 +154,85 @@ export function getBuildingFromRoom(room: string) {
   }
 
   return null
+}
+
+export interface AcademicWeek {
+  label: string
+  start: Date
+  end: Date
+}
+
+function getMondayWeekStart(date: Date): Date {
+  const result = new Date(date)
+  const day = result.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  result.setDate(result.getDate() + diff)
+  result.setHours(0, 0, 0, 0)
+  return result
+}
+
+function formatAcademicWeekLabel(start: Date, end: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+
+  return `${pad(start.getDate())}.${pad(start.getMonth() + 1)} - ${pad(end.getDate())}.${pad(end.getMonth() + 1)}`
+}
+
+export function getConsultationAcademicYearStart(referenceDate = new Date()): number {
+  const month = referenceDate.getMonth()
+  const year = referenceDate.getFullYear()
+
+  // С августа уже показываем следующий учебный год (сентябрь — июль).
+  if (month >= 7) {
+    return year
+  }
+
+  return year - 1
+}
+
+export function buildConsultationAcademicWeeks(referenceDate = new Date()): AcademicWeek[] {
+  const academicStartYear = getConsultationAcademicYearStart(referenceDate)
+  const firstWeekStart = getMondayWeekStart(new Date(academicStartYear, 8, 1))
+  const lastDayOfJuly = new Date(academicStartYear + 1, 6, 31)
+  const lastWeekStart = getMondayWeekStart(lastDayOfJuly)
+
+  const weeks: AcademicWeek[] = []
+  const current = new Date(firstWeekStart)
+
+  while (current <= lastWeekStart) {
+    const end = new Date(current)
+    end.setDate(end.getDate() + 6)
+
+    weeks.push({
+      label: formatAcademicWeekLabel(current, end),
+      start: new Date(current),
+      end: new Date(end),
+    })
+
+    current.setDate(current.getDate() + 7)
+  }
+
+  return weeks
+}
+
+export function getWeekStartFromLabel(
+  weekLabel: string,
+  academicStartYear = getConsultationAcademicYearStart(),
+): string | null {
+  const startPart = weekLabel.split(' - ')[0]?.trim()
+  if (!startPart) {
+    return null
+  }
+
+  const parts = startPart.split('.')
+  const day = parts[0]
+  const month = parts[1]
+
+  if (!day || !month) {
+    return null
+  }
+
+  const monthNumber = Number(month)
+  const year = monthNumber >= 9 ? academicStartYear : academicStartYear + 1
+
+  return `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`
 }

@@ -10,6 +10,7 @@ export declare class CreateUserDto {
     direction?: string;
     educationForm?: string;
     course?: number;
+    departmentId?: number;
     department?: string;
     position?: string;
     cabinet?: string;

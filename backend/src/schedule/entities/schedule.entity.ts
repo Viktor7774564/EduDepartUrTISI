@@ -2,13 +2,10 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColum
 import { Group } from '../../academic/entities/group.entity';
 import { User } from '../../users/entities/user.entity';
 import { ScheduleItem } from './schedule-item.entity';
+import { ScheduleType } from './schedule-type.enum';
+import { ScheduleUpload } from './schedule-upload.entity';
 
-export enum ScheduleType {
-    STUDENT = 'student',
-    TEACHER = 'teacher',
-    AUDITORY = 'auditory',
-    CONSULTATION = 'consultation',
-}
+export { ScheduleType } from './schedule-type.enum';
 
 @Entity('schedules')
 export class Schedule {
@@ -27,6 +24,13 @@ export class Schedule {
 
     @Column({ nullable: true })
     teacherId!: number | null;
+
+    @Column({ nullable: true })
+    uploadId!: number | null;
+
+    @ManyToOne(() => ScheduleUpload, {nullable: true, onDelete: `SET NULL`})
+    @JoinColumn({ name: 'uploadId' })
+    upload!: ScheduleUpload | null;
 
     @ManyToOne(() => User, { nullable: true })
     @JoinColumn({ name: 'teacherId' })

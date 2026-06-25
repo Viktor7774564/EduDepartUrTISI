@@ -1,8 +1,9 @@
 import { OnModuleInit } from '@nestjs/common';
 import { Repository } from 'typeorm';
-import { ParsedScheduleLesson } from './entities/parsed-schedule-lesson.entity';
 import { ScheduleParseStatus, ScheduleUpload } from './entities/schedule-upload.entity';
-import { ScheduleType } from './entities/schedule.entity';
+import { Schedule, ScheduleType } from './entities/schedule.entity';
+import { ScheduleItem } from './entities/schedule-item.entity';
+import { ScheduleImportService } from './schedule-import.service';
 export interface ScheduleUploadResponse {
     id: number;
     scheduleType: ScheduleType;
@@ -28,22 +29,25 @@ export interface ScheduleUploadResponse {
 }
 export declare class ScheduleUploadService implements OnModuleInit {
     private readonly uploadsRepository;
-    private readonly parsedLessonsRepository;
+    private readonly itemsRepository;
+    private readonly schedulesRepository;
+    private readonly scheduleImportService;
     private readonly schedulesDir;
-    constructor(uploadsRepository: Repository<ScheduleUpload>, parsedLessonsRepository: Repository<ParsedScheduleLesson>);
+    constructor(uploadsRepository: Repository<ScheduleUpload>, itemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>, scheduleImportService: ScheduleImportService);
     onModuleInit(): Promise<void>;
     private assertValidUpload;
     private parseScheduleType;
     private parseRequiredGroupName;
     private parseFacultyName;
     private normalizeGroupName;
+    private toDate;
     private assertGroupMatches;
     private assertPeriodDefined;
     private findPeriodUploads;
+    private deleteSchedulesByUploadIds;
     private removeUploads;
     private toResponse;
-    private mapParsedLesson;
-    private mapLessonSlot;
+    private loadScheduleItems;
     private loadExistingLessons;
     private loadOtherGroupsLessons;
     listUploads(): Promise<ScheduleUploadResponse[]>;

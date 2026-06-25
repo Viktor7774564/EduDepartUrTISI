@@ -14,19 +14,18 @@ const typeorm_1 = require("typeorm");
 const group_entity_1 = require("../../academic/entities/group.entity");
 const user_entity_1 = require("../../users/entities/user.entity");
 const schedule_item_entity_1 = require("./schedule-item.entity");
-var ScheduleType;
-(function (ScheduleType) {
-    ScheduleType["STUDENT"] = "student";
-    ScheduleType["TEACHER"] = "teacher";
-    ScheduleType["AUDITORY"] = "auditory";
-    ScheduleType["CONSULTATION"] = "consultation";
-})(ScheduleType || (exports.ScheduleType = ScheduleType = {}));
+const schedule_type_enum_1 = require("./schedule-type.enum");
+const schedule_upload_entity_1 = require("./schedule-upload.entity");
+var schedule_type_enum_2 = require("./schedule-type.enum");
+Object.defineProperty(exports, "ScheduleType", { enumerable: true, get: function () { return schedule_type_enum_2.ScheduleType; } });
 let Schedule = class Schedule {
     id;
     scheduleType;
     groupId;
     group;
     teacherId;
+    uploadId;
+    upload;
     teacher;
     validFrom;
     validTo;
@@ -39,7 +38,7 @@ __decorate([
     __metadata("design:type", Number)
 ], Schedule.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: ScheduleType }),
+    (0, typeorm_1.Column)({ type: 'enum', enum: schedule_type_enum_1.ScheduleType }),
     __metadata("design:type", String)
 ], Schedule.prototype, "scheduleType", void 0);
 __decorate([
@@ -55,6 +54,15 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Object)
 ], Schedule.prototype, "teacherId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Object)
+], Schedule.prototype, "uploadId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => schedule_upload_entity_1.ScheduleUpload, { nullable: true, onDelete: `SET NULL` }),
+    (0, typeorm_1.JoinColumn)({ name: 'uploadId' }),
+    __metadata("design:type", Object)
+], Schedule.prototype, "upload", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { nullable: true }),
     (0, typeorm_1.JoinColumn)({ name: 'teacherId' }),
