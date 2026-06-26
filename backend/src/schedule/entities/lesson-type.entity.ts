@@ -6,6 +6,7 @@ export enum LessonTypeCode {
     PRACTICE = 'practice',
     LAB = 'lab',
     CREDIT = 'credit',
+    SPECIAL = 'special',
 }
 
 @Entity('lesson_types')

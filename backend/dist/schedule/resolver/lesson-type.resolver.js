@@ -32,19 +32,21 @@ let LessonTypeResolver = class LessonTypeResolver {
             return lesson_type_entity_1.LessonTypeCode.LAB;
         if (value.includes('зач'))
             return lesson_type_entity_1.LessonTypeCode.CREDIT;
-        if (value.includes('куратор'))
-            return lesson_type_entity_1.LessonTypeCode.PRACTICE;
+        if (value.includes('куратор') || value === 'особое' || value === 'особенное') {
+            return lesson_type_entity_1.LessonTypeCode.SPECIAL;
+        }
         return lesson_type_entity_1.LessonTypeCode.PRACTICE;
     }
     mapCodeToName(code, raw) {
-        if (raw.toLowerCase().includes('куратор')) {
-            return 'Кураторский час';
+        if (raw.toLowerCase().includes('куратор') || raw.toLowerCase() === 'особое') {
+            return 'Особое';
         }
         switch (code) {
             case lesson_type_entity_1.LessonTypeCode.LECTURE: return 'Лекция';
             case lesson_type_entity_1.LessonTypeCode.PRACTICE: return 'Практика';
             case lesson_type_entity_1.LessonTypeCode.LAB: return 'Лаб. раб.';
             case lesson_type_entity_1.LessonTypeCode.CREDIT: return 'Зачёт';
+            case lesson_type_entity_1.LessonTypeCode.SPECIAL: return 'Особое';
             default: return raw.trim();
         }
     }

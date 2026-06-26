@@ -18,6 +18,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const departments_service_1 = require("../academic/departments.service");
 const consultation_entity_1 = require("./entities/consultation.entity");
+const schedule_slot_utils_1 = require("./parser/schedule-slot.utils");
 const DAY_LABELS = {
     1: 'ПН',
     2: 'ВТ',
@@ -70,6 +71,8 @@ let ConsultationService = class ConsultationService {
             group: '',
             subgroup: null,
             isSameCellParallel: false,
+            comment: null,
+            weekStart: (0, schedule_slot_utils_1.normalizeWeekStart)(String(consultation.weekStart)),
         };
     }
     async listDepartments() {

@@ -18,14 +18,16 @@ export class LessonTypeResolver {
         if (value.startsWith('практ')) return LessonTypeCode.PRACTICE;
         if (value.startsWith('лаб')) return LessonTypeCode.LAB;
         if (value.includes('зач')) return LessonTypeCode.CREDIT;
-        if (value.includes('куратор')) return LessonTypeCode.PRACTICE; // или отдельный code
+        if (value.includes('куратор') || value === 'особое' || value === 'особенное') {
+            return LessonTypeCode.SPECIAL;
+        }
 
-        return LessonTypeCode.PRACTICE; // fallback
+        return LessonTypeCode.PRACTICE;
     }
 
     private mapCodeToName(code: LessonTypeCode, raw: string): string {
-        if (raw.toLowerCase().includes('куратор')) {
-            return 'Кураторский час';
+        if (raw.toLowerCase().includes('куратор') || raw.toLowerCase() === 'особое') {
+            return 'Особое';
         }
 
         switch (code) {
@@ -33,6 +35,7 @@ export class LessonTypeResolver {
             case LessonTypeCode.PRACTICE: return 'Практика';
             case LessonTypeCode.LAB: return 'Лаб. раб.';
             case LessonTypeCode.CREDIT: return 'Зачёт';
+            case LessonTypeCode.SPECIAL: return 'Особое';
             default: return raw.trim();
         }
     }

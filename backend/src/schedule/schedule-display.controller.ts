@@ -25,8 +25,14 @@ export class ScheduleDisplayController {
     }
 
     @Get('teachers')
-    listTeachers(): Promise<string[]> {
-        return this.scheduleDisplayService.listTeachers();
+    listTeachers(@Query('departmentId') departmentId?: string): Promise<string[]> {
+        const parsedDepartmentId = departmentId ? Number(departmentId) : undefined;
+
+        return this.scheduleDisplayService.listTeachers(
+            parsedDepartmentId && !Number.isNaN(parsedDepartmentId)
+                ? parsedDepartmentId
+                : undefined,
+        );
     }
 
     @Get('teachers/:teacherName')

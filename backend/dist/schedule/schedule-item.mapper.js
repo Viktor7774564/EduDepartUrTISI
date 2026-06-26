@@ -59,6 +59,8 @@ function mapItemToDisplayLesson(item) {
         group: groupName,
         subgroup: item.subgroup?.number ?? null,
         isSameCellParallel: item.isSameCellParallel,
+        comment: item.comment,
+        weekStart: (0, schedule_slot_utils_1.normalizeWeekStart)(String(item.weekStart)),
     };
 }
 function mapItemToLessonSlot(item) {

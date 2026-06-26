@@ -12,6 +12,27 @@ export interface DisplayScheduleItem {
   group: string
   subgroup?: number | null
   isSameCellParallel?: boolean
+  comment?: string | null
+  weekStart?: string
+}
+
+export interface SchedulePeriodMeta {
+  academicYearLabel: string | null
+  periodStart: string | null
+  periodEnd: string | null
+  periodLabel: string | null
+}
+
+export function formatSchedulePeriodSuffix(meta: SchedulePeriodMeta | null | undefined): string {
+  if (!meta?.academicYearLabel) {
+    return ''
+  }
+
+  if (meta.periodLabel) {
+    return ` · ${meta.academicYearLabel} (${meta.periodLabel})`
+  }
+
+  return ` · ${meta.academicYearLabel}`
 }
 
 export interface ScheduleTypeMeta {
@@ -28,7 +49,7 @@ export const scheduleTypeMeta: Record<ScheduleKind, ScheduleTypeMeta> = {
   },
   teachers: {
     title: 'Расписание преподавателей',
-    caption: 'Выберите преподавателя из загруженных расписаний.',
+    caption: 'Выберите кафедру (необязательно) и преподавателя из загруженных расписаний.',
     actionLabel: 'Показать расписание',
   },
   auditories: {
@@ -127,30 +148,12 @@ export function getBuildingFromRoom(room: string) {
     return 'УК5'
   }
 
-  if (
-    normalized.startsWith('VII')
-    || normalized.startsWith('VIII')
-    || normalized.startsWith('VI ')
-    || normalized.startsWith('V ')
-    || normalized.startsWith('II ')
-    || normalized.startsWith('7 ')
-    || normalized.startsWith('8 ')
-    || normalized.startsWith('5 ')
-    || normalized.startsWith('6 ')
-    || normalized.startsWith('2 ')
-  ) {
-    return 'УК3'
+  if (isRomanRoomUk5(normalized)) {
+    return 'УК5'
   }
 
-  if (
-    normalized.startsWith('III')
-    || normalized.startsWith('IV')
-    || normalized.startsWith('I ')
-    || normalized.startsWith('1 ')
-    || normalized.startsWith('3 ')
-    || normalized.startsWith('4 ')
-  ) {
-    return 'УК5'
+  if (isRomanRoomUk3(normalized)) {
+    return 'УК3'
   }
 
   return null
@@ -235,4 +238,184 @@ export function getWeekStartFromLabel(
   const year = monthNumber >= 9 ? academicStartYear : academicStartYear + 1
 
   return `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`
+}
+
+export const SPECIAL_LESSON_TYPE = 'Особое' as const
+
+export const LESSON_TYPE_OPTIONS = [
+  'Лекция',
+  'Практика',
+  'Лабораторная',
+  'Зачёт',
+  SPECIAL_LESSON_TYPE,
+] as const
+
+export const ROMAN_BUILDING = 'Римская' as const
+export const DISTANCE_BUILDING = 'Дистанционное' as const
+export const DISTANCE_ROOM_LABEL = 'дист. форм. об.' as const
+
+export const BUILDING_OPTIONS = [
+  'УК1',
+  'УК2',
+  'УК3',
+  'УК4',
+  'УК5',
+  DISTANCE_BUILDING,
+] as const
+
+export function isDistanceRoomLabel(room: string): boolean {
+  return /дист/i.test(room.trim())
+}
+
+export function isRomanRoomUk5(room: string): boolean {
+  const normalized = room.trim().toUpperCase()
+
+  return normalized.startsWith('III')
+    || normalized.startsWith('IV')
+    || normalized.startsWith('I ')
+    || normalized.startsWith('1 ')
+    || normalized.startsWith('3 ')
+    || normalized.startsWith('4 ')
+}
+
+export function isRomanRoomUk3(room: string): boolean {
+  const normalized = room.trim().toUpperCase()
+
+  return normalized.startsWith('VIII')
+    || normalized.startsWith('VII')
+    || normalized.startsWith('VI ')
+    || normalized.startsWith('V ')
+    || normalized.startsWith('II ')
+    || normalized.startsWith('8 ')
+    || normalized.startsWith('7 ')
+    || normalized.startsWith('6 ')
+    || normalized.startsWith('5 ')
+    || normalized.startsWith('2 ')
+}
+
+export function isRomanRoom(room: string): boolean {
+  const normalized = room.trim().toUpperCase()
+
+  if (!normalized || normalized.includes('УК')) {
+    return false
+  }
+
+  return isRomanRoomUk3(normalized) || isRomanRoomUk5(normalized)
+}
+
+export function isSubgroupApplicableLessonType(type: string): boolean {
+  const value = type.trim().toLowerCase()
+
+  return value.includes('практ')
+    || value.includes('лаб')
+    || value.includes('зач')
+}
+
+export function isSpecialLessonType(type: string): boolean {
+  const value = type.trim().toLowerCase()
+
+  if (!value) {
+    return false
+  }
+
+  return value === 'особое'
+    || value === 'особенное'
+    || value.includes('куратор')
+    || value.includes('субботник')
+    || value.includes('суббот')
+}
+
+export function normalizeLessonTypeForForm(type: string): string {
+  if (isSpecialLessonType(type)) {
+    return SPECIAL_LESSON_TYPE
+  }
+
+  const value = type.toLowerCase()
+
+  if (value.includes('лек')) return 'Лекция'
+  if (value.includes('практ')) return 'Практика'
+  if (value.includes('лаб')) return 'Лабораторная'
+  if (value.includes('зач')) return 'Зачёт'
+
+  return type
+}
+
+export function getLessonGridClass(type: string): string {
+  if (isSpecialLessonType(type)) {
+    return ''
+  }
+
+  const lessonType = type.toLowerCase()
+
+  if (lessonType.includes('лек')) return 'lecture'
+  if (lessonType.includes('практ')) return 'practice'
+  if (lessonType.includes('лаб')) return 'lab'
+  if (lessonType.includes('зач') || lessonType.includes('защ')) return 'exam'
+
+  return ''
+}
+
+export function getLessonTypeLabel(type: string, isConsultation = false): string {
+  if (isConsultation) {
+    const lessonType = type.toLowerCase()
+
+    if (lessonType.includes('онлайн')) return 'Онлайн-консультация'
+    return 'Консультация'
+  }
+
+  if (isSpecialLessonType(type)) {
+    return SPECIAL_LESSON_TYPE
+  }
+
+  return normalizeLessonTypeForForm(type)
+}
+
+export function parseRoomForForm(room: string): { building: string; room: string } {
+  const normalized = room.trim()
+
+  if (!normalized) {
+    return { building: '', room: '' }
+  }
+
+  if (isDistanceRoomLabel(normalized)) {
+    return { building: DISTANCE_BUILDING, room: DISTANCE_ROOM_LABEL }
+  }
+
+  const building = getBuildingFromRoom(normalized)
+
+  if (!building) {
+    return { building: '', room: normalized }
+  }
+
+  const roomNumber = normalized
+    .replace(new RegExp(building.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), '')
+    .trim()
+
+  return {
+    building,
+    room: roomNumber || normalized,
+  }
+}
+
+export function formatRoomForApi(building: string, room: string): string | undefined {
+  const roomNumber = room.trim()
+  const buildingCode = building.trim()
+
+  if (buildingCode === DISTANCE_BUILDING || isDistanceRoomLabel(roomNumber)) {
+    return DISTANCE_ROOM_LABEL
+  }
+
+  if (!roomNumber) {
+    return undefined
+  }
+
+  if (isRomanRoom(roomNumber)) {
+    return roomNumber
+  }
+
+  if (buildingCode) {
+    return `${roomNumber} ${buildingCode}`
+  }
+
+  return roomNumber
 }

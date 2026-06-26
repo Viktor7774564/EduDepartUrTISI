@@ -147,6 +147,14 @@
   @apply py-[10px] px-[16px] rounded-[12px] bg-[rgba(255,255,255,0.92)] border border-[#d7e0e9] font-bold;
 }
 
+.schedule-page select.week-label {
+  @apply min-h-[42px] min-w-[220px] text-center text-[#24313f] shadow-[0_8px_18px_rgba(18,38,63,0.06)] cursor-pointer;
+}
+
+.schedule-page select.week-label:focus {
+  @apply outline-none border-[#4ea3d7] shadow-[0_0_0_3px_rgba(78,163,215,0.12)];
+}
+
 .schedule-page .week-buttons {
   @apply flex gap-[12px] flex-wrap justify-center;
 }
@@ -171,6 +179,10 @@
   @apply flex items-center gap-[8px] text-[#24313f];
 }
 
+.schedule-page .legend-item--note {
+  @apply italic text-[#5f6770];
+}
+
 .schedule-page .box {
   @apply w-[14px] h-[14px] rounded-[4px];
 }
@@ -182,11 +194,43 @@
 .schedule-page .header,
 .schedule-page .row {
   @apply grid gap-[6px];
-  grid-template-columns: 120px repeat(6, minmax(130px, 1fr));
+  grid-template-columns: 120px repeat(5, minmax(130px, 1fr)) 120px minmax(130px, 1fr);
 }
 
 .schedule-page .header div {
   @apply bg-[#dfe7ef] p-[10px] text-center font-extrabold text-[#18212a];
+}
+
+.schedule-page .header .header-day {
+  @apply flex min-h-[54px] flex-col items-center justify-center gap-[2px];
+}
+
+.schedule-page .header-day__name {
+  @apply leading-[1];
+}
+
+.schedule-page .header-day__date {
+  @apply text-[12px] font-semibold text-[#536170];
+}
+
+.schedule-page .header-day__holiday {
+  @apply mt-[2px] text-[10px] font-semibold leading-[1.15] text-[#9a5a00];
+}
+
+.schedule-page .header .header-day--holiday {
+  @apply bg-[#fff3d6] text-[#5c3b00];
+}
+
+.schedule-page .header .header-day--preholiday {
+  @apply bg-[#e7f3ff] text-[#143c5f];
+}
+
+.schedule-page .preholiday-toggle {
+  @apply mt-[4px] rounded-[8px] border border-[#4ea3d7] bg-white px-[7px] py-[3px] text-[10px] font-bold text-[#236f9f] cursor-pointer;
+}
+
+.schedule-page .preholiday-toggle:hover {
+  @apply bg-[#f0f8ff];
 }
 
 .schedule-page .time {
@@ -199,6 +243,26 @@
 
 .schedule-page .cell--parallel {
   @apply border-[#e6a817] bg-[rgba(255,248,225,0.92)];
+}
+
+.schedule-page .cell--holiday {
+  @apply border-[#f0c14b] bg-[rgba(255,248,225,0.58)];
+}
+
+.schedule-page .cell--parallel.cell--holiday {
+  @apply bg-[rgba(255,244,204,0.95)];
+}
+
+.schedule-page .cell--preholiday {
+  @apply border-[#8fc5ed] bg-[rgba(232,244,255,0.72)];
+}
+
+.schedule-page .cell--removed {
+  @apply border-transparent bg-transparent pointer-events-none;
+}
+
+.schedule-page .cell-slot-time {
+  @apply mb-[4px] rounded-[6px] bg-[rgba(78,163,215,0.14)] px-[6px] py-[3px] text-center text-[10px] font-bold text-[#236f9f];
 }
 
 .schedule-page .parallel-warning {
@@ -299,6 +363,22 @@
 .schedule-page .edit-modal {
   max-height: calc(100dvh - 75px);
   margin-top: 64px;
+}
+
+.schedule-page .transfer-modal {
+  max-width: min(96vw, 560px);
+}
+
+.schedule-page .transfer-summary {
+  @apply mb-[20px] grid gap-[6px] rounded-[12px] border border-[#d7e0e9] bg-white px-[14px] py-[12px] text-[#24313f];
+}
+
+.schedule-page .transfer-summary strong {
+  @apply text-[16px];
+}
+
+.schedule-page .transfer-summary span {
+  @apply text-[14px] text-[#5f6975];
 }
 
 .schedule-page .modal-header-actions {
@@ -406,6 +486,14 @@
   @apply outline-none border-[#4ea3d7] shadow-[0_0_0_3px_rgba(78,163,215,0.1)];
 }
 
+.schedule-page .form-hint {
+  @apply text-[12px] leading-[1.35] text-[#5f6975];
+}
+
+.schedule-page .form-hint--danger {
+  @apply text-[#c43636];
+}
+
 .schedule-page .edit-actions {
   @apply flex gap-[16px] justify-end pt-[20px] border-t border-[#d7e0e9];
 }
@@ -504,7 +592,7 @@
 
   .schedule-page .header,
   .schedule-page .row {
-    min-width: 920px;
+    min-width: 1060px;
   }
 
   .schedule-page .form-row {
@@ -599,7 +687,7 @@
 
   .schedule-page .header,
   .schedule-page .row {
-    min-width: 860px;
+    min-width: 1060px;
   }
 
   .schedule-page .cell {

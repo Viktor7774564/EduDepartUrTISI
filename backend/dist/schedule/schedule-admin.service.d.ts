@@ -29,10 +29,9 @@ export declare class ScheduleAdminService {
     private findSubgroup;
     private findScheduleForWeek;
     private loadItemWithRelations;
-    private loadExistingSlots;
-    private buildSlotFromDto;
-    private assertNoConflicts;
     private applySlotFields;
+    private loadActiveLessonSlots;
+    private assertNoConflicts;
     createItem(dto: CreateScheduleItemDto): Promise<ScheduleDisplayLesson>;
     updateItem(id: number, dto: UpdateScheduleItemDto): Promise<ScheduleDisplayLesson>;
     disableItem(id: number): Promise<void>;

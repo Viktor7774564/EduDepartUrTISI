@@ -18,8 +18,14 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const schedule_item_entity_1 = require("./entities/schedule-item.entity");
 const schedule_entity_1 = require("./entities/schedule.entity");
+const role_entity_1 = require("../users/entities/role.entity");
+const user_entity_1 = require("../users/entities/user.entity");
 const schedule_item_mapper_1 = require("./schedule-item.mapper");
-const BUILDING_OPTIONS = ['УК1', 'УК2', 'УК3', 'УК4', 'УК5'];
+const roman_room_utils_1 = require("./parser/roman-room.utils");
+const schedule_slot_utils_1 = require("./parser/schedule-slot.utils");
+const schedule_period_utils_1 = require("./parser/schedule-period.utils");
+const DISTANCE_BUILDING = 'Дистанционное';
+const DISTANCE_ROOM_LABEL = 'дист. форм. об.';
 const ITEM_RELATIONS = [
     'schedule',
     'schedule.group',
@@ -33,9 +39,11 @@ const ITEM_RELATIONS = [
 let ScheduleDisplayService = class ScheduleDisplayService {
     itemsRepository;
     schedulesRepository;
-    constructor(itemsRepository, schedulesRepository) {
+    usersRepository;
+    constructor(itemsRepository, schedulesRepository, usersRepository) {
         this.itemsRepository = itemsRepository;
         this.schedulesRepository = schedulesRepository;
+        this.usersRepository = usersRepository;
     }
     normalizeText(value) {
         return value.trim().toUpperCase();
@@ -53,6 +61,9 @@ let ScheduleDisplayService = class ScheduleDisplayService {
     }
     formatWeekLabel(weekStart) {
         const start = this.parseDateValue(weekStart);
+        const day = start.getDay();
+        const diffToMonday = day === 0 ? -6 : 1 - day;
+        start.setDate(start.getDate() + diffToMonday);
         const end = new Date(start);
         end.setDate(end.getDate() + 6);
         const pad = (part) => String(part).padStart(2, '0');
@@ -109,27 +120,14 @@ let ScheduleDisplayService = class ScheduleDisplayService {
         if (normalized.includes('УК5') || normalized.includes('УК№5')) {
             return 'УК5';
         }
-        if (normalized.startsWith('VII')
-            || normalized.startsWith('VIII')
-            || normalized.startsWith('VI ')
-            || normalized.startsWith('V ')
-            || normalized.startsWith('II ')
-            || normalized.startsWith('7 ')
-            || normalized.startsWith('8 ')
-            || normalized.startsWith('5 ')
-            || normalized.startsWith('6 ')
-            || normalized.startsWith('2 ')) {
-            return 'УК3';
-        }
-        if (normalized.startsWith('III')
-            || normalized.startsWith('IV')
-            || normalized.startsWith('I ')
-            || normalized.startsWith('1 ')
-            || normalized.startsWith('3 ')
-            || normalized.startsWith('4 ')) {
-            return 'УК5';
+        const romanBuilding = (0, roman_room_utils_1.getRomanBuilding)(room);
+        if (romanBuilding) {
+            return romanBuilding;
         }
         return null;
+    }
+    isRomanRoomLabel(room) {
+        return (0, roman_room_utils_1.isRomanRoom)(room);
     }
     isDistanceRoom(room) {
         return /дист/i.test(room);
@@ -171,22 +169,50 @@ let ScheduleDisplayService = class ScheduleDisplayService {
         return {
             groupName: items[0]?.schedule?.group?.name ?? groupName.trim(),
             weeks: this.buildWeeksFromItems(items),
+            ...(0, schedule_period_utils_1.resolveSchedulePeriodMeta)(items),
         };
     }
-    async listTeachers() {
-        const items = await this.baseItemsQuery().getMany();
+    async listTeachers(departmentId) {
         const teachers = new Set();
+        await this.collectTeachersFromAccounts(teachers, departmentId);
+        await this.collectTeachersFromSchedule(teachers, departmentId);
+        return Array.from(teachers).sort((left, right) => left.localeCompare(right, 'ru', { sensitivity: 'base' }));
+    }
+    async collectTeachersFromAccounts(teachers, departmentId) {
+        const qb = this.usersRepository
+            .createQueryBuilder('user')
+            .innerJoin('user.role', 'role')
+            .innerJoin('user.teacherProfile', 'teacherProfile')
+            .where('user.isActive = true')
+            .andWhere('role.code = :roleCode', { roleCode: role_entity_1.RoleCode.TEACHER });
+        if (departmentId) {
+            qb.andWhere('teacherProfile.departmentId = :departmentId', { departmentId });
+        }
+        const users = await qb.getMany();
+        for (const user of users) {
+            teachers.add((0, schedule_item_mapper_1.formatTeacherName)(user));
+        }
+    }
+    async collectTeachersFromSchedule(teachers, departmentId) {
+        const qb = this.baseItemsQuery()
+            .leftJoin('item.teacher', 'teacherUser')
+            .leftJoin('teacherUser.teacherProfile', 'teacherProfile');
+        if (departmentId) {
+            qb.andWhere('teacherUser.id IS NOT NULL AND teacherProfile.departmentId = :departmentId', { departmentId });
+        }
+        const items = await qb.getMany();
         for (const item of items) {
             if (item.teacher) {
                 teachers.add((0, schedule_item_mapper_1.formatTeacherName)(item.teacher));
                 continue;
             }
-            const legacyName = item.legacyTeacherName?.trim();
-            if (legacyName) {
-                teachers.add(legacyName);
+            if (!departmentId) {
+                const legacyName = item.legacyTeacherName?.trim();
+                if (legacyName) {
+                    teachers.add(legacyName);
+                }
             }
         }
-        return Array.from(teachers).sort((left, right) => left.localeCompare(right, 'ru', { sensitivity: 'base' }));
     }
     async getTeacherSchedule(teacherName) {
         const normalizedTeacherName = this.normalizeText(teacherName);
@@ -205,44 +231,84 @@ let ScheduleDisplayService = class ScheduleDisplayService {
         return {
             teacherName: resolvedTeacherName,
             weeks: this.buildWeeksFromItems(matchedItems),
+            ...(0, schedule_period_utils_1.resolveSchedulePeriodMeta)(matchedItems),
         };
     }
     async listBuildings() {
         const rooms = await this.listRooms();
         const buildings = new Set();
         for (const room of rooms) {
+            if (this.isDistanceRoom(room)) {
+                buildings.add(DISTANCE_BUILDING);
+            }
+            if (this.isRomanRoomLabel(room)) {
+                buildings.add(roman_room_utils_1.ROMAN_BUILDING);
+            }
             const building = this.getBuildingFromRoom(room);
             if (building) {
                 buildings.add(building);
             }
         }
-        return BUILDING_OPTIONS.filter((building) => buildings.has(building));
+        const standardBuildings = ['УК1', 'УК2', 'УК3', 'УК4', 'УК5'];
+        const ordered = standardBuildings.filter((building) => buildings.has(building));
+        if (!ordered.includes(roman_room_utils_1.ROMAN_BUILDING)) {
+            ordered.push(roman_room_utils_1.ROMAN_BUILDING);
+        }
+        if (!ordered.includes(DISTANCE_BUILDING)) {
+            ordered.push(DISTANCE_BUILDING);
+        }
+        return ordered;
     }
     async listRooms(building) {
         const items = await this.baseItemsQuery().getMany();
-        const rooms = new Set();
+        const physicalRooms = new Map();
+        const distanceRooms = new Map();
         for (const item of items) {
             const label = (0, schedule_item_mapper_1.formatRoomLabel)(item.room);
-            if (label && !this.isDistanceRoom(label)) {
-                rooms.add(label);
+            if (!label) {
+                continue;
+            }
+            const roomKey = (0, schedule_slot_utils_1.normalizeRoomListKey)(label);
+            if (this.isDistanceRoom(label)) {
+                const existing = distanceRooms.get(roomKey);
+                distanceRooms.set(roomKey, existing ? (0, schedule_slot_utils_1.pickPreferredRoomLabel)(existing, label) : label);
+            }
+            else {
+                const existing = physicalRooms.get(roomKey);
+                physicalRooms.set(roomKey, existing ? (0, schedule_slot_utils_1.pickPreferredRoomLabel)(existing, label) : label);
             }
         }
-        const roomList = Array.from(rooms).sort((left, right) => left.localeCompare(right, 'ru', { sensitivity: 'base', numeric: true }));
+        const sortRooms = (left, right) => left.localeCompare(right, 'ru', { sensitivity: 'base', numeric: true });
         if (!building?.trim()) {
-            return roomList;
+            return Array.from(physicalRooms.values()).sort(sortRooms);
         }
         const normalizedBuilding = building.trim().toUpperCase();
-        return roomList.filter((room) => this.getBuildingFromRoom(room)?.toUpperCase() === normalizedBuilding);
+        if (normalizedBuilding === DISTANCE_BUILDING.toUpperCase()) {
+            const roomList = Array.from(distanceRooms.values()).sort(sortRooms);
+            if (!roomList.includes(DISTANCE_ROOM_LABEL)) {
+                roomList.unshift(DISTANCE_ROOM_LABEL);
+            }
+            return roomList;
+        }
+        if (normalizedBuilding === roman_room_utils_1.ROMAN_BUILDING.toUpperCase()) {
+            return Array.from(physicalRooms.values())
+                .filter((room) => this.isRomanRoomLabel(room))
+                .sort(sortRooms);
+        }
+        return Array.from(physicalRooms.values())
+            .filter((room) => this.getBuildingFromRoom(room)?.toUpperCase() === normalizedBuilding)
+            .sort(sortRooms);
     }
     async getRoomSchedule(roomName) {
-        const normalizedRoomName = this.normalizeText(roomName);
+        const normalizedRoomName = (0, schedule_slot_utils_1.normalizeRoomListKey)(roomName);
         const items = await this.baseItemsQuery().getMany();
-        const matchedItems = items.filter((item) => this.normalizeText((0, schedule_item_mapper_1.formatRoomLabel)(item.room)) === normalizedRoomName);
+        const matchedItems = items.filter((item) => (0, schedule_slot_utils_1.normalizeRoomListKey)((0, schedule_item_mapper_1.formatRoomLabel)(item.room)) === normalizedRoomName);
         return {
             room: matchedItems[0]
                 ? (0, schedule_item_mapper_1.formatRoomLabel)(matchedItems[0].room)
                 : roomName.trim(),
             weeks: this.buildWeeksFromItems(matchedItems),
+            ...(0, schedule_period_utils_1.resolveSchedulePeriodMeta)(matchedItems),
         };
     }
 };
@@ -251,7 +317,9 @@ exports.ScheduleDisplayService = ScheduleDisplayService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(schedule_item_entity_1.ScheduleItem)),
     __param(1, (0, typeorm_1.InjectRepository)(schedule_entity_1.Schedule)),
+    __param(2, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository])
 ], ScheduleDisplayService);
 //# sourceMappingURL=schedule-display.service.js.map

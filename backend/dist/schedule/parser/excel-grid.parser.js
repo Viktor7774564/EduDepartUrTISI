@@ -69,6 +69,14 @@ const PAIR_TIMES = {
     6: { startTime: '17:40', endTime: '19:05' },
     7: { startTime: '19:15', endTime: '20:40' },
 };
+const SATURDAY_PAIR_TIMES = {
+    1: { startTime: '08:30', endTime: '10:00' },
+    2: { startTime: '10:15', endTime: '11:45' },
+    3: { startTime: '12:00', endTime: '13:30' },
+    4: { startTime: '13:45', endTime: '15:15' },
+    5: { startTime: '15:30', endTime: '17:00' },
+    6: { startTime: '17:40', endTime: '19:05' },
+};
 function cellValue(grid, row, col) {
     const value = grid[row]?.[col];
     if (value === null || value === undefined) {
@@ -95,9 +103,10 @@ function normalizeYear(value) {
     }
     return value;
 }
-function parseSchedulePeriod(grid) {
-    for (let row = 0; row < Math.min(grid.length, 15); row += 1) {
-        for (let col = 0; col < Math.min(grid[row]?.length ?? 0, 5); col += 1) {
+function parseSchedulePeriods(grid) {
+    const periods = [];
+    for (let row = 0; row < grid.length; row += 1) {
+        for (let col = 0; col < (grid[row]?.length ?? 0); col += 1) {
             const value = cellValue(grid, row, col);
             const match = value.match(/на\s+период\s+с\s+(\d{2})\.(\d{2})\.(\d{2,4})\s*г?\.?\s+по\s+(\d{2})\.(\d{2})\.(\d{2,4})\s*г?\.?/i);
             if (!match) {
@@ -107,10 +116,20 @@ function parseSchedulePeriod(grid) {
             const end = new Date(normalizeYear(Number(match[6])), Number(match[5]) - 1, Number(match[4]));
             start.setHours(0, 0, 0, 0);
             end.setHours(0, 0, 0, 0);
-            return { start, end };
+            periods.push({ start, end });
         }
     }
-    return null;
+    return periods;
+}
+function combineSchedulePeriods(periods) {
+    if (periods.length === 0) {
+        return null;
+    }
+    const start = new Date(Math.min(...periods.map((period) => period.start.getTime())));
+    const end = new Date(Math.max(...periods.map((period) => period.end.getTime())));
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    return { start, end };
 }
 function parseExcelSerialDate(value) {
     if (!/^\d{5,6}$/.test(value.trim())) {
@@ -159,19 +178,20 @@ function getWeekStart(date) {
     result.setHours(0, 0, 0, 0);
     return result;
 }
-function getWeekStartLabel(date, period = null) {
+function getWeekStartLabel(date) {
     const monday = getWeekStart(date);
-    if (period && monday < period.start) {
-        return formatDate(period.start);
-    }
     return formatDate(monday);
 }
-function parsePairTime(value) {
+function parsePairTime(value, dayOfWeek) {
     const normalized = value.replace(/\s+/g, ' ');
     const match = normalized.match(/(\d+)\s*\(?\s*(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
     if (match) {
+        const pairNumber = Number(match[1]);
+        if (dayOfWeek === 6 && pairNumber > 6) {
+            return null;
+        }
         return {
-            pairNumber: Number(match[1]),
+            pairNumber,
             startTime: match[2],
             endTime: match[3],
         };
@@ -179,7 +199,9 @@ function parsePairTime(value) {
     const pairOnly = normalized.match(/^(\d+)/);
     if (pairOnly) {
         const pairNumber = Number(pairOnly[1]);
-        const fallback = PAIR_TIMES[pairNumber];
+        const fallback = dayOfWeek === 6
+            ? SATURDAY_PAIR_TIMES[pairNumber]
+            : PAIR_TIMES[pairNumber];
         if (fallback) {
             return { pairNumber, ...fallback };
         }
@@ -249,7 +271,7 @@ function parseSheetGrid(grid, groupName, period, warnings) {
                     break;
                 }
                 const pairCell = cellValue(grid, row, timeCol);
-                const pairTime = parsePairTime(pairCell);
+                const pairTime = parsePairTime(pairCell, dayOfWeek);
                 if (!pairTime) {
                     row += 1;
                     continue;
@@ -270,7 +292,7 @@ function parseSheetGrid(grid, groupName, period, warnings) {
                     if (period && (weekDate < period.start || weekDate > period.end)) {
                         continue;
                     }
-                    const weekStart = getWeekStartLabel(weekDate, period);
+                    const weekStart = getWeekStartLabel(weekDate);
                     const parsedParts = (0, lesson_cell_parser_1.parseLessonCell)(lessonRaw);
                     if (parsedParts.length === 0) {
                         warnings.push(`Не удалось разобрать ячейку: ${lessonRaw.slice(0, 80)}`);
@@ -322,7 +344,7 @@ function parseScheduleWorkbook(buffer) {
         defval: null,
         raw: false,
     });
-    const period = parseSchedulePeriod(grid);
+    const period = combineSchedulePeriods(parseSchedulePeriods(grid));
     const groupName = findGroupName(grid);
     if (!groupName) {
         throw new Error('Не удалось определить группу из заголовка "РАСПИСАНИЕ гр."');

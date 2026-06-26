@@ -12,29 +12,79 @@ import {
 import {
   createScheduleItem,
   disableScheduleItem,
+  getScheduleAdminErrorMessage,
   updateScheduleItem,
 } from '@/api/scheduleAdmin'
 import editIcon from '@/assets/edit.svg'
 import {
   type DisplayScheduleItem,
   type ScheduleKind,
+  type SchedulePeriodMeta,
+  BUILDING_OPTIONS,
+  DISTANCE_BUILDING,
+  DISTANCE_ROOM_LABEL,
+  LESSON_TYPE_OPTIONS,
   buildConsultationAcademicWeeks,
+  formatRoomForApi,
+  formatSchedulePeriodSuffix,
   getConsultationAcademicYearStart,
+  getLessonGridClass,
+  getLessonTypeLabel,
   getWeekStartFromLabel,
+  isSubgroupApplicableLessonType,
+  normalizeLessonTypeForForm,
+  parseRoomForForm,
 } from './scheduleOptions'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
+type TimeSlot = {
+  pairNumber: number
+  startTime: string
+  endTime: string
+  matchingStartTimes?: string[]
+}
+
 const days = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ']
-const times = ['08:30', '10:15', '12:00', '14:15', '16:00', '17:40', '19:15']
+const saturdayDay = 'СБ'
+const weekdayDays = days.filter((day) => day !== saturdayDay)
+const weekdayTimeSlots: TimeSlot[] = [
+  { pairNumber: 1, startTime: '08:30', endTime: '10:00' },
+  { pairNumber: 2, startTime: '10:15', endTime: '11:45' },
+  { pairNumber: 3, startTime: '12:00', endTime: '13:30' },
+  { pairNumber: 4, startTime: '14:15', endTime: '15:45' },
+  { pairNumber: 5, startTime: '16:00', endTime: '17:30' },
+  { pairNumber: 6, startTime: '17:40', endTime: '19:05' },
+  { pairNumber: 7, startTime: '19:15', endTime: '20:40' },
+]
+const saturdayTimeSlots: TimeSlot[] = [
+  { pairNumber: 1, startTime: '08:30', endTime: '10:00' },
+  { pairNumber: 2, startTime: '10:15', endTime: '11:45' },
+  { pairNumber: 3, startTime: '12:00', endTime: '13:30' },
+  { pairNumber: 4, startTime: '13:45', endTime: '15:15' },
+  { pairNumber: 5, startTime: '15:30', endTime: '17:00' },
+  { pairNumber: 6, startTime: '17:40', endTime: '19:05' },
+]
+const preholidayTimeSlots: TimeSlot[] = [
+  { pairNumber: 1, startTime: '08:30', endTime: '10:00' },
+  { pairNumber: 2, startTime: '10:15', endTime: '11:45' },
+  { pairNumber: 3, startTime: '12:00', endTime: '13:30' },
+  { pairNumber: 4, startTime: '13:45', endTime: '14:45', matchingStartTimes: ['13:45', '14:15'] },
+  { pairNumber: 5, startTime: '15:00', endTime: '16:00', matchingStartTimes: ['15:00', '16:00'] },
+]
+const times = weekdayTimeSlots.map((slot) => slot.startTime)
+const PREHOLIDAY_STORAGE_KEY = 'schedule-preholiday-days'
 
 const PAIR_END_TIMES: Record<string, string> = {
   '08:30': '10:00',
   '10:15': '11:45',
   '12:00': '13:30',
+  '13:45': '15:15',
   '14:15': '15:45',
+  '15:00': '16:00',
+  '15:30': '17:00',
   '16:00': '17:30',
   '17:40': '19:05',
   '19:15': '20:40',
@@ -47,6 +97,32 @@ const DAY_TO_NUMBER: Record<string, number> = {
   ЧТ: 4,
   ПТ: 5,
   СБ: 6,
+}
+
+const DAY_TO_OFFSET: Record<string, number> = {
+  ПН: 0,
+  ВТ: 1,
+  СР: 2,
+  ЧТ: 3,
+  ПТ: 4,
+  СБ: 5,
+}
+
+const PUBLIC_HOLIDAYS: Record<string, string> = {
+  '01-01': 'Новогодние каникулы',
+  '01-02': 'Новогодние каникулы',
+  '01-03': 'Новогодние каникулы',
+  '01-04': 'Новогодние каникулы',
+  '01-05': 'Новогодние каникулы',
+  '01-06': 'Новогодние каникулы',
+  '01-07': 'Рождество Христово',
+  '01-08': 'Новогодние каникулы',
+  '02-23': 'День защитника Отечества',
+  '03-08': 'Международный женский день',
+  '05-01': 'Праздник Весны и Труда',
+  '05-09': 'День Победы',
+  '06-12': 'День России',
+  '11-04': 'День народного единства',
 }
 
 const scheduleType = computed(() => route.params.type as ScheduleKind)
@@ -62,8 +138,15 @@ const selectedLesson = ref<CellLesson | null>(null)
 const editingLesson = ref<CellLesson | null>(null)
 const currentWeekIndex = ref(0)
 const studentWeeklySchedules = ref<Record<string, DisplayScheduleItem[]>>({})
+const schedulePeriodMeta = ref<SchedulePeriodMeta>({
+  academicYearLabel: null,
+  periodStart: null,
+  periodEnd: null,
+  periodLabel: null,
+})
 const isLoadingSchedule = ref(false)
 const scheduleLoadError = ref<string | null>(null)
+const preholidayDayKeys = ref<string[]>([])
 
 const isMenuVisible = ref(false)
 const menuX = ref(0)
@@ -74,6 +157,15 @@ let mobileMediaQuery: MediaQueryList | null = null
 
 const isEditModalVisible = ref(false)
 const isCreatingLesson = ref(false)
+const isSaving = ref(false)
+const isTransferModalVisible = ref(false)
+const transferringLesson = ref<CellLesson | null>(null)
+const isTransferSaving = ref(false)
+const editSlotContext = ref<{
+  weekLabel: string
+  weekStart: string | null
+  day: string
+} | null>(null)
 const editForm = ref({
   name: '',
   type: '',
@@ -81,13 +173,30 @@ const editForm = ref({
   teacher: '',
   building: '',
   room: '',
+  day: 'ПН',
   time: '',
+  subgroup: '' as '' | '1' | '2',
   additional: '',
 })
+const transferForm = ref({
+  weekKey: '',
+  day: 'ПН',
+  time: '',
+})
+
+const applySchedulePeriodMeta = (meta?: Partial<SchedulePeriodMeta> | null) => {
+  schedulePeriodMeta.value = {
+    academicYearLabel: meta?.academicYearLabel ?? null,
+    periodStart: meta?.periodStart ?? null,
+    periodEnd: meta?.periodEnd ?? null,
+    periodLabel: meta?.periodLabel ?? null,
+  }
+}
 
 const loadSchedule = async () => {
   if (!secondValue.value && scheduleType.value !== 'consults') {
     studentWeeklySchedules.value = {}
+    applySchedulePeriodMeta(null)
     scheduleLoadError.value = null
     isLoadingSchedule.value = false
     return
@@ -95,6 +204,7 @@ const loadSchedule = async () => {
 
   if (scheduleType.value === 'consults' && !firstValue.value) {
     studentWeeklySchedules.value = {}
+    applySchedulePeriodMeta(null)
     scheduleLoadError.value = null
     isLoadingSchedule.value = false
     return
@@ -107,30 +217,36 @@ const loadSchedule = async () => {
     if (scheduleType.value === 'students') {
       const response = await fetchGroupSchedule(secondValue.value)
       studentWeeklySchedules.value = response.weeks
+      applySchedulePeriodMeta(response)
       return
     }
 
     if (scheduleType.value === 'teachers') {
       const response = await fetchTeacherSchedule(secondValue.value)
       studentWeeklySchedules.value = response.weeks
+      applySchedulePeriodMeta(response)
       return
     }
 
     if (scheduleType.value === 'consults') {
       const response = await fetchDepartmentConsultations(Number(firstValue.value))
       studentWeeklySchedules.value = response.weeks
+      applySchedulePeriodMeta(null)
       return
     }
 
     if (scheduleType.value === 'auditories') {
       const response = await fetchRoomSchedule(secondValue.value)
       studentWeeklySchedules.value = response.weeks
+      applySchedulePeriodMeta(response)
       return
     }
 
     studentWeeklySchedules.value = {}
+    applySchedulePeriodMeta(null)
   } catch {
     studentWeeklySchedules.value = {}
+    applySchedulePeriodMeta(null)
 
     if (scheduleType.value !== 'consults') {
       scheduleLoadError.value = 'Не удалось загрузить расписание'
@@ -173,32 +289,80 @@ const weekKeys = computed(() => {
   return Object.keys(weeklySchedules.value)
 })
 
+const parseScheduleDate = (value: string | null | undefined): Date | null => {
+  if (!value) {
+    return null
+  }
+
+  const trimmed = value.trim()
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (isoMatch) {
+    return new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]))
+  }
+
+  const dottedMatch = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})$/)
+  if (dottedMatch) {
+    return new Date(Number(dottedMatch[3]), Number(dottedMatch[2]) - 1, Number(dottedMatch[1]))
+  }
+
+  return null
+}
+
+const getAcademicStartYearForSchedule = () => {
+  const periodStart = parseScheduleDate(schedulePeriodMeta.value.periodStart)
+
+  if (periodStart) {
+    const month = periodStart.getMonth()
+    const year = periodStart.getFullYear()
+
+    return month >= 7 ? year : year - 1
+  }
+
+  const labelMatch = schedulePeriodMeta.value.academicYearLabel?.match(/^(\d{4})/)
+  if (labelMatch) {
+    return Number(labelMatch[1])
+  }
+
+  return getConsultationAcademicYearStart()
+}
+
+const resolveWeekStartDate = (key: string): Date | null => {
+  const startPart = key.split(' - ')[0]?.trim()
+  const parts = startPart?.split('.')
+  const day = parts?.[0]
+  const month = parts?.[1]
+
+  if (!day || !month) {
+    return null
+  }
+
+  const monthNumber = Number(month)
+  const academicStartYear = getAcademicStartYearForSchedule()
+  const year = monthNumber >= 8 ? academicStartYear : academicStartYear + 1
+
+  return new Date(year, monthNumber - 1, Number(day))
+}
+
+const formatFullDate = (date: Date): string => {
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+
+  return `${day}.${month}.${date.getFullYear()}`
+}
+
+const formatShortDate = (date: Date): string => {
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+
+  return `${day}.${month}`
+}
+
 const parseWeekRange = (key: string) => {
-  const parts = key.split(' - ')
-  const startStr = parts[0]
-  const endStr = parts[1]
+  const start = resolveWeekStartDate(key) ?? new Date(0)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 6)
 
-  if (!startStr || !endStr) {
-    return { start: new Date(0), end: new Date(0) }
-  }
-
-  const startParts = startStr.split('.')
-  const endParts = endStr.split('.')
-  const sd = startParts[0]
-  const sm = startParts[1]
-  const ed = endParts[0]
-  const em = endParts[1]
-
-  if (!sd || !sm || !ed || !em) {
-    return { start: new Date(0), end: new Date(0) }
-  }
-
-  const year = new Date().getFullYear()
-
-  return {
-    start: new Date(year, Number(sm) - 1, Number(sd)),
-    end: new Date(year, Number(em) - 1, Number(ed)),
-  }
+  return { start, end }
 }
 
 const syncWeekIndex = () => {
@@ -238,6 +402,129 @@ watch(weekKeys, syncWeekIndex, { immediate: true })
 
 const currentWeekKey = computed(() => weekKeys.value[currentWeekIndex.value] ?? '')
 const weekLabel = computed(() => currentWeekKey.value)
+const currentWeekStartDate = computed(() => resolveWeekStartDate(currentWeekKey.value))
+
+const getDateForDayInWeek = (day: string, weekKey = currentWeekKey.value): Date | null => {
+  const start = weekKey === currentWeekKey.value
+    ? currentWeekStartDate.value
+    : resolveWeekStartDate(weekKey)
+  const offset = DAY_TO_OFFSET[day]
+
+  if (!start || offset === undefined) {
+    return null
+  }
+
+  const date = new Date(start)
+  date.setDate(start.getDate() + offset)
+
+  return date
+}
+
+const getDateForDay = (day: string): Date | null => getDateForDayInWeek(day)
+
+const getDayDateLabelForWeek = (day: string, weekKey = currentWeekKey.value): string => {
+  const date = getDateForDayInWeek(day, weekKey)
+
+  return date ? formatShortDate(date) : ''
+}
+
+const getDayDateLabel = (day: string): string => getDayDateLabelForWeek(day)
+
+const getHolidayNameForDayInWeek = (day: string, weekKey = currentWeekKey.value): string | null => {
+  const date = getDateForDayInWeek(day, weekKey)
+
+  if (!date) {
+    return null
+  }
+
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const dayOfMonth = String(date.getDate()).padStart(2, '0')
+
+  return PUBLIC_HOLIDAYS[`${month}-${dayOfMonth}`] ?? null
+}
+
+const getHolidayNameForDay = (day: string): string | null => getHolidayNameForDayInWeek(day)
+
+const isHolidayDayInWeek = (day: string, weekKey = currentWeekKey.value): boolean =>
+  Boolean(getHolidayNameForDayInWeek(day, weekKey))
+
+const isHolidayDay = (day: string): boolean => isHolidayDayInWeek(day)
+
+const getPreholidayDayKey = (day: string, weekKey = currentWeekKey.value): string | null => {
+  const date = getDateForDayInWeek(day, weekKey)
+
+  if (!date) {
+    return null
+  }
+
+  return formatFullDate(date)
+}
+
+const loadPreholidayDays = () => {
+  try {
+    const storedValue = localStorage.getItem(PREHOLIDAY_STORAGE_KEY)
+    const parsedValue = storedValue ? JSON.parse(storedValue) : []
+
+    if (!Array.isArray(parsedValue)) {
+      preholidayDayKeys.value = []
+      return
+    }
+
+    const normalizedKeys = parsedValue
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => {
+        const legacyParts = value.split('|')
+        const legacyDate = legacyParts[3]
+
+        return legacyDate && /^\d{2}\.\d{2}\.\d{4}$/.test(legacyDate)
+          ? legacyDate
+          : value
+      })
+      .filter((value) => /^\d{2}\.\d{2}\.\d{4}$/.test(value))
+
+    preholidayDayKeys.value = Array.from(new Set(normalizedKeys))
+    persistPreholidayDays()
+  } catch {
+    preholidayDayKeys.value = []
+  }
+}
+
+const persistPreholidayDays = () => {
+  localStorage.setItem(PREHOLIDAY_STORAGE_KEY, JSON.stringify(preholidayDayKeys.value))
+}
+
+const isPreholidayDay = (day: string, weekKey = currentWeekKey.value): boolean => {
+  const key = getPreholidayDayKey(day, weekKey)
+
+  return Boolean(key && preholidayDayKeys.value.includes(key))
+}
+
+const togglePreholidayDay = (day: string) => {
+  if (!canManagePairs.value) {
+    return
+  }
+
+  const key = getPreholidayDayKey(day)
+
+  if (!key) {
+    return
+  }
+
+  preholidayDayKeys.value = preholidayDayKeys.value.includes(key)
+    ? preholidayDayKeys.value.filter((value) => value !== key)
+    : [...preholidayDayKeys.value, key]
+
+  persistPreholidayDays()
+}
+
+const getDaySlot = (day: string, rowIndex: number): TimeSlot | null => {
+  if (isPreholidayDay(day)) {
+    return preholidayTimeSlots[rowIndex] ?? null
+  }
+
+  return weekdayTimeSlots[rowIndex] ?? null
+}
+
 const isEmptySchedule = computed(() => {
   if (scheduleType.value === 'consults' && firstValue.value) {
     return false
@@ -246,17 +533,21 @@ const isEmptySchedule = computed(() => {
   return !isLoadingSchedule.value && weekKeys.value.length === 0
 })
 
+const scheduleYearSuffix = computed(() =>
+  formatSchedulePeriodSuffix(schedulePeriodMeta.value),
+)
+
 const pageTitle = computed(() => {
   if (scheduleType.value === 'students') {
-    return `Расписание группы ${secondValue.value}`
+    return `Расписание группы ${secondValue.value}${scheduleYearSuffix.value}`
   }
 
   if (scheduleType.value === 'teachers') {
-    return `Расписание преподавателя ${secondValue.value}`
+    return `Расписание преподавателя ${secondValue.value}${scheduleYearSuffix.value}`
   }
 
   if (scheduleType.value === 'auditories') {
-    return `Расписание аудитории ${secondValue.value}`
+    return `Расписание аудитории ${secondValue.value}${scheduleYearSuffix.value}`
   }
 
   if (scheduleType.value === 'consults') {
@@ -275,34 +566,215 @@ const closeModal = () => {
   selectedLesson.value = null
 }
 
+const resolveDefaultTeacherName = (): string => {
+  if (scheduleType.value === 'teachers') {
+    return secondValue.value
+  }
+
+  return ''
+}
+
+const resolveDefaultRoomFields = (): { building: string; room: string } => {
+  if (scheduleType.value === 'auditories') {
+    const parsed = parseRoomForForm(secondValue.value)
+
+    return {
+      building: firstValue.value || parsed.building,
+      room: parsed.room || secondValue.value,
+    }
+  }
+
+  return { building: '', room: '' }
+}
+
+const buildEmptyEditForm = () => {
+  const roomFields = resolveDefaultRoomFields()
+
+  return {
+    name: '',
+    type: scheduleType.value === 'consults' ? 'Консультация' : '',
+    group: scheduleType.value === 'students' ? secondValue.value : '',
+    teacher: resolveDefaultTeacherName(),
+    building: roomFields.building,
+    room: roomFields.room,
+    day: emptyCellData.value?.day ?? 'ПН',
+    time: emptyCellData.value
+      ? `${emptyCellData.value.time} - ${emptyCellData.value.endTime ?? PAIR_END_TIMES[emptyCellData.value.time] ?? ''}`.trim()
+      : '',
+    subgroup: '' as '' | '1' | '2',
+    additional: '',
+  }
+}
+
+const openEditModalForLesson = (lesson: CellLesson) => {
+  isCreatingLesson.value = false
+  editingLesson.value = lesson
+  emptyCellData.value = null
+  const parsedRoom = parseRoomForForm(lesson.room)
+  const displaySlot = findDisplaySlotForLesson(lesson)
+  const roomFields = scheduleType.value === 'auditories'
+    ? {
+      building: firstValue.value || parsedRoom.building,
+      room: parsedRoom.room || lesson.room,
+    }
+    : parsedRoom
+
+  editSlotContext.value = {
+    weekLabel: currentWeekKey.value,
+    weekStart: lesson.weekStart ?? resolveWeekStartForSave(),
+    day: lesson.day,
+  }
+
+  editForm.value = {
+    name: lesson.subject,
+    type: normalizeLessonTypeForForm(lesson.type),
+    group: lesson.groups.join(', '),
+    teacher: lesson.teacher || resolveDefaultTeacherName(),
+    building: roomFields.building,
+    room: roomFields.room,
+    day: lesson.day,
+    time: displaySlot
+        ? formatTimeSlotValue(displaySlot)
+        : `${lesson.startTime} - ${lesson.endTime}`,
+    subgroup: lesson.subgroup
+        ? String(lesson.subgroup) as '1' | '2'
+        : '',
+    additional: lesson.comment ?? '',
+  }
+
+  isEditModalVisible.value = true
+}
+
 const openEditModal = () => {
   if (!selectedLesson.value) return
 
-  isCreatingLesson.value = false
-  editingLesson.value = selectedLesson.value
-
-  editForm.value = {
-    name: editingLesson.value.subject,
-    type: editingLesson.value.type,
-    group: editingLesson.value.groups.join(', '),
-    teacher: editingLesson.value.teacher,
-    building: '',
-    room: editingLesson.value.room,
-    time: `${editingLesson.value.startTime} - ${editingLesson.value.endTime}`,
-    additional: '',
-  }
-
-  // Закрываем первое окно
+  const lesson = selectedLesson.value
   selectedLesson.value = null
-
-  // Открываем второе
-  isEditModalVisible.value = true
+  openEditModalForLesson(lesson)
 }
 
 const closeEditModal = () => {
   isEditModalVisible.value = false
   editingLesson.value = null
   isCreatingLesson.value = false
+  emptyCellData.value = null
+  editSlotContext.value = null
+}
+
+const formatTimeSlotValue = (slot: TimeSlot): string => `${slot.startTime} - ${slot.endTime}`
+
+const getTimeSlotsForDay = (day: string, weekKey = currentWeekKey.value): TimeSlot[] => {
+  if (isPreholidayDay(day, weekKey)) {
+    return preholidayTimeSlots
+  }
+
+  return day === saturdayDay
+    ? saturdayTimeSlots
+    : weekdayTimeSlots
+}
+
+const transferTimeSlots = computed(() =>
+  getTimeSlotsForDay(transferForm.value.day, transferForm.value.weekKey || currentWeekKey.value),
+)
+
+const editTimeSlots = computed(() => getTimeSlotsForDay(editForm.value.day))
+
+const findDisplaySlotForLesson = (lesson: CellLesson): TimeSlot | null => {
+  return getTimeSlotsForDay(lesson.day).find((slot) =>
+    (slot.matchingStartTimes ?? [slot.startTime]).includes(lesson.startTime),
+  ) ?? null
+}
+
+watch(
+  () => [transferForm.value.weekKey, transferForm.value.day],
+  () => {
+    if (!isTransferModalVisible.value) {
+      return
+    }
+
+    const weekKey = transferForm.value.weekKey || currentWeekKey.value
+
+    if (isHolidayDayInWeek(transferForm.value.day, weekKey)) {
+      const firstAvailableDay = days.find((day) => !isHolidayDayInWeek(day, weekKey))
+      if (firstAvailableDay) {
+        transferForm.value.day = firstAvailableDay
+        return
+      }
+    }
+
+    const isSelectedTimeAvailable = transferTimeSlots.value.some(
+      (slot) => formatTimeSlotValue(slot) === transferForm.value.time,
+    )
+
+    if (!isSelectedTimeAvailable) {
+      const firstSlot = transferTimeSlots.value[0]
+      if (firstSlot) {
+        transferForm.value.time = formatTimeSlotValue(firstSlot)
+      }
+    }
+  },
+)
+
+const openTransferModalForLesson = (lesson: CellLesson) => {
+  const displaySlot = findDisplaySlotForLesson(lesson)
+
+  transferringLesson.value = lesson
+  transferForm.value = {
+    weekKey: currentWeekKey.value,
+    day: lesson.day,
+    time: displaySlot
+      ? formatTimeSlotValue(displaySlot)
+      : `${lesson.startTime} - ${lesson.endTime}`,
+  }
+  isTransferModalVisible.value = true
+}
+
+const closeTransferModal = () => {
+  isTransferModalVisible.value = false
+  transferringLesson.value = null
+  isTransferSaving.value = false
+}
+
+const saveTransfer = async () => {
+  if (!transferringLesson.value) {
+    return
+  }
+
+  const dayOfWeek = DAY_TO_NUMBER[transferForm.value.day]
+  const timeParts = transferForm.value.time.split('-').map((part) => part.trim())
+  const startTime = timeParts[0] ?? ''
+  const endTime = timeParts[1] ?? ''
+  const transferWeekStart = resolveWeekStartDate(transferForm.value.weekKey)
+  const weekStart = transferWeekStart
+    ? formatFullDate(transferWeekStart)
+    : transferringLesson.value.weekStart ?? resolveWeekStartForSave()
+
+  if (!dayOfWeek || !startTime || !endTime || !weekStart) {
+    alert('Выберите день и время для переноса')
+    return
+  }
+
+  if (isHolidayDayInWeek(transferForm.value.day, transferForm.value.weekKey)) {
+    alert('Нельзя перенести пару на праздничный день')
+    return
+  }
+
+  isTransferSaving.value = true
+
+  try {
+    await updateScheduleItem(transferringLesson.value.id, {
+      dayOfWeek,
+      startTime,
+      endTime,
+      weekStart,
+    })
+    await loadSchedule()
+    closeTransferModal()
+  } catch (error) {
+    alert(getScheduleAdminErrorMessage(error))
+  } finally {
+    isTransferSaving.value = false
+  }
 }
 
 const resolveScheduleGroupName = (): string => {
@@ -317,35 +789,80 @@ const resolveScheduleGroupName = (): string => {
   return editingLesson.value?.groups[0] ?? editingLesson.value?.group ?? ''
 }
 
+const resolveWeekStartForSave = (): string | null => {
+  if (editSlotContext.value?.weekStart) {
+    return editSlotContext.value.weekStart
+  }
+
+  if (editingLesson.value?.weekStart) {
+    return editingLesson.value.weekStart
+  }
+
+  if (currentWeekStartDate.value) {
+    return formatFullDate(currentWeekStartDate.value)
+  }
+
+  const lessons = weeklySchedules.value[currentWeekKey.value] ?? []
+  const lessonWithWeek = lessons.find((lesson) => lesson.weekStart)
+
+  if (lessonWithWeek?.weekStart) {
+    return lessonWithWeek.weekStart
+  }
+
+  return getWeekStartFromLabel(currentWeekKey.value)
+}
+
 const saveEdit = async () => {
   if (scheduleType.value !== 'consults') {
     const groupName = resolveScheduleGroupName()
     const timeParts = editForm.value.time.split('-').map((part) => part.trim())
     const startTime = timeParts[0] ?? ''
     const endTime = timeParts[1] ?? ''
-    const weekStart = getWeekStartFromLabel(currentWeekKey.value)
-    const dayOfWeek = emptyCellData.value
-      ? DAY_TO_NUMBER[emptyCellData.value.day]
-      : editingLesson.value
-        ? DAY_TO_NUMBER[editingLesson.value.day]
-        : undefined
+    const weekStart = resolveWeekStartForSave()
+    const dayOfWeek = DAY_TO_NUMBER[
+      editForm.value.day
+      || emptyCellData.value?.day
+      || editingLesson.value?.day
+      || ''
+    ]
 
-    if (!groupName || !weekStart || !dayOfWeek || !startTime || !endTime || !editForm.value.name.trim()) {
-      alert('Заполните все обязательные поля')
+    if (
+        !groupName
+        || !weekStart
+        || !dayOfWeek
+        || !startTime
+        || !endTime
+        || !editForm.value.name.trim()
+        || !editForm.value.type.trim()
+    ) {
+      alert('Заполните все обязательные поля: название, тип, день, время, группа')
       return
     }
+
+    if (isCreatingLesson.value && isHolidayDay(editForm.value.day)) {
+      alert('В праздничный день нельзя добавить пару')
+      return
+    }
+
+    const room = formatRoomForApi(editForm.value.building, editForm.value.room)
+    const subgroupValue = showSubgroupField.value && editForm.value.subgroup
+      ? Number(editForm.value.subgroup)
+      : undefined
 
     const payload = {
       subject: editForm.value.name.trim(),
       lessonType: editForm.value.type.trim(),
       teacherName: editForm.value.teacher.trim() || undefined,
-      room: editForm.value.room.trim() || undefined,
+      room,
       dayOfWeek,
       startTime,
       endTime,
       weekStart,
+      subgroup: subgroupValue,
       comment: editForm.value.additional.trim() || undefined,
     }
+
+    isSaving.value = true
 
     try {
       if (isCreatingLesson.value) {
@@ -354,13 +871,20 @@ const saveEdit = async () => {
           ...payload,
         })
       } else if (editingLesson.value) {
-        await updateScheduleItem(editingLesson.value.id, payload)
+        await updateScheduleItem(editingLesson.value.id, {
+          ...payload,
+          subgroup: showSubgroupField.value && editForm.value.subgroup
+              ? Number(editForm.value.subgroup)
+              : null,
+        })
       }
 
       await loadSchedule()
       closeEditModal()
-    } catch {
-      alert('Не удалось сохранить занятие')
+    } catch (error) {
+      alert(getScheduleAdminErrorMessage(error))
+    } finally {
+      isSaving.value = false
     }
 
     return
@@ -473,7 +997,8 @@ const handleCellTap = (
     day: string,
     time: string,
     lessons: CellLesson[],
-    event: MouseEvent
+    event: MouseEvent,
+    endTime?: string,
 ) => {
   if (!isMobileLayout.value || lessons.length > 0) {
     return
@@ -483,8 +1008,13 @@ const handleCellTap = (
     return
   }
 
+  if (isHolidayDay(day)) {
+    alert('В праздничный день нельзя добавить пару')
+    return
+  }
+
   event.stopPropagation()
-  showEmptyContextMenu(event, day, time)
+  showEmptyContextMenu(event, day, time, endTime)
 }
 
 
@@ -499,14 +1029,17 @@ const viewLesson = () => {
 const EditLesson = () => {
   if (!contextLesson.value) return
 
-  // Закрываем контекстное меню
+  const lesson = contextLesson.value
   closeMenu()
+  openEditModalForLesson(lesson)
+}
 
-  // Устанавливаем выбранное занятие из контекстного меню
-  selectedLesson.value = contextLesson.value
+const transferLesson = () => {
+  if (!contextLesson.value) return
 
-  // Открываем модальное окно редактирования
-  openEditModal()
+  const lesson = contextLesson.value
+  closeMenu()
+  openTransferModalForLesson(lesson)
 }
 
 const cancelLesson = async () => {
@@ -533,8 +1066,8 @@ const cancelLesson = async () => {
     try {
       await disableScheduleItem(contextLesson.value.id)
       await loadSchedule()
-    } catch {
-      alert('Не удалось отменить пару')
+    } catch (error) {
+      alert(getScheduleAdminErrorMessage(error))
     }
   }
 
@@ -544,18 +1077,25 @@ const cancelLesson = async () => {
 const emptyCellData = ref<{
   day: string
   time: string
+  endTime?: string
 } | null>(null)
 
 const showEmptyContextMenu = (
     event: MouseEvent,
     day: string,
-    time: string
+    time: string,
+    endTime?: string,
 ) => {
   if (!canEdit.value) {
     return
   }
 
   event.preventDefault()
+
+  if (isHolidayDay(day)) {
+    alert('В праздничный день нельзя добавить пару')
+    return
+  }
 
   menuX.value = event.clientX
   menuY.value = event.clientY
@@ -567,6 +1107,7 @@ const showEmptyContextMenu = (
   emptyCellData.value = {
     day,
     time,
+    endTime,
   }
 
   isMenuVisible.value = true
@@ -576,24 +1117,79 @@ const commandAddLesson = () => {
   if (!emptyCellData.value) return
 
   isCreatingLesson.value = true
-  editForm.value = {
-    name: '',
-    type: scheduleType.value === 'consults' ? 'Консультация' : '',
-    group: '',
-    teacher: '',
-    building: '',
-    room: '',
-    time: `${emptyCellData.value.time} - ${PAIR_END_TIMES[emptyCellData.value.time] ?? ''}`.trim(),
-    additional: '',
+  editingLesson.value = null
+
+  editSlotContext.value = {
+    weekLabel: currentWeekKey.value,
+    weekStart: resolveWeekStartForSave(),
+    day: emptyCellData.value.day,
   }
+
+  editForm.value = buildEmptyEditForm()
 
   isEditModalVisible.value = true
 
   closeMenu()
 }
 
-const editModalTitle = computed(() =>
-    isCreatingLesson.value ? 'Добавить пару' : 'Редактирование занятия'
+const editModalTitle = computed(() => {
+  if (isConsultationSchedule.value) {
+    return isCreatingLesson.value ? 'Добавить консультацию' : 'Редактирование консультации'
+  }
+
+  return isCreatingLesson.value ? 'Добавить пару' : 'Редактирование занятия'
+})
+
+const isGroupFieldReadonly = computed(() => scheduleType.value === 'students')
+const isTeacherFieldReadonly = computed(() => scheduleType.value === 'teachers')
+const isRoomFieldsReadonly = computed(() => scheduleType.value === 'auditories')
+const showSubgroupField = computed(() =>
+  isSubgroupApplicableLessonType(editForm.value.type),
+)
+
+watch(
+  () => editForm.value.type,
+  (type) => {
+    if (!isSubgroupApplicableLessonType(type)) {
+      editForm.value.subgroup = ''
+    }
+  },
+)
+
+watch(
+  () => editForm.value.day,
+  () => {
+    if (!isEditModalVisible.value) {
+      return
+    }
+
+    const isSelectedTimeAvailable = editTimeSlots.value.some(
+      (slot) => formatTimeSlotValue(slot) === editForm.value.time,
+    )
+
+    if (!isSelectedTimeAvailable) {
+      const firstSlot = editTimeSlots.value[0]
+      editForm.value.time = firstSlot ? formatTimeSlotValue(firstSlot) : ''
+    }
+  },
+)
+
+watch(
+  () => editForm.value.building,
+  (building) => {
+    if (!isEditModalVisible.value || isConsultationSchedule.value || isRoomFieldsReadonly.value) {
+      return
+    }
+
+    if (building === DISTANCE_BUILDING) {
+      editForm.value.room = DISTANCE_ROOM_LABEL
+      return
+    }
+
+    if (editForm.value.room === DISTANCE_ROOM_LABEL) {
+      editForm.value.room = ''
+    }
+  },
 )
 
 const contextMenuStyle = computed(() =>
@@ -624,15 +1220,15 @@ const nextWeek = () => {
   }
 }
 
-const getLessons = (day: string, time: string) => {
-  const weekData = weeklySchedules.value[currentWeekKey.value]
+const getSaturdaySlot = (rowIndex: number) =>
+  isPreholidayDay(saturdayDay)
+    ? preholidayTimeSlots[rowIndex] ?? null
+    : saturdayTimeSlots[rowIndex] ?? null
 
-  if (!weekData) {
-    return []
-  }
+const getSlotStartTimes = (slot: TimeSlot): string[] =>
+  slot.matchingStartTimes ?? [slot.startTime]
 
-  const lessons = weekData.filter((item) => item.day === day && item.startTime === time)
-
+const mapCellLessons = (lessons: DisplayScheduleItem[]): CellLesson[] => {
   if (scheduleType.value === 'consults') {
     return lessons.map((lesson) => ({
       ...lesson,
@@ -680,38 +1276,45 @@ const getLessons = (day: string, time: string) => {
   return Array.from(groupedLessons.values())
 }
 
+const getLessons = (day: string, time: string) => {
+  const weekData = weeklySchedules.value[currentWeekKey.value]
+
+  if (!weekData) {
+    return []
+  }
+
+  const lessons = weekData.filter((item) => item.day === day && item.startTime === time)
+
+  return mapCellLessons(lessons)
+}
+
+const getLessonsForSlot = (day: string, slot: TimeSlot) => {
+  const weekData = weeklySchedules.value[currentWeekKey.value]
+
+  if (!weekData) {
+    return []
+  }
+
+  const startTimes = getSlotStartTimes(slot)
+  const lessons = weekData.filter((item) =>
+    item.day === day && startTimes.includes(item.startTime),
+  )
+
+  return mapCellLessons(lessons)
+}
+
 const getLessonClass = (type: string) => {
-  const lessonType = type.toLowerCase()
-
-  if (scheduleType.value === 'consults') {
-    if (lessonType.includes('онлайн')) return 'consult-online'
-    return 'consultation'
+  if (isConsultationSchedule.value) {
+    return getLessonGridClass(type) || (
+      type.toLowerCase().includes('онлайн') ? 'consult-online' : 'consultation'
+    )
   }
 
-  if (lessonType.includes('лек')) return 'lecture'
-  if (lessonType.includes('практ')) return 'practice'
-  if (lessonType.includes('лаб')) return 'lab'
-  if (lessonType.includes('зач') || lessonType.includes('защ')) return 'exam'
-
-  return ''
+  return getLessonGridClass(type)
 }
 
-const getTypeName = (type: string) => {
-  const lessonType = type.toLowerCase()
-
-  if (scheduleType.value === 'consults') {
-    if (lessonType.includes('онлайн')) return 'Онлайн-консультация'
-    return 'Консультация'
-  }
-
-  if (lessonType.includes('лек')) return 'Лекция'
-  if (lessonType.includes('практ')) return 'Практика'
-  if (lessonType.includes('лаб')) return 'Лабораторная'
-  if (lessonType.includes('зач')) return 'Зачёт'
-  if (lessonType.includes('защ')) return 'Защита'
-
-  return type
-}
+const getTypeName = (type: string) =>
+  getLessonTypeLabel(type, isConsultationSchedule.value)
 
 const getLessonMeta = (lesson: CellLesson) => {
   const subgroupLabel = lesson.subgroup ? `п/гр ${lesson.subgroup} • ` : ''
@@ -769,6 +1372,12 @@ const isParallelCell = (day: string, time: string) => {
   return lessons.some((lesson) => lesson.isSameCellParallel) && lessons.length > 1
 }
 
+const isParallelSlot = (day: string, slot: TimeSlot) => {
+  const lessons = getLessonsForSlot(day, slot)
+
+  return lessons.some((lesson) => lesson.isSameCellParallel) && lessons.length > 1
+}
+
 const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
 
 // Проверка, может ли текущий пользователь редактировать
@@ -784,11 +1393,14 @@ const canEdit = computed(() => {
   return authStore.currentUser?.role === 'education_department'
 })
 
+const canManagePairs = computed(() => canEdit.value && scheduleType.value !== 'consults')
+
 const syncMobileLayout = (queryList: MediaQueryList | MediaQueryListEvent) => {
   isMobileLayout.value = queryList.matches
 }
 
 onMounted(() => {
+  loadPreholidayDays()
   document.addEventListener('click', closeMenu as EventListener)
 
   mobileMediaQuery = window.matchMedia('(max-width: 640px)')
@@ -820,7 +1432,15 @@ onUnmounted(() => {
 
       <template v-else-if="!isEmptySchedule">
         <div class="week-nav">
-          <span class="week-label">Неделя: {{ weekLabel }}</span>
+          <select v-model.number="currentWeekIndex" class="week-label week-select" aria-label="Выбрать неделю">
+            <option
+                v-for="(key, index) in weekKeys"
+                :key="key"
+                :value="index"
+            >
+              Неделя: {{ key }}
+            </option>
+          </select>
 
           <div class="week-buttons">
             <button type="button" @click="prevWeek" :disabled="currentWeekIndex === 0">
@@ -879,6 +1499,10 @@ onUnmounted(() => {
               <span class="box exam"></span>
               Зачёт
             </div>
+
+            <div class="legend-item legend-item--note">
+              Особое
+            </div>
           </template>
         </div>
 
@@ -886,34 +1510,154 @@ onUnmounted(() => {
           <div class="header">
             <div></div>
 
-            <div v-for="day in days" :key="day">
-              {{ day }}
+            <div
+                v-for="day in weekdayDays"
+                :key="day"
+                class="header-day"
+                :class="{
+                  'header-day--holiday': isHolidayDay(day),
+                  'header-day--preholiday': isPreholidayDay(day),
+                }"
+            >
+              <span class="header-day__name">{{ day }}</span>
+              <span v-if="getDayDateLabel(day)" class="header-day__date">
+                {{ getDayDateLabel(day) }}
+              </span>
+              <span v-if="getHolidayNameForDay(day)" class="header-day__holiday">
+                {{ getHolidayNameForDay(day) }}
+              </span>
+              <span v-if="isPreholidayDay(day)" class="header-day__holiday">
+                Предпраздничный
+              </span>
+              <button
+                  v-if="canManagePairs"
+                  type="button"
+                  class="preholiday-toggle"
+                  @click.stop="togglePreholidayDay(day)"
+              >
+                {{ isPreholidayDay(day) ? 'Обычный' : 'Предпраздн.' }}
+              </button>
+            </div>
+
+            <div class="saturday-time-header">Время</div>
+            <div
+                class="header-day"
+                :class="{
+                  'header-day--holiday': isHolidayDay(saturdayDay),
+                  'header-day--preholiday': isPreholidayDay(saturdayDay),
+                }"
+            >
+              <span class="header-day__name">{{ saturdayDay }}</span>
+              <span v-if="getDayDateLabel(saturdayDay)" class="header-day__date">
+                {{ getDayDateLabel(saturdayDay) }}
+              </span>
+              <span v-if="getHolidayNameForDay(saturdayDay)" class="header-day__holiday">
+                {{ getHolidayNameForDay(saturdayDay) }}
+              </span>
+              <span v-if="isPreholidayDay(saturdayDay)" class="header-day__holiday">
+                Предпраздничный
+              </span>
+              <button
+                  v-if="canManagePairs"
+                  type="button"
+                  class="preholiday-toggle"
+                  @click.stop="togglePreholidayDay(saturdayDay)"
+              >
+                {{ isPreholidayDay(saturdayDay) ? 'Обычный' : 'Предпраздн.' }}
+              </button>
             </div>
           </div>
 
-          <div v-for="time in times" :key="time" class="row">
+          <div v-for="(time, rowIndex) in times" :key="time" class="row">
             <div class="time">{{ time }}</div>
 
-            <div
-                v-for="day in days"
-                :key="day"
-                class="cell"
-                :class="{ 'cell--parallel': isParallelCell(day, time) }"
-                @click.stop="handleCellTap(day, time, getLessons(day, time), $event)"
-                @contextmenu.prevent="showEmptyContextMenu($event, day, time)"
-            >
-              <div
-                  v-for="lesson in getLessons(day, time)"
-                  :key="`${lesson.group}-${lesson.id}`"
-                  class="lesson"
-                  :class="getLessonClass(lesson.type)"
-                  @click.stop="handleLessonTap(lesson, $event)"
-                  @contextmenu.prevent.stop="showContextMenu($event, lesson)"
-              >
-                <div class="subject">{{ lesson.subject }}</div>
-                <div class="meta">{{ getLessonMeta(lesson) }}</div>
-              </div>
-            </div>
+            <template v-for="day in weekdayDays" :key="day">
+              <template v-for="daySlot in [getDaySlot(day, rowIndex)]" :key="`${day}-${time}`">
+                <div
+                    v-if="daySlot"
+                    class="cell"
+                    :class="{
+                      'cell--parallel': isParallelSlot(day, daySlot),
+                      'cell--holiday': isHolidayDay(day),
+                      'cell--preholiday': isPreholidayDay(day),
+                    }"
+                    @click.stop="
+                      handleCellTap(
+                        day,
+                        daySlot.startTime,
+                        getLessonsForSlot(day, daySlot),
+                        $event,
+                        daySlot.endTime,
+                      )
+                    "
+                    @contextmenu.prevent="
+                      showEmptyContextMenu($event, day, daySlot.startTime, daySlot.endTime)
+                    "
+                >
+                  <div v-if="isPreholidayDay(day)" class="cell-slot-time">
+                    {{ daySlot.startTime }} - {{ daySlot.endTime }}
+                  </div>
+
+                  <div
+                      v-for="lesson in getLessonsForSlot(day, daySlot)"
+                      :key="`${lesson.group}-${lesson.id}`"
+                      class="lesson"
+                      :class="getLessonClass(lesson.type)"
+                      @click.stop="handleLessonTap(lesson, $event)"
+                      @contextmenu.prevent.stop="showContextMenu($event, lesson)"
+                  >
+                    <div class="subject">{{ lesson.subject }}</div>
+                    <div class="meta">{{ getLessonMeta(lesson) }}</div>
+                  </div>
+                </div>
+
+                <div v-else class="cell cell--removed"></div>
+              </template>
+            </template>
+
+            <template v-for="saturdaySlot in [getSaturdaySlot(rowIndex)]" :key="`saturday-${time}`">
+              <template v-if="saturdaySlot">
+                <div class="time">{{ saturdaySlot.startTime }}</div>
+
+                <div
+                    class="cell"
+                    :class="{
+                      'cell--parallel': isParallelSlot(saturdayDay, saturdaySlot),
+                      'cell--holiday': isHolidayDay(saturdayDay),
+                      'cell--preholiday': isPreholidayDay(saturdayDay),
+                    }"
+                    @click.stop="
+                      handleCellTap(
+                        saturdayDay,
+                        saturdaySlot.startTime,
+                        getLessonsForSlot(saturdayDay, saturdaySlot),
+                        $event,
+                        saturdaySlot.endTime,
+                      )
+                    "
+                    @contextmenu.prevent="
+                      showEmptyContextMenu(
+                        $event,
+                        saturdayDay,
+                        saturdaySlot.startTime,
+                        saturdaySlot.endTime,
+                      )
+                    "
+                >
+                  <div
+                      v-for="lesson in getLessonsForSlot(saturdayDay, saturdaySlot)"
+                      :key="`${lesson.group}-${lesson.id}`"
+                      class="lesson"
+                      :class="getLessonClass(lesson.type)"
+                      @click.stop="handleLessonTap(lesson, $event)"
+                      @contextmenu.prevent.stop="showContextMenu($event, lesson)"
+                  >
+                    <div class="subject">{{ lesson.subject }}</div>
+                    <div class="meta">{{ getLessonMeta(lesson) }}</div>
+                  </div>
+                </div>
+              </template>
+            </template>
           </div>
         </div>
       </template>
@@ -939,7 +1683,7 @@ onUnmounted(() => {
         <div class="modal" @click.stop>
           <div class="modal-header-actions">
             <button
-                v-if="canEdit"
+                v-if="canManagePairs || canEdit"
                 class="edit-btn"
                 type="button"
                 @click="openEditModal"
@@ -994,6 +1738,83 @@ onUnmounted(() => {
       </div>
 
 
+      <div v-if="isTransferModalVisible && transferringLesson" class="modal-overlay" @click="closeTransferModal">
+        <div class="modal transfer-modal" @click.stop>
+          <button class="close-btn" type="button" @click="closeTransferModal">✕</button>
+
+          <h2 class="modal-title">Перенос пары</h2>
+
+          <div class="modal-body">
+            <div class="transfer-summary">
+              <strong>{{ transferringLesson.subject }}</strong>
+              <span>
+                Сейчас: {{ transferringLesson.day }},
+                {{ transferringLesson.startTime }} - {{ transferringLesson.endTime }}
+              </span>
+            </div>
+
+            <div class="edit-form">
+              <div class="form-group">
+                <label for="transfer-week" class="form-label">Неделя</label>
+                <select id="transfer-week" v-model="transferForm.weekKey" class="form-select">
+                  <option v-for="key in weekKeys" :key="key" :value="key">
+                    {{ key }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="transfer-day" class="form-label">Новый день</label>
+                <select id="transfer-day" v-model="transferForm.day" class="form-select">
+                  <option
+                      v-for="day in days"
+                      :key="day"
+                      :value="day"
+                      :disabled="isHolidayDayInWeek(day, transferForm.weekKey)"
+                  >
+                    {{ day }} · {{ getDayDateLabelForWeek(day, transferForm.weekKey) }}
+                    {{ isHolidayDayInWeek(day, transferForm.weekKey) ? ' · праздник' : '' }}
+                  </option>
+                </select>
+                <span
+                    v-if="isHolidayDayInWeek(transferForm.day, transferForm.weekKey)"
+                    class="form-hint form-hint--danger"
+                >
+                  На праздничный день переносить нельзя.
+                </span>
+              </div>
+
+              <div class="form-group">
+                <label for="transfer-time" class="form-label">Новое время</label>
+                <select id="transfer-time" v-model="transferForm.time" class="form-select">
+                  <option
+                      v-for="slot in transferTimeSlots"
+                      :key="`${slot.startTime}-${slot.endTime}`"
+                      :value="formatTimeSlotValue(slot)"
+                  >
+                    {{ formatTimeSlotValue(slot) }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div class="edit-actions">
+              <button type="button" class="btn btn-secondary" @click="closeTransferModal">
+                Отмена
+              </button>
+              <button
+                  type="button"
+                  class="btn btn-primary"
+                  :disabled="isTransferSaving || isHolidayDayInWeek(transferForm.day, transferForm.weekKey)"
+                  @click="saveTransfer"
+              >
+                {{ isTransferSaving ? 'Перенос...' : 'Перенести' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div v-if="isEditModalVisible" class="modal-overlay" @click="closeEditModal">
         <div class="modal edit-modal" @click.stop>
           <button class="close-btn" type="button" @click="closeEditModal">✕</button>
@@ -1022,11 +1843,13 @@ onUnmounted(() => {
                     <option value="Онлайн-консультация">Онлайн-консультация</option>
                   </template>
                   <template v-else>
-                    <option value="Лекция">Лекция</option>
-                    <option value="Практика">Практика</option>
-                    <option value="Лабораторная">Лабораторная</option>
-                    <option value="Консультация">Консультация</option>
-                    <option value="Зачёт">Зачёт</option>
+                    <option
+                        v-for="option in LESSON_TYPE_OPTIONS"
+                        :key="option"
+                        :value="option"
+                    >
+                      {{ option }}
+                    </option>
                   </template>
                 </select>
               </div>
@@ -1038,7 +1861,8 @@ onUnmounted(() => {
                     v-model="editForm.group"
                     type="text"
                     class="form-input"
-                    placeholder="Выберите"
+                    placeholder="381"
+                    :readonly="isGroupFieldReadonly"
                 />
               </div>
 
@@ -1049,49 +1873,74 @@ onUnmounted(() => {
                     v-model="editForm.teacher"
                     type="text"
                     class="form-input"
-                    placeholder="Выберите"
+                    placeholder="Иванов И.И."
+                    :readonly="isTeacherFieldReadonly"
                 />
               </div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="edit-building" class="form-label">Корпус</label>
-                  <select id="edit-building" v-model="editForm.building" class="form-select">
-                    <option value="" disabled>Выберите</option>
-                    <option value="1">Корпус 1</option>
-                    <option value="2">Корпус 2</option>
-                    <option value="3">Корпус 3</option>
-                  </select>
-                </div>
-
-                <div class="form-group">
-                  <label for="edit-room" class="form-label">Аудитория</label>
-                  <select id="edit-room" v-model="editForm.room" class="form-select">
-                    <option value="" disabled>Выберите</option>
-                    <option value="101">101</option>
-                    <option value="102">102</option>
-                    <option value="201">201</option>
-                    <option value="312">312</option>
-                  </select>
-                </div>
+              <div class="form-group">
+                <label for="edit-day" class="form-label">День недели</label>
+                <select id="edit-day" v-model="editForm.day" class="form-select">
+                  <option v-for="day in days" :key="day" :value="day">
+                    {{ day }}
+                  </option>
+                </select>
               </div>
 
               <div class="form-group">
                 <label for="edit-time" class="form-label">Время</label>
                 <select id="edit-time" v-model="editForm.time" class="form-select">
                   <option value="" disabled>Выберите</option>
-                  <option value="08:30 - 10:00">08:30 - 10:00</option>
-                  <option value="10:15 - 11:45">10:15 - 11:45</option>
-                  <option value="12:00 - 13:30">12:00 - 13:30</option>
-                  <option value="14:15 - 15:45">14:15 - 15:45</option>
-                  <option value="16:00 - 17:30">16:00 - 17:30</option>
-                  <option value="17:40 - 19:05">17:40 - 19:05</option>
-                  <option value="19:15 - 20:40">19:15 - 20:40</option>
+                  <option
+                      v-for="slot in editTimeSlots"
+                      :key="`${slot.startTime}-${slot.endTime}`"
+                      :value="formatTimeSlotValue(slot)"
+                  >
+                    {{ formatTimeSlotValue(slot) }}
+                  </option>
+                </select>
+              </div>
+
+              <div v-if="!isConsultationSchedule" class="form-row">
+                <div class="form-group">
+                  <label for="edit-building" class="form-label">Корпус</label>
+                  <select
+                      id="edit-building"
+                      v-model="editForm.building"
+                      class="form-select"
+                      :disabled="isRoomFieldsReadonly"
+                  >
+                    <option value="">Не выбран</option>
+                    <option v-for="building in BUILDING_OPTIONS" :key="building" :value="building">
+                      {{ building }}
+                    </option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="edit-room" class="form-label">Аудитория</label>
+                  <input
+                      id="edit-room"
+                      v-model="editForm.room"
+                      type="text"
+                      class="form-input"
+                      placeholder="312 или дист. форм. об."
+                      :readonly="isRoomFieldsReadonly || editForm.building === DISTANCE_BUILDING"
+                  />
+                </div>
+              </div>
+
+              <div v-if="!isConsultationSchedule && showSubgroupField" class="form-group">
+                <label for="edit-subgroup" class="form-label">Подгруппа</label>
+                <select id="edit-subgroup" v-model="editForm.subgroup" class="form-select">
+                  <option value="">Вся группа</option>
+                  <option value="1">Подгруппа 1</option>
+                  <option value="2">Подгруппа 2</option>
                 </select>
               </div>
 
               <div class="form-group">
-                <label for="edit-additional" class="form-label">Дополнительное</label>
+                <label for="edit-additional" class="form-label">Комментарий</label>
                 <input
                     id="edit-additional"
                     v-model="editForm.additional"
@@ -1106,8 +1955,13 @@ onUnmounted(() => {
               <button type="button" class="btn btn-secondary" @click="closeEditModal">
                 Отмена
               </button>
-              <button type="button" class="btn btn-primary" @click="saveEdit">
-                Сохранить
+              <button
+                  type="button"
+                  class="btn btn-primary"
+                  :disabled="isSaving"
+                  @click="saveEdit"
+              >
+                {{ isSaving ? 'Сохранение...' : 'Сохранить' }}
               </button>
             </div>
           </div>
@@ -1123,7 +1977,7 @@ onUnmounted(() => {
       <!-- Если слот пустой -->
       <template v-if="!contextLesson">
 
-        <li v-if="canEdit" @click="commandAddLesson">
+        <li v-if="canManagePairs || (canEdit && isConsultationSchedule)" @click="commandAddLesson">
           {{ isConsultationSchedule ? 'Добавить консультацию' : 'Добавить пару' }}
         </li>
 
@@ -1136,11 +1990,15 @@ onUnmounted(() => {
           Просмотр
         </li>
 
-        <li v-if="canEdit" @click="EditLesson">
+        <li v-if="canManagePairs || canEdit" @click="EditLesson">
           Внести изменения
         </li>
 
-        <li v-if="canEdit" @click="cancelLesson">
+        <li v-if="canManagePairs" @click="transferLesson">
+          Перенести пару
+        </li>
+
+        <li v-if="canManagePairs || canEdit" @click="cancelLesson">
           {{ isConsultationSchedule ? 'Удалить консультацию' : 'Отменить пару' }}
         </li>
 

@@ -73,6 +73,8 @@ export function mapItemToDisplayLesson(item: ScheduleItem): ScheduleDisplayLesso
         group: groupName,
         subgroup: item.subgroup?.number ?? null,
         isSameCellParallel: item.isSameCellParallel,
+        comment: item.comment,
+        weekStart: normalizeWeekStart(String(item.weekStart)),
     };
 }
 

@@ -17,3 +17,28 @@ export function normalizeRoomValue(room: string | null | undefined): string | nu
     const value = room?.trim().toUpperCase();
     return value ? value : null;
 }
+
+export function normalizeRoomListKey(label: string): string {
+    return label
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/\.+$/g, '')
+        .toUpperCase();
+}
+
+export function pickPreferredRoomLabel(current: string, next: string): string {
+    const trimmedCurrent = current.trim();
+    const trimmedNext = next.trim();
+
+    if (trimmedCurrent.endsWith('.') && !trimmedNext.endsWith('.')) {
+        return trimmedNext;
+    }
+
+    if (!trimmedCurrent.endsWith('.') && trimmedNext.endsWith('.')) {
+        return trimmedCurrent;
+    }
+
+    return trimmedCurrent.length >= trimmedNext.length
+        ? trimmedCurrent
+        : trimmedNext;
+}

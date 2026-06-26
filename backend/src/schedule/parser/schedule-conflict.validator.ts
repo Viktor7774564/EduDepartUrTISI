@@ -83,13 +83,10 @@ function formatDayLabel(dayOfWeek: number): string {
 }
 
 function formatSameGroupConflict(first: ScheduleLessonSlot, second: ScheduleLessonSlot): string {
-    const subgroupNote = first.subgroup || second.subgroup
-        ? `, п/гр ${first.subgroup ?? '—'}`
-        : '';
-
-    return `Конфликт очных пар: группа ${first.groupName}, `
+    return `Конфликт расписания группы ${first.groupName}: `
         + `${formatDayLabel(first.dayOfWeek)}, ${normalizeTime(first.startTime)}, `
-        + `неделя ${normalizeWeekStart(first.weekStart)}${subgroupNote}. `
+        + `неделя ${normalizeWeekStart(first.weekStart)}. `
+        + `Нельзя ставить две пары в одно время без разделения по подгруппам: `
         + `"${first.subject}" (${first.lessonType}) и "${second.subject}" (${second.lessonType})`;
 }
 
@@ -98,6 +95,29 @@ function formatCrossGroupConflict(first: ScheduleLessonSlot, second: ScheduleLes
         + `${normalizeTime(first.startTime)}, неделя ${normalizeWeekStart(first.weekStart)}, ауд. ${first.room}. `
         + `Группа ${first.groupName}: "${first.subject}" (${first.lessonType}) и `
         + `группа ${second.groupName}: "${second.subject}" (${second.lessonType})`;
+}
+
+function formatTeacherConflict(first: ScheduleLessonSlot, second: ScheduleLessonSlot): string {
+    return `Конфликт преподавателя: ${first.teacherName}, `
+        + `${formatDayLabel(first.dayOfWeek)}, ${normalizeTime(first.startTime)}, `
+        + `неделя ${normalizeWeekStart(first.weekStart)}. `
+        + `Группа ${first.groupName}: "${first.subject}" (${first.lessonType}) и `
+        + `группа ${second.groupName}: "${second.subject}" (${second.lessonType})`;
+}
+
+function normalizeTeacherName(name: string): string {
+    return name.trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
+function hasSameTeacher(first: ScheduleLessonSlot, second: ScheduleLessonSlot): boolean {
+    const firstTeacher = normalizeTeacherName(first.teacherName);
+    const secondTeacher = normalizeTeacherName(second.teacherName);
+
+    return Boolean(firstTeacher && secondTeacher && firstTeacher === secondTeacher);
+}
+
+function isTeacherConflictAllowed(first: ScheduleLessonSlot, second: ScheduleLessonSlot): boolean {
+    return first.isDistance !== second.isDistance;
 }
 
 export function validateScheduleConflicts(
@@ -116,22 +136,26 @@ export function validateScheduleConflicts(
                 continue;
             }
 
-            if (first.isDistance || second.isDistance) {
-                continue;
-            }
-
-            if (isSharedHall(first, second)) {
-                continue;
-            }
-
             if (first.groupName !== second.groupName) {
+                if (!first.isDistance && !second.isDistance && isSharedHall(first, second)) {
+                    continue;
+                }
+
                 if (areParallelGroups(first.groupName, second.groupName)) {
                     continue;
                 }
 
-                if (hasSameRoom(first, second)) {
+                if (!first.isDistance && !second.isDistance && hasSameRoom(first, second)) {
                     conflicts.push({
                         message: formatCrossGroupConflict(first, second),
+                        lessonA: first,
+                        lessonB: second,
+                    });
+                }
+
+                if (hasSameTeacher(first, second) && !isTeacherConflictAllowed(first, second)) {
+                    conflicts.push({
+                        message: formatTeacherConflict(first, second),
                         lessonA: first,
                         lessonB: second,
                     });
@@ -144,8 +168,7 @@ export function validateScheduleConflicts(
                 continue;
             }
 
-            // Две разные дисциплины в одной ячейке (Информатика / Физика) — нормально.
-            if (first.subject !== second.subject) {
+            if (first.isSameCellParallel && second.isSameCellParallel) {
                 continue;
             }
 

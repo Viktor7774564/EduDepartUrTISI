@@ -16,10 +16,13 @@ import { Schedule } from './entities/schedule.entity';
 import { ScheduleItem } from './entities/schedule-item.entity';
 import { ScheduleDisplayLesson } from './schedule-display.service';
 import {
+    formatRoomLabel,
     mapItemToDisplayLesson,
     mapItemToLessonSlot,
+    resolveTeacherName,
 } from './schedule-item.mapper';
-import { ScheduleLessonSlot, validateScheduleConflicts } from './parser/schedule-conflict.validator';
+import { normalizeWeekStart } from './parser/schedule-slot.utils';
+import { validateScheduleConflicts } from './parser/schedule-conflict.validator';
 import { LessonTypeResolver } from './resolver/lesson-type.resolver';
 import { RoomResolver } from './resolver/room.resolver';
 import { TeacherResolver } from './resolver/teacher.resolver';
@@ -89,9 +92,10 @@ export class ScheduleAdminService {
     private async findOrCreateGroup(groupName: string): Promise<Group> {
         const trimmed = groupName.trim();
 
-        const existing = await this.groupsRepository.findOne({
-            where: { name: trimmed },
-        });
+        const existing = await this.groupsRepository
+            .createQueryBuilder('group')
+            .where('UPPER(TRIM(group.name)) = UPPER(:name)', { name: trimmed })
+            .getOne();
 
         if (existing) {
             return existing;
@@ -136,12 +140,25 @@ export class ScheduleAdminService {
             return null;
         }
 
-        return this.subgroupsRepository.findOne({
+        const subgroupNumber = number as 1 | 2;
+
+        const existing = await this.subgroupsRepository.findOne({
             where: {
                 groupId,
-                number: number as 1 | 2,
+                number: subgroupNumber,
             },
         });
+
+        if (existing) {
+            return existing;
+        }
+
+        return this.subgroupsRepository.save(
+            this.subgroupsRepository.create({
+                groupId,
+                number: subgroupNumber,
+            }),
+        );
     }
 
     private async findScheduleForWeek(
@@ -149,23 +166,58 @@ export class ScheduleAdminService {
         weekStart: string,
     ): Promise<Schedule> {
         const weekStartIso = this.toDate(weekStart);
+        const normalizedGroupName = groupName.trim();
 
-        const schedule = await this.schedulesRepository
+        const scheduleInPeriod = await this.schedulesRepository
             .createQueryBuilder('schedule')
             .innerJoin('schedule.group', 'group')
-            .where('group.name = :groupName', { groupName: groupName.trim() })
+            .where('UPPER(TRIM(group.name)) = UPPER(:groupName)', {
+                groupName: normalizedGroupName,
+            })
             .andWhere('schedule.isActive = true')
             .andWhere('schedule.validFrom <= :weekStart', { weekStart: weekStartIso })
             .andWhere('schedule.validTo >= :weekStart', { weekStart: weekStartIso })
+            .orderBy('schedule.validFrom', 'DESC')
             .getOne();
 
-        if (!schedule) {
-            throw new BadRequestException(
-                'Расписание для этой группы и недели не найдено. Загрузите файл расписания.',
-            );
+        if (scheduleInPeriod) {
+            return scheduleInPeriod;
         }
 
-        return schedule;
+        const scheduleByExistingWeek = await this.schedulesRepository
+            .createQueryBuilder('schedule')
+            .innerJoin('schedule.group', 'group')
+            .innerJoin('schedule.items', 'item')
+            .where('UPPER(TRIM(group.name)) = UPPER(:groupName)', {
+                groupName: normalizedGroupName,
+            })
+            .andWhere('schedule.isActive = true')
+            .andWhere('item.isDisabled = false')
+            .andWhere('item.weekStart = :weekStart', { weekStart: weekStartIso })
+            .orderBy('schedule.validFrom', 'DESC')
+            .getOne();
+
+        if (scheduleByExistingWeek) {
+            return scheduleByExistingWeek;
+        }
+
+        const activeSchedule = await this.schedulesRepository
+            .createQueryBuilder('schedule')
+            .innerJoin('schedule.group', 'group')
+            .where('UPPER(TRIM(group.name)) = UPPER(:groupName)', {
+                groupName: normalizedGroupName,
+            })
+            .andWhere('schedule.isActive = true')
+            .orderBy('schedule.validFrom', 'DESC')
+            .getOne();
+
+        if (activeSchedule) {
+            return activeSchedule;
+        }
+
+        throw new BadRequestException(
+            'Расписание для этой группы и недели не найдено. Загрузите файл расписания.',
+        );
     }
 
     private async loadItemWithRelations(id: number): Promise<ScheduleItem> {
@@ -179,66 +231,6 @@ export class ScheduleAdminService {
         }
 
         return item;
-    }
-
-    private async loadExistingSlots(
-        excludeItemId?: number,
-    ): Promise<ScheduleLessonSlot[]> {
-        const qb = this.itemsRepository
-            .createQueryBuilder('item')
-            .innerJoinAndSelect('item.schedule', 'schedule')
-            .innerJoinAndSelect('schedule.group', 'group')
-            .leftJoinAndSelect('item.subject', 'subject')
-            .leftJoinAndSelect('item.subgroup', 'subgroup')
-            .leftJoinAndSelect('item.lessonType', 'lessonType')
-            .leftJoinAndSelect('item.teacher', 'teacher')
-            .leftJoinAndSelect('item.room', 'room')
-            .where('item.isDisabled = false')
-            .andWhere('schedule.isActive = true');
-
-        if (excludeItemId) {
-            qb.andWhere('item.id <> :excludeItemId', { excludeItemId });
-        }
-
-        const items = await qb.getMany();
-
-        return items.map((item) => mapItemToLessonSlot(item));
-    }
-
-    private buildSlotFromDto(
-        dto: CreateScheduleItemDto,
-        groupName: string,
-    ): ScheduleLessonSlot {
-        return {
-            groupName,
-            dayOfWeek: dto.dayOfWeek,
-            startTime: dto.startTime,
-            endTime: dto.endTime,
-            weekStart: dto.weekStart,
-            subgroup: dto.subgroup ?? null,
-            isDistance: /дист/i.test(dto.room ?? ''),
-            isSameCellParallel: false,
-            subject: dto.subject.trim(),
-            lessonType: dto.lessonType.trim(),
-            teacherPosition: '',
-            teacherName: dto.teacherName?.trim() ?? '',
-            room: dto.room?.trim() || null,
-        };
-    }
-
-    private async assertNoConflicts(
-        slot: ScheduleLessonSlot,
-        excludeItemId?: number,
-    ): Promise<void> {
-        const existing = await this.loadExistingSlots(excludeItemId);
-        const conflicts = validateScheduleConflicts([slot], existing);
-
-        if (conflicts.length > 0) {
-            throw new BadRequestException({
-                message: 'Изменение отменено: обнаружены конфликты в расписании',
-                errors: conflicts.map((conflict) => conflict.message),
-            });
-        }
     }
 
     private async applySlotFields(
@@ -269,6 +261,11 @@ export class ScheduleAdminService {
 
         const subgroup = await this.findSubgroup(groupId, slot.subgroup ?? null);
 
+        item.subject = subject;
+        item.lessonType = lessonType;
+        item.room = room;
+        item.teacher = teacher;
+        item.subgroup = subgroup;
         item.subjectId = subject.id;
         item.lessonTypeId = lessonType.id;
         item.roomId = room?.id ?? null;
@@ -297,12 +294,48 @@ export class ScheduleAdminService {
         }
     }
 
+    private async loadActiveLessonSlots(excludeItemId?: number) {
+        const query = this.itemsRepository
+            .createQueryBuilder('item')
+            .innerJoinAndSelect('item.schedule', 'schedule')
+            .innerJoinAndSelect('schedule.group', 'group')
+            .leftJoinAndSelect('item.subject', 'subject')
+            .leftJoinAndSelect('item.subgroup', 'subgroup')
+            .leftJoinAndSelect('item.lessonType', 'lessonType')
+            .leftJoinAndSelect('item.teacher', 'teacher')
+            .leftJoinAndSelect('item.room', 'room')
+            .where('item.isDisabled = false');
+
+        if (excludeItemId) {
+            query.andWhere('item.id != :excludeItemId', { excludeItemId });
+        }
+
+        const items = await query.getMany();
+
+        return items.map((entry) => mapItemToLessonSlot(entry));
+    }
+
+    private async assertNoConflicts(
+        candidate: ScheduleItem,
+        excludeItemId?: number,
+    ): Promise<void> {
+        const existingLessons = await this.loadActiveLessonSlots(excludeItemId);
+        const candidateSlot = mapItemToLessonSlot(candidate);
+        const conflicts = validateScheduleConflicts([candidateSlot], existingLessons);
+
+        if (conflicts.length === 0) {
+            return;
+        }
+
+        throw new BadRequestException({
+            message: 'Невозможно сохранить: обнаружен конфликт в расписании',
+            errors: conflicts.map((conflict) => conflict.message),
+        });
+    }
+
     async createItem(dto: CreateScheduleItemDto): Promise<ScheduleDisplayLesson> {
         const group = await this.findOrCreateGroup(dto.groupName);
         const schedule = await this.findScheduleForWeek(dto.groupName, dto.weekStart);
-        const slot = this.buildSlotFromDto(dto, group.name);
-
-        await this.assertNoConflicts(slot);
 
         const item = this.itemsRepository.create({
             scheduleId: schedule.id,
@@ -318,6 +351,10 @@ export class ScheduleAdminService {
         });
 
         await this.applySlotFields(item, dto, group.id);
+        item.schedule = schedule;
+        item.schedule.group = group;
+
+        await this.assertNoConflicts(item);
 
         const saved = await this.itemsRepository.save(item);
 
@@ -335,35 +372,28 @@ export class ScheduleAdminService {
             throw new BadRequestException('У занятия не указана группа');
         }
 
-        const nextSlot: ScheduleLessonSlot = {
-            ...mapItemToLessonSlot(item),
+        await this.applySlotFields(item, {
             subject: dto.subject?.trim() ?? item.subject.name,
             lessonType: dto.lessonType?.trim() ?? item.lessonType.name,
             teacherName: dto.teacherName !== undefined
                 ? dto.teacherName.trim()
-                : mapItemToLessonSlot(item).teacherName,
-            room: dto.room !== undefined ? (dto.room.trim() || null) : mapItemToLessonSlot(item).room,
-            subgroup: dto.subgroup !== undefined ? dto.subgroup : (item.subgroup?.number ?? null),
+                : resolveTeacherName(item),
+            room: dto.room !== undefined
+                ? dto.room.trim()
+                : formatRoomLabel(item.room),
+            subgroup: dto.subgroup !== undefined
+                ? dto.subgroup
+                : (item.subgroup?.number ?? null),
             dayOfWeek: dto.dayOfWeek ?? item.dayOfWeek,
             startTime: dto.startTime ?? item.startTime,
             endTime: dto.endTime ?? item.endTime,
-            weekStart: dto.weekStart ?? mapItemToLessonSlot(item).weekStart,
-        };
-
-        await this.assertNoConflicts(nextSlot, id);
-
-        await this.applySlotFields(item, {
-            subject: nextSlot.subject,
-            lessonType: nextSlot.lessonType,
-            teacherName: nextSlot.teacherName,
-            room: nextSlot.room ?? undefined,
-            subgroup: nextSlot.subgroup,
-            dayOfWeek: nextSlot.dayOfWeek,
-            startTime: nextSlot.startTime,
-            endTime: nextSlot.endTime,
-            weekStart: nextSlot.weekStart,
-            comment: dto.comment,
+            weekStart: dto.weekStart ?? normalizeWeekStart(String(item.weekStart)),
+            comment: dto.comment !== undefined
+                ? (dto.comment?.trim() || null)
+                : undefined,
         }, item.schedule.groupId!);
+
+        await this.assertNoConflicts(item, id);
 
         await this.itemsRepository.save(item);
 

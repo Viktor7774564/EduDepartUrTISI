@@ -4,7 +4,7 @@ export declare class ScheduleDisplayController {
     constructor(scheduleDisplayService: ScheduleDisplayService);
     listGroups(): Promise<ScheduleGroupInfo[]>;
     getGroupSchedule(groupName: string): Promise<GroupScheduleResponse>;
-    listTeachers(): Promise<string[]>;
+    listTeachers(departmentId?: string): Promise<string[]>;
     getTeacherSchedule(teacherName: string): Promise<TeacherScheduleResponse>;
     listBuildings(): Promise<string[]>;
     listRooms(building?: string): Promise<string[]>;

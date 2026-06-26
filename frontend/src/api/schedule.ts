@@ -1,22 +1,22 @@
 import api from '@/api/client'
-import type { DisplayScheduleItem } from '@/views/schedule/scheduleOptions'
+import type { DisplayScheduleItem, SchedulePeriodMeta } from '@/views/schedule/scheduleOptions'
 
 export interface ScheduleGroupInfo {
   groupName: string
   facultyName: string | null
 }
 
-export interface GroupScheduleResponse {
+export interface GroupScheduleResponse extends SchedulePeriodMeta {
   groupName: string
   weeks: Record<string, DisplayScheduleItem[]>
 }
 
-export interface TeacherScheduleResponse {
+export interface TeacherScheduleResponse extends SchedulePeriodMeta {
   teacherName: string
   weeks: Record<string, DisplayScheduleItem[]>
 }
 
-export interface RoomScheduleResponse {
+export interface RoomScheduleResponse extends SchedulePeriodMeta {
   room: string
   weeks: Record<string, DisplayScheduleItem[]>
 }
@@ -33,8 +33,10 @@ export async function fetchGroupSchedule(groupName: string): Promise<GroupSchedu
   return response.data
 }
 
-export async function fetchScheduleTeachers(): Promise<string[]> {
-  const response = await api.get<string[]>('/schedules/teachers')
+export async function fetchScheduleTeachers(departmentId?: number): Promise<string[]> {
+  const response = await api.get<string[]>('/schedules/teachers', {
+    params: departmentId ? { departmentId } : undefined,
+  })
   return response.data
 }
 

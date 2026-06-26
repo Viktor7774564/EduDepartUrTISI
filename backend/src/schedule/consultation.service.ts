@@ -8,6 +8,7 @@ import { User } from '../users/entities/user.entity';
 import { CreateConsultationDto, UpdateConsultationDto } from './dto/consultation.dto';
 import { Consultation } from './entities/consultation.entity';
 import { ScheduleDisplayLesson } from './schedule-display.service';
+import { normalizeWeekStart } from './parser/schedule-slot.utils';
 
 const DAY_LABELS: Record<number, string> = {
     1: 'ПН',
@@ -89,6 +90,8 @@ export class ConsultationService {
             group: '',
             subgroup: null,
             isSameCellParallel: false,
+            comment: null,
+            weekStart: normalizeWeekStart(String(consultation.weekStart)),
         };
     }
 

@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import axios from 'axios'
 import api from '@/api/client'
 
 const AUTH_STORAGE_KEY = 'edu-depart-auth-user'
@@ -112,10 +113,23 @@ export const useAuthStore = defineStore('auth', () => {
       setSession(user, accessToken, refreshToken)
 
       return { success: true, user }
-    } catch (error: any) {
-      const message = error.response?.data?.message ||
-          error.response?.data ||
-          'Неверный логин или пароль'
+    } catch (error: unknown) {
+      if (!axios.isAxiosError(error)) {
+        return { success: false, message: 'Не удалось выполнить вход' }
+      }
+
+      if (!error.response) {
+        return {
+          success: false,
+          message: 'Сервер недоступен. Проверьте, что бэкенд запущен.',
+        }
+      }
+
+      const data = error.response.data
+      const message = typeof data === 'object' && data && 'message' in data
+        ? String((data as { message?: unknown }).message ?? 'Неверный логин или пароль')
+        : 'Неверный логин или пароль'
+
       return { success: false, message }
     }
   }

@@ -49,12 +49,10 @@ function formatDayLabel(dayOfWeek) {
     return DAY_LABELS[dayOfWeek] ?? String(dayOfWeek);
 }
 function formatSameGroupConflict(first, second) {
-    const subgroupNote = first.subgroup || second.subgroup
-        ? `, п/гр ${first.subgroup ?? '—'}`
-        : '';
-    return `Конфликт очных пар: группа ${first.groupName}, `
+    return `Конфликт расписания группы ${first.groupName}: `
         + `${formatDayLabel(first.dayOfWeek)}, ${(0, schedule_slot_utils_1.normalizeTime)(first.startTime)}, `
-        + `неделя ${(0, schedule_slot_utils_1.normalizeWeekStart)(first.weekStart)}${subgroupNote}. `
+        + `неделя ${(0, schedule_slot_utils_1.normalizeWeekStart)(first.weekStart)}. `
+        + `Нельзя ставить две пары в одно время без разделения по подгруппам: `
         + `"${first.subject}" (${first.lessonType}) и "${second.subject}" (${second.lessonType})`;
 }
 function formatCrossGroupConflict(first, second) {
@@ -62,6 +60,24 @@ function formatCrossGroupConflict(first, second) {
         + `${(0, schedule_slot_utils_1.normalizeTime)(first.startTime)}, неделя ${(0, schedule_slot_utils_1.normalizeWeekStart)(first.weekStart)}, ауд. ${first.room}. `
         + `Группа ${first.groupName}: "${first.subject}" (${first.lessonType}) и `
         + `группа ${second.groupName}: "${second.subject}" (${second.lessonType})`;
+}
+function formatTeacherConflict(first, second) {
+    return `Конфликт преподавателя: ${first.teacherName}, `
+        + `${formatDayLabel(first.dayOfWeek)}, ${(0, schedule_slot_utils_1.normalizeTime)(first.startTime)}, `
+        + `неделя ${(0, schedule_slot_utils_1.normalizeWeekStart)(first.weekStart)}. `
+        + `Группа ${first.groupName}: "${first.subject}" (${first.lessonType}) и `
+        + `группа ${second.groupName}: "${second.subject}" (${second.lessonType})`;
+}
+function normalizeTeacherName(name) {
+    return name.trim().replace(/\s+/g, ' ').toUpperCase();
+}
+function hasSameTeacher(first, second) {
+    const firstTeacher = normalizeTeacherName(first.teacherName);
+    const secondTeacher = normalizeTeacherName(second.teacherName);
+    return Boolean(firstTeacher && secondTeacher && firstTeacher === secondTeacher);
+}
+function isTeacherConflictAllowed(first, second) {
+    return first.isDistance !== second.isDistance;
 }
 function validateScheduleConflicts(lessons, existingLessons = []) {
     const conflicts = [];
@@ -73,19 +89,23 @@ function validateScheduleConflicts(lessons, existingLessons = []) {
             if (!overlapsSameSlot(first, second)) {
                 continue;
             }
-            if (first.isDistance || second.isDistance) {
-                continue;
-            }
-            if (isSharedHall(first, second)) {
-                continue;
-            }
             if (first.groupName !== second.groupName) {
+                if (!first.isDistance && !second.isDistance && isSharedHall(first, second)) {
+                    continue;
+                }
                 if ((0, group_parallel_utils_1.areParallelGroups)(first.groupName, second.groupName)) {
                     continue;
                 }
-                if (hasSameRoom(first, second)) {
+                if (!first.isDistance && !second.isDistance && hasSameRoom(first, second)) {
                     conflicts.push({
                         message: formatCrossGroupConflict(first, second),
+                        lessonA: first,
+                        lessonB: second,
+                    });
+                }
+                if (hasSameTeacher(first, second) && !isTeacherConflictAllowed(first, second)) {
+                    conflicts.push({
+                        message: formatTeacherConflict(first, second),
                         lessonA: first,
                         lessonB: second,
                     });
@@ -95,7 +115,7 @@ function validateScheduleConflicts(lessons, existingLessons = []) {
             if (!subgroupsConflict(first, second)) {
                 continue;
             }
-            if (first.subject !== second.subject) {
+            if (first.isSameCellParallel && second.isSameCellParallel) {
                 continue;
             }
             conflicts.push({

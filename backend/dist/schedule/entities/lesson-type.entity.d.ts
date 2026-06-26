@@ -3,7 +3,8 @@ export declare enum LessonTypeCode {
     LECTURE = "lecture",
     PRACTICE = "practice",
     LAB = "lab",
-    CREDIT = "credit"
+    CREDIT = "credit",
+    SPECIAL = "special"
 }
 export declare class LessonType {
     id: number;

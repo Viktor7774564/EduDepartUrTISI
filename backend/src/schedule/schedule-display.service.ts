@@ -5,13 +5,25 @@ import { Repository } from 'typeorm';
 
 import { ScheduleItem } from './entities/schedule-item.entity';
 import { Schedule, ScheduleType } from './entities/schedule.entity';
+import { RoleCode } from '../users/entities/role.entity';
+import { User } from '../users/entities/user.entity';
 import {
     formatRoomLabel,
     formatTeacherName,
     mapItemToDisplayLesson,
 } from './schedule-item.mapper';
-
-const BUILDING_OPTIONS = ['УК1', 'УК2', 'УК3', 'УК4', 'УК5'] as const;
+import {
+    ROMAN_BUILDING,
+    getRomanBuilding,
+    isRomanRoom,
+} from './parser/roman-room.utils';
+import {
+    normalizeRoomListKey,
+    pickPreferredRoomLabel,
+} from './parser/schedule-slot.utils';
+import { resolveSchedulePeriodMeta } from './parser/schedule-period.utils';
+const DISTANCE_BUILDING = 'Дистанционное';
+const DISTANCE_ROOM_LABEL = 'дист. форм. об.';
 
 const ITEM_RELATIONS = [
     'schedule',
@@ -41,21 +53,35 @@ export interface ScheduleDisplayLesson {
     group: string;
     subgroup: number | null;
     isSameCellParallel: boolean;
+    comment: string | null;
+    weekStart: string;
 }
 
 export interface GroupScheduleResponse {
     groupName: string;
     weeks: Record<string, ScheduleDisplayLesson[]>;
+    academicYearLabel: string | null;
+    periodStart: string | null;
+    periodEnd: string | null;
+    periodLabel: string | null;
 }
 
 export interface TeacherScheduleResponse {
     teacherName: string;
     weeks: Record<string, ScheduleDisplayLesson[]>;
+    academicYearLabel: string | null;
+    periodStart: string | null;
+    periodEnd: string | null;
+    periodLabel: string | null;
 }
 
 export interface RoomScheduleResponse {
     room: string;
     weeks: Record<string, ScheduleDisplayLesson[]>;
+    academicYearLabel: string | null;
+    periodStart: string | null;
+    periodEnd: string | null;
+    periodLabel: string | null;
 }
 
 @Injectable()
@@ -65,6 +91,8 @@ export class ScheduleDisplayService {
         private readonly itemsRepository: Repository<ScheduleItem>,
         @InjectRepository(Schedule)
         private readonly schedulesRepository: Repository<Schedule>,
+        @InjectRepository(User)
+        private readonly usersRepository: Repository<User>,
     ) {}
 
     private normalizeText(value: string): string {
@@ -91,6 +119,10 @@ export class ScheduleDisplayService {
 
     private formatWeekLabel(weekStart: string): string {
         const start = this.parseDateValue(weekStart);
+        const day = start.getDay();
+        const diffToMonday = day === 0 ? -6 : 1 - day;
+        start.setDate(start.getDate() + diffToMonday);
+
         const end = new Date(start);
         end.setDate(end.getDate() + 6);
 
@@ -164,33 +196,16 @@ export class ScheduleDisplayService {
             return 'УК5';
         }
 
-        if (
-            normalized.startsWith('VII')
-            || normalized.startsWith('VIII')
-            || normalized.startsWith('VI ')
-            || normalized.startsWith('V ')
-            || normalized.startsWith('II ')
-            || normalized.startsWith('7 ')
-            || normalized.startsWith('8 ')
-            || normalized.startsWith('5 ')
-            || normalized.startsWith('6 ')
-            || normalized.startsWith('2 ')
-        ) {
-            return 'УК3';
-        }
-
-        if (
-            normalized.startsWith('III')
-            || normalized.startsWith('IV')
-            || normalized.startsWith('I ')
-            || normalized.startsWith('1 ')
-            || normalized.startsWith('3 ')
-            || normalized.startsWith('4 ')
-        ) {
-            return 'УК5';
+        const romanBuilding = getRomanBuilding(room);
+        if (romanBuilding) {
+            return romanBuilding;
         }
 
         return null;
+    }
+
+    private isRomanRoomLabel(room: string): boolean {
+        return isRomanRoom(room);
     }
 
     private isDistanceRoom(room: string): boolean {
@@ -244,12 +259,59 @@ export class ScheduleDisplayService {
         return {
             groupName: items[0]?.schedule?.group?.name ?? groupName.trim(),
             weeks: this.buildWeeksFromItems(items),
+            ...resolveSchedulePeriodMeta(items),
         };
     }
 
-    async listTeachers(): Promise<string[]> {
-        const items = await this.baseItemsQuery().getMany();
+    async listTeachers(departmentId?: number): Promise<string[]> {
         const teachers = new Set<string>();
+
+        await this.collectTeachersFromAccounts(teachers, departmentId);
+        await this.collectTeachersFromSchedule(teachers, departmentId);
+
+        return Array.from(teachers).sort((left, right) =>
+            left.localeCompare(right, 'ru', { sensitivity: 'base' }),
+        );
+    }
+
+    private async collectTeachersFromAccounts(
+        teachers: Set<string>,
+        departmentId?: number,
+    ): Promise<void> {
+        const qb = this.usersRepository
+            .createQueryBuilder('user')
+            .innerJoin('user.role', 'role')
+            .innerJoin('user.teacherProfile', 'teacherProfile')
+            .where('user.isActive = true')
+            .andWhere('role.code = :roleCode', { roleCode: RoleCode.TEACHER });
+
+        if (departmentId) {
+            qb.andWhere('teacherProfile.departmentId = :departmentId', { departmentId });
+        }
+
+        const users = await qb.getMany();
+
+        for (const user of users) {
+            teachers.add(formatTeacherName(user));
+        }
+    }
+
+    private async collectTeachersFromSchedule(
+        teachers: Set<string>,
+        departmentId?: number,
+    ): Promise<void> {
+        const qb = this.baseItemsQuery()
+            .leftJoin('item.teacher', 'teacherUser')
+            .leftJoin('teacherUser.teacherProfile', 'teacherProfile');
+
+        if (departmentId) {
+            qb.andWhere(
+                'teacherUser.id IS NOT NULL AND teacherProfile.departmentId = :departmentId',
+                { departmentId },
+            );
+        }
+
+        const items = await qb.getMany();
 
         for (const item of items) {
             if (item.teacher) {
@@ -257,15 +319,14 @@ export class ScheduleDisplayService {
                 continue;
             }
 
-            const legacyName = item.legacyTeacherName?.trim();
-            if (legacyName) {
-                teachers.add(legacyName);
+            if (!departmentId) {
+                const legacyName = item.legacyTeacherName?.trim();
+
+                if (legacyName) {
+                    teachers.add(legacyName);
+                }
             }
         }
-
-        return Array.from(teachers).sort((left, right) =>
-            left.localeCompare(right, 'ru', { sensitivity: 'base' }),
-        );
     }
 
     async getTeacherSchedule(teacherName: string): Promise<TeacherScheduleResponse> {
@@ -289,6 +350,7 @@ export class ScheduleDisplayService {
         return {
             teacherName: resolvedTeacherName,
             weeks: this.buildWeeksFromItems(matchedItems),
+            ...resolveSchedulePeriodMeta(matchedItems),
         };
     }
 
@@ -297,47 +359,100 @@ export class ScheduleDisplayService {
         const buildings = new Set<string>();
 
         for (const room of rooms) {
+            if (this.isDistanceRoom(room)) {
+                buildings.add(DISTANCE_BUILDING);
+            }
+
+            if (this.isRomanRoomLabel(room)) {
+                buildings.add(ROMAN_BUILDING);
+            }
+
             const building = this.getBuildingFromRoom(room);
             if (building) {
                 buildings.add(building);
             }
         }
 
-        return BUILDING_OPTIONS.filter((building) => buildings.has(building));
+        const standardBuildings = ['УК1', 'УК2', 'УК3', 'УК4', 'УК5'] as const;
+        const ordered: string[] = standardBuildings.filter((building) => buildings.has(building));
+
+        if (!ordered.includes(ROMAN_BUILDING)) {
+            ordered.push(ROMAN_BUILDING);
+        }
+
+        if (!ordered.includes(DISTANCE_BUILDING)) {
+            ordered.push(DISTANCE_BUILDING);
+        }
+
+        return ordered;
     }
 
     async listRooms(building?: string): Promise<string[]> {
         const items = await this.baseItemsQuery().getMany();
-        const rooms = new Set<string>();
+        const physicalRooms = new Map<string, string>();
+        const distanceRooms = new Map<string, string>();
 
         for (const item of items) {
             const label = formatRoomLabel(item.room);
-            if (label && !this.isDistanceRoom(label)) {
-                rooms.add(label);
+            if (!label) {
+                continue;
+            }
+
+            const roomKey = normalizeRoomListKey(label);
+
+            if (this.isDistanceRoom(label)) {
+                const existing = distanceRooms.get(roomKey);
+                distanceRooms.set(
+                    roomKey,
+                    existing ? pickPreferredRoomLabel(existing, label) : label,
+                );
+            } else {
+                const existing = physicalRooms.get(roomKey);
+                physicalRooms.set(
+                    roomKey,
+                    existing ? pickPreferredRoomLabel(existing, label) : label,
+                );
             }
         }
 
-        const roomList = Array.from(rooms).sort((left, right) =>
-            left.localeCompare(right, 'ru', { sensitivity: 'base', numeric: true }),
-        );
+        const sortRooms = (left: string, right: string) =>
+            left.localeCompare(right, 'ru', { sensitivity: 'base', numeric: true });
 
         if (!building?.trim()) {
-            return roomList;
+            return Array.from(physicalRooms.values()).sort(sortRooms);
         }
 
         const normalizedBuilding = building.trim().toUpperCase();
 
-        return roomList.filter((room) =>
-            this.getBuildingFromRoom(room)?.toUpperCase() === normalizedBuilding,
-        );
+        if (normalizedBuilding === DISTANCE_BUILDING.toUpperCase()) {
+            const roomList = Array.from(distanceRooms.values()).sort(sortRooms);
+
+            if (!roomList.includes(DISTANCE_ROOM_LABEL)) {
+                roomList.unshift(DISTANCE_ROOM_LABEL);
+            }
+
+            return roomList;
+        }
+
+        if (normalizedBuilding === ROMAN_BUILDING.toUpperCase()) {
+            return Array.from(physicalRooms.values())
+                .filter((room) => this.isRomanRoomLabel(room))
+                .sort(sortRooms);
+        }
+
+        return Array.from(physicalRooms.values())
+            .filter((room) =>
+                this.getBuildingFromRoom(room)?.toUpperCase() === normalizedBuilding,
+            )
+            .sort(sortRooms);
     }
 
     async getRoomSchedule(roomName: string): Promise<RoomScheduleResponse> {
-        const normalizedRoomName = this.normalizeText(roomName);
+        const normalizedRoomName = normalizeRoomListKey(roomName);
 
         const items = await this.baseItemsQuery().getMany();
         const matchedItems = items.filter((item) =>
-            this.normalizeText(formatRoomLabel(item.room)) === normalizedRoomName,
+            normalizeRoomListKey(formatRoomLabel(item.room)) === normalizedRoomName,
         );
 
         return {
@@ -345,6 +460,7 @@ export class ScheduleDisplayService {
                 ? formatRoomLabel(matchedItems[0].room)
                 : roomName.trim(),
             weeks: this.buildWeeksFromItems(matchedItems),
+            ...resolveSchedulePeriodMeta(matchedItems),
         };
     }
 }

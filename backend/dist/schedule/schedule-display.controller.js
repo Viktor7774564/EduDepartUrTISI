@@ -26,8 +26,11 @@ let ScheduleDisplayController = class ScheduleDisplayController {
     getGroupSchedule(groupName) {
         return this.scheduleDisplayService.getGroupSchedule(groupName);
     }
-    listTeachers() {
-        return this.scheduleDisplayService.listTeachers();
+    listTeachers(departmentId) {
+        const parsedDepartmentId = departmentId ? Number(departmentId) : undefined;
+        return this.scheduleDisplayService.listTeachers(parsedDepartmentId && !Number.isNaN(parsedDepartmentId)
+            ? parsedDepartmentId
+            : undefined);
     }
     getTeacherSchedule(teacherName) {
         return this.scheduleDisplayService.getTeacherSchedule(teacherName);
@@ -58,8 +61,9 @@ __decorate([
 ], ScheduleDisplayController.prototype, "getGroupSchedule", null);
 __decorate([
     (0, common_1.Get)('teachers'),
+    __param(0, (0, common_1.Query)('departmentId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], ScheduleDisplayController.prototype, "listTeachers", null);
 __decorate([
