@@ -94,12 +94,20 @@ let ScheduleImportService = class ScheduleImportService {
         if (!number) {
             return null;
         }
-        return this.subgroupsRepository.findOne({
+        const subgroupNumber = number;
+        const existing = await this.subgroupsRepository.findOne({
             where: {
                 groupId,
-                number: number,
+                number: subgroupNumber,
             },
         });
+        if (existing) {
+            return existing;
+        }
+        return this.subgroupsRepository.save(this.subgroupsRepository.create({
+            groupId,
+            number: subgroupNumber,
+        }));
     }
     toDate(value) {
         const [day, month, year] = value.split('.');
@@ -209,9 +217,6 @@ let ScheduleImportService = class ScheduleImportService {
             warnings.push(`Преподаватель не найден в БД: ${slot.teacherName} (${slot.subject})`);
         }
         const subgroup = await this.findSubgroup(groupId, slot.subgroup);
-        if (slot.subgroup && !subgroup) {
-            warnings.push(`Подгруппа ${slot.subgroup} не найдена для группы (${slot.subject})`);
-        }
         return this.itemsRepository.create({
             scheduleId,
             subjectId: subject.id,

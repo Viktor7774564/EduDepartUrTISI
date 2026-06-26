@@ -113,12 +113,24 @@ export class ScheduleImportService {
             return null;
         }
 
-        return this.subgroupsRepository.findOne({
+        const subgroupNumber = number as 1 | 2;
+        const existing = await this.subgroupsRepository.findOne({
             where: {
                 groupId,
-                number: number as 1 | 2,
+                number: subgroupNumber,
             },
         });
+
+        if (existing) {
+            return existing;
+        }
+
+        return this.subgroupsRepository.save(
+            this.subgroupsRepository.create({
+                groupId,
+                number: subgroupNumber,
+            }),
+        );
     }
 
     private toDate(value: string): string {
@@ -283,12 +295,6 @@ export class ScheduleImportService {
         }
 
         const subgroup = await this.findSubgroup(groupId, slot.subgroup);
-
-        if (slot.subgroup && !subgroup) {
-            warnings.push(
-                `Подгруппа ${slot.subgroup} не найдена для группы (${slot.subject})`,
-            );
-        }
 
         return this.itemsRepository.create({
             scheduleId,

@@ -21,7 +21,16 @@ function areParallelGroups(first, second) {
     return firstKey !== null && firstKey === secondKey && first !== second;
 }
 function extractGroupNameFromTitle(title) {
-    const match = title.match(/РАСПИСАНИЕ\s+гр\.?\s*(.+?)\s*$/i);
-    return match?.[1]?.trim() ?? null;
+    const normalized = title.trim().replace(/\s+/g, ' ');
+    const markedNamedGroup = normalized.match(/(?:гр\.?|групп[аы]?)\s*[:№#-]?\s*([А-ЯЁA-Z]{1,8}-\d{1,3}[А-ЯЁA-Zа-яёa-z]?)/i);
+    if (markedNamedGroup?.[1]) {
+        return markedNamedGroup[1].trim();
+    }
+    const namedGroup = normalized.match(/(?:^|[^А-ЯЁA-Zа-яёa-z0-9])([А-ЯЁA-Z]{1,8}-\d{1,3}[А-ЯЁA-Zа-яёa-z]?)(?=$|[^А-ЯЁA-Zа-яёa-z0-9])/i);
+    if (namedGroup?.[1]) {
+        return namedGroup[1].trim();
+    }
+    const markedNumericGroup = normalized.match(/(?:гр\.?|групп[аы]?)\s*[:№#-]?\s*(\d{3}[А-ЯЁA-Zа-яёa-z]?)(?!\d)/i);
+    return markedNumericGroup?.[1]?.trim() ?? null;
 }
 //# sourceMappingURL=group-parallel.utils.js.map

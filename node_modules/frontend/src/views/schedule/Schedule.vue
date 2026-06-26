@@ -1228,19 +1228,31 @@ const getSaturdaySlot = (rowIndex: number) =>
 const getSlotStartTimes = (slot: TimeSlot): string[] =>
   slot.matchingStartTimes ?? [slot.startTime]
 
+const sortCellLessons = (lessons: CellLesson[]): CellLesson[] =>
+  [...lessons].sort((left, right) => {
+    const leftSubgroup = left.subgroup ?? 99
+    const rightSubgroup = right.subgroup ?? 99
+
+    if (leftSubgroup !== rightSubgroup) {
+      return leftSubgroup - rightSubgroup
+    }
+
+    return left.subject.localeCompare(right.subject, 'ru', { sensitivity: 'base' })
+  })
+
 const mapCellLessons = (lessons: DisplayScheduleItem[]): CellLesson[] => {
   if (scheduleType.value === 'consults') {
-    return lessons.map((lesson) => ({
+    return sortCellLessons(lessons.map((lesson) => ({
       ...lesson,
       groups: lesson.teacher ? [lesson.teacher] : [],
-    }))
+    })))
   }
 
   if (scheduleType.value !== 'teachers') {
-    return lessons.map((lesson) => ({
+    return sortCellLessons(lessons.map((lesson) => ({
       ...lesson,
       groups: [lesson.group],
-    }))
+    })))
   }
 
   const groupedLessons = new Map<string, CellLesson>()
@@ -1273,7 +1285,7 @@ const mapCellLessons = (lessons: DisplayScheduleItem[]): CellLesson[] => {
     })
   })
 
-  return Array.from(groupedLessons.values())
+  return sortCellLessons(Array.from(groupedLessons.values()))
 }
 
 const getLessons = (day: string, time: string) => {

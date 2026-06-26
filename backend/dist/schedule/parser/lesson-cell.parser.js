@@ -12,6 +12,18 @@ const TEACHER_POSITIONS = [
     'преподаватель',
 ];
 const TEACHER_NAME_PATTERN = /([А-ЯЁ][а-яё-]+)([А-ЯЁ]\.[А-ЯЁ]\.?)$/u;
+const SUBGROUP_VALUE_PATTERN = '(?:1|2|I{1,2}|Ⅰ|Ⅱ)';
+const SUBGROUP_MARKER_PATTERN = '(?:п\\s*[\\\\/]\\s*гр\\.?|подг(?:р(?:упп[аы]?)?)?\\.?|групп[аы]?|гр\\.?)';
+function parseSubgroupNumber(value) {
+    const normalized = value.trim().toUpperCase();
+    if (normalized === '1' || normalized === 'I' || normalized === 'Ⅰ') {
+        return 1;
+    }
+    if (normalized === '2' || normalized === 'II' || normalized === 'Ⅱ') {
+        return 2;
+    }
+    return null;
+}
 function normalizeLessonType(raw) {
     const value = raw.trim().replace(/;$/, '').toLowerCase();
     if (value.startsWith('лек'))
@@ -40,19 +52,19 @@ function isFullLessonSegment(segment) {
     return colonIndex === -1 || semicolonIndex < colonIndex;
 }
 function extractSubgroupFromText(text) {
-    const beforeMatch = text.match(/(\d+)\s*п\/гр\.?/i);
-    if (beforeMatch) {
-        return {
-            subgroup: Number(beforeMatch[1]),
-            cleaned: text.replace(beforeMatch[0], '').replace(/\s+/g, ' ').trim(),
-        };
-    }
-    const afterMatch = text.match(/п\/гр\.?\s*:?\s*(\d+)/i);
-    if (afterMatch) {
-        return {
-            subgroup: Number(afterMatch[1]),
-            cleaned: text.replace(afterMatch[0], '').replace(/\s+/g, ' ').trim(),
-        };
+    const patterns = [
+        new RegExp(`(?:^|[\\s(])(${SUBGROUP_VALUE_PATTERN})\\s*${SUBGROUP_MARKER_PATTERN}(?=$|[\\s).,;:])`, 'i'),
+        new RegExp(`(?:^|[\\s(])${SUBGROUP_MARKER_PATTERN}\\s*[:№#-]?\\s*(${SUBGROUP_VALUE_PATTERN})(?=$|[\\s).,;:])`, 'i'),
+    ];
+    for (const pattern of patterns) {
+        const match = text.match(pattern);
+        const subgroup = match?.[1] ? parseSubgroupNumber(match[1]) : null;
+        if (match && subgroup) {
+            return {
+                subgroup,
+                cleaned: text.replace(match[0], ' ').replace(/\s+/g, ' ').trim(),
+            };
+        }
     }
     return {
         cleaned: text,
@@ -61,17 +73,9 @@ function extractSubgroupFromText(text) {
 }
 function extractPositionAndTeacher(part) {
     let text = part.trim().replace(/\s+/g, ' ');
-    let subgroup = null;
-    const subgroupMatch = text.match(/п\/гр\.?\s*:?\s*(\d+)/i);
-    if (subgroupMatch) {
-        subgroup = Number(subgroupMatch[1]);
-        text = text.replace(subgroupMatch[0], '').trim();
-    }
-    const beforeSubgroupMatch = text.match(/(\d+)\s*п\/гр\.?/i);
-    if (beforeSubgroupMatch) {
-        subgroup = Number(beforeSubgroupMatch[1]);
-        text = text.replace(beforeSubgroupMatch[0], '').trim();
-    }
+    const subgroupResult = extractSubgroupFromText(text);
+    const subgroup = subgroupResult.subgroup;
+    text = subgroupResult.cleaned;
     let teacherPosition = '';
     for (const position of TEACHER_POSITIONS) {
         if (text.toLowerCase().startsWith(position)) {
@@ -87,7 +91,10 @@ function extractPositionAndTeacher(part) {
     };
 }
 function parseLessonBlock(block) {
-    const text = block.replace(/\s+/g, ' ').trim();
+    const text = block
+        .replace(/\s+/g, ' ')
+        .replace(/\s*\/\s*$/g, '')
+        .trim();
     const semicolonIndex = text.indexOf(';');
     if (semicolonIndex === -1) {
         return [];
@@ -103,6 +110,7 @@ function parseLessonBlock(block) {
     const lessonType = normalizeLessonType(cleanedType);
     const teachersPart = rest.slice(colonIndex + 1).trim();
     const teacherParts = teachersPart
+        .replace(/\s*\/\s*$/g, '')
         .split(/\s*\/\s*/)
         .map((part) => part.trim())
         .filter(Boolean);
@@ -114,7 +122,7 @@ function parseLessonBlock(block) {
         return {
             subject,
             lessonType,
-            subgroup: extracted.subgroup ?? typeSubgroup ?? (teacherParts.length > 1 ? index + 1 : null),
+            subgroup: extracted.subgroup ?? typeSubgroup ?? (teacherParts.length === 2 ? index + 1 : null),
             teacherPosition: extracted.teacherPosition,
             teacherName: extracted.teacherName,
             isSameCellParallel: false,
@@ -123,13 +131,16 @@ function parseLessonBlock(block) {
 }
 const SUBGROUP_SLASH_PLACEHOLDER = '§';
 function protectSubgroupSlash(text) {
-    return text.replace(/п\s*\/\s*гр/gi, `п${SUBGROUP_SLASH_PLACEHOLDER}гр`);
+    return text.replace(/п\s*[\\\/]\s*гр/gi, `п${SUBGROUP_SLASH_PLACEHOLDER}гр`);
 }
 function restoreSubgroupSlash(text) {
     return text.replace(new RegExp(`п${SUBGROUP_SLASH_PLACEHOLDER}гр`, 'gi'), 'п/гр');
 }
 function splitLessonBlocks(rawText) {
-    const text = protectSubgroupSlash(rawText).replace(/\s+/g, ' ').trim();
+    const text = protectSubgroupSlash(rawText)
+        .replace(/\s+/g, ' ')
+        .replace(/\s*\/\s*$/g, '')
+        .trim();
     const segments = text.split(/\s*\/\s*/).map((part) => part.trim()).filter(Boolean);
     const blocks = [];
     let currentBlock = '';
@@ -173,8 +184,12 @@ function parseLessonCell(rawText) {
         .map((block) => block.slice(0, block.indexOf(';')).trim())
         .filter(Boolean));
     const isParallelPair = hasParallelDisciplines && subjects.size > 1;
-    const parts = blocks.flatMap((block) => parseLessonBlock(block).map((part) => ({
+    const parsedBlocks = blocks.map((block) => parseLessonBlock(block));
+    const shouldAssignSubgroupsByBlock = parsedBlocks.length === 2
+        && parsedBlocks.every((blockParts) => blockParts.length === 1);
+    const parts = parsedBlocks.flatMap((blockParts, blockIndex) => blockParts.map((part) => ({
         ...part,
+        subgroup: part.subgroup ?? (shouldAssignSubgroupsByBlock ? blockIndex + 1 : null),
         isSameCellParallel: isParallelPair,
     })));
     const subgroups = parts

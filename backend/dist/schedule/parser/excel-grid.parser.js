@@ -212,8 +212,9 @@ function findGroupName(grid) {
     for (let row = 0; row < Math.min(grid.length, 20); row += 1) {
         for (let col = 0; col < Math.min(grid[row]?.length ?? 0, 50); col += 1) {
             const value = cellValue(grid, row, col);
-            if (/РАСПИСАНИЕ\s+гр\./i.test(value)) {
-                return (0, group_parallel_utils_1.extractGroupNameFromTitle)(value);
+            const groupName = (0, group_parallel_utils_1.extractGroupNameFromTitle)(value);
+            if (groupName) {
+                return groupName;
             }
         }
     }
@@ -232,19 +233,24 @@ function findBlockStarts(grid) {
 }
 function collectWeekColumns(grid, blockStart, dayRow, isMonday) {
     const weekColumns = new Map();
-    if (isMonday) {
-        for (let col = blockStart + 4; col < blockStart + BLOCK_WIDTH; col += 2) {
-            const dateValue = cellValue(grid, dayRow - 1, col);
-            if (isWeekDate(dateValue)) {
-                weekColumns.set(col, dateValue);
-            }
+    const dateRows = isMonday
+        ? [dayRow - 1, dayRow]
+        : [dayRow, dayRow - 1];
+    const startOffsets = isMonday ? [2, 4] : [2];
+    for (const dateRow of dateRows) {
+        if (dateRow < 0) {
+            continue;
         }
-        return weekColumns;
-    }
-    for (let col = blockStart + 2; col < blockStart + BLOCK_WIDTH; col += 2) {
-        const dateValue = cellValue(grid, dayRow, col);
-        if (isWeekDate(dateValue)) {
-            weekColumns.set(col, dateValue);
+        for (const startOffset of startOffsets) {
+            for (let col = blockStart + startOffset; col < blockStart + BLOCK_WIDTH; col += 2) {
+                const dateValue = cellValue(grid, dateRow, col);
+                if (isWeekDate(dateValue) && !weekColumns.has(col)) {
+                    weekColumns.set(col, dateValue);
+                }
+            }
+            if (weekColumns.size > 0) {
+                return weekColumns;
+            }
         }
     }
     return weekColumns;
@@ -263,11 +269,15 @@ function parseSheetGrid(grid, groupName, period, warnings) {
             }
             const dayOfWeek = getDayOfWeek(firstCell);
             const isMonday = dayOfWeek === 1;
+            const dayHeaderRow = row;
             const weekColumns = collectWeekColumns(grid, blockStart, row, isMonday);
-            row += 1;
+            const dayRowPairTime = parsePairTime(cellValue(grid, row, timeCol), dayOfWeek);
+            if (!dayRowPairTime) {
+                row += 1;
+            }
             while (row < grid.length) {
                 const nextDayCell = cellValue(grid, row, blockStart);
-                if (isDayName(nextDayCell)) {
+                if (row !== dayHeaderRow && isDayName(nextDayCell)) {
                     break;
                 }
                 const pairCell = cellValue(grid, row, timeCol);
