@@ -15,14 +15,33 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationsController = void 0;
 const common_1 = require("@nestjs/common");
 const access_token_guard_1 = require("../auth/guards/access-token.guard");
+const push_subscription_dto_1 = require("./dto/push-subscription.dto");
 const notifications_service_1 = require("./notifications.service");
+const push_notifications_service_1 = require("./push-notifications.service");
+const push_subscriptions_service_1 = require("./push-subscriptions.service");
 let NotificationsController = class NotificationsController {
     notificationsService;
-    constructor(notificationsService) {
+    pushNotificationsService;
+    pushSubscriptionsService;
+    constructor(notificationsService, pushNotificationsService, pushSubscriptionsService) {
         this.notificationsService = notificationsService;
+        this.pushNotificationsService = pushNotificationsService;
+        this.pushSubscriptionsService = pushSubscriptionsService;
     }
     list(request) {
         return this.notificationsService.listForUser(this.getUserId(request));
+    }
+    getVapidPublicKey() {
+        return {
+            publicKey: this.pushNotificationsService.getPublicKey(),
+            enabled: this.pushNotificationsService.isEnabled(),
+        };
+    }
+    subscribe(request, dto) {
+        return this.pushSubscriptionsService.subscribe(this.getUserId(request), dto);
+    }
+    unsubscribe(request, dto) {
+        return this.pushSubscriptionsService.unsubscribe(this.getUserId(request), dto.endpoint);
     }
     markAsRead(request, id) {
         return this.notificationsService.markAsRead(this.getUserId(request), id);
@@ -43,6 +62,28 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], NotificationsController.prototype, "list", null);
 __decorate([
+    (0, common_1.Get)('push/vapid-public-key'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Object)
+], NotificationsController.prototype, "getVapidPublicKey", null);
+__decorate([
+    (0, common_1.Post)('push/subscribe'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, push_subscription_dto_1.PushSubscriptionDto]),
+    __metadata("design:returntype", Promise)
+], NotificationsController.prototype, "subscribe", null);
+__decorate([
+    (0, common_1.Delete)('push/unsubscribe'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, push_subscription_dto_1.UnsubscribePushDto]),
+    __metadata("design:returntype", Promise)
+], NotificationsController.prototype, "unsubscribe", null);
+__decorate([
     (0, common_1.Patch)(':id/read'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
@@ -60,6 +101,8 @@ __decorate([
 exports.NotificationsController = NotificationsController = __decorate([
     (0, common_1.Controller)('notifications'),
     (0, common_1.UseGuards)(access_token_guard_1.AccessTokenGuard),
-    __metadata("design:paramtypes", [notifications_service_1.NotificationsService])
+    __metadata("design:paramtypes", [notifications_service_1.NotificationsService,
+        push_notifications_service_1.PushNotificationsService,
+        push_subscriptions_service_1.PushSubscriptionsService])
 ], NotificationsController);
 //# sourceMappingURL=notifications.controller.js.map

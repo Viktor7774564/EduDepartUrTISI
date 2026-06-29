@@ -22,6 +22,7 @@ const user_entity_1 = require("../users/entities/user.entity");
 const role_entity_1 = require("../users/entities/role.entity");
 const notification_entity_1 = require("./notification.entity");
 const notifications_gateway_1 = require("./notifications.gateway");
+const push_notifications_service_1 = require("./push-notifications.service");
 const DAY_LABELS = {
     1: 'понедельник',
     2: 'вторник',
@@ -47,11 +48,13 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
     notificationsRepository;
     usersRepository;
     notificationsGateway;
+    pushNotificationsService;
     logger = new common_1.Logger(NotificationsService_1.name);
-    constructor(notificationsRepository, usersRepository, notificationsGateway) {
+    constructor(notificationsRepository, usersRepository, notificationsGateway, pushNotificationsService) {
         this.notificationsRepository = notificationsRepository;
         this.usersRepository = usersRepository;
         this.notificationsGateway = notificationsGateway;
+        this.pushNotificationsService = pushNotificationsService;
     }
     async listForUser(userId) {
         return this.notificationsRepository.find({
@@ -87,6 +90,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         })));
         for (const notification of notifications) {
             this.notificationsGateway.sendToUser(notification.userId, notification);
+            void this.pushNotificationsService.sendToUser(notification.userId, notification);
         }
     }
     async notifyScheduleItemChanged(action, item, previousItem) {
@@ -125,6 +129,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         }));
         for (const notification of notifications) {
             this.notificationsGateway.sendToUser(notification.userId, notification);
+            void this.pushNotificationsService.sendToUser(notification.userId, notification);
         }
     }
     createScheduleItemSnapshot(item) {
@@ -434,6 +439,7 @@ exports.NotificationsService = NotificationsService = NotificationsService_1 = _
     __param(1, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
-        notifications_gateway_1.NotificationsGateway])
+        notifications_gateway_1.NotificationsGateway,
+        push_notifications_service_1.PushNotificationsService])
 ], NotificationsService);
 //# sourceMappingURL=notifications.service.js.map

@@ -11,6 +11,7 @@ import { User } from '../users/entities/user.entity';
 import { RoleCode } from '../users/entities/role.entity';
 import { Notification, NotificationType } from './notification.entity';
 import { NotificationsGateway } from './notifications.gateway';
+import { PushNotificationsService } from './push-notifications.service';
 
 type ScheduleNotificationAction = 'created' | 'updated' | 'disabled' | 'deleted';
 
@@ -67,6 +68,7 @@ export class NotificationsService {
         @InjectRepository(User)
         private readonly usersRepository: Repository<User>,
         private readonly notificationsGateway: NotificationsGateway,
+        private readonly pushNotificationsService: PushNotificationsService,
     ) {}
 
     async listForUser(userId: number): Promise<Notification[]> {
@@ -111,6 +113,7 @@ export class NotificationsService {
 
         for (const notification of notifications) {
             this.notificationsGateway.sendToUser(notification.userId, notification);
+            void this.pushNotificationsService.sendToUser(notification.userId, notification);
         }
     }
 
@@ -168,6 +171,7 @@ export class NotificationsService {
 
         for (const notification of notifications) {
             this.notificationsGateway.sendToUser(notification.userId, notification);
+            void this.pushNotificationsService.sendToUser(notification.userId, notification);
         }
     }
 

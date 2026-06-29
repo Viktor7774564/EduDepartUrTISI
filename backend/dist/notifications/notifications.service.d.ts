@@ -3,6 +3,7 @@ import { ScheduleItem } from '../schedule/entities/schedule-item.entity';
 import { User } from '../users/entities/user.entity';
 import { Notification } from './notification.entity';
 import { NotificationsGateway } from './notifications.gateway';
+import { PushNotificationsService } from './push-notifications.service';
 type ScheduleNotificationAction = 'created' | 'updated' | 'disabled' | 'deleted';
 type ScheduleItemNotificationSnapshot = {
     id: number;
@@ -25,8 +26,9 @@ export declare class NotificationsService {
     private readonly notificationsRepository;
     private readonly usersRepository;
     private readonly notificationsGateway;
+    private readonly pushNotificationsService;
     private readonly logger;
-    constructor(notificationsRepository: Repository<Notification>, usersRepository: Repository<User>, notificationsGateway: NotificationsGateway);
+    constructor(notificationsRepository: Repository<Notification>, usersRepository: Repository<User>, notificationsGateway: NotificationsGateway, pushNotificationsService: PushNotificationsService);
     listForUser(userId: number): Promise<Notification[]>;
     markAsRead(userId: number, id: number): Promise<void>;
     markAllAsRead(userId: number): Promise<void>;

@@ -1,11 +1,92 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import {
+  getPushSubscriptionStatus,
+  registerPushSubscription,
+  unregisterPushSubscription,
+  type PushSubscriptionStatus,
+} from '@/api/pushNotifications'
 import { useNotificationsStore } from '@/stores/notifications'
 
 const notificationsStore = useNotificationsStore()
 
+const pushStatus = ref<PushSubscriptionStatus | null>(null)
+const pushActionMessage = ref('')
+const isPushActionError = ref(false)
+const isPushActionLoading = ref(false)
+
+const pushStatusText = computed(() => {
+  if (!pushStatus.value) {
+    return 'Проверка поддержки push-уведомлений...'
+  }
+
+  if (!pushStatus.value.supported) {
+    return pushStatus.value.hint
+  }
+
+  if (!pushStatus.value.serverEnabled) {
+    return 'Push-уведомления временно недоступны: на сервере не настроены VAPID-ключи.'
+  }
+
+  if (pushStatus.value.permission === 'denied') {
+    return 'Уведомления заблокированы в настройках браузера. Разрешите их, чтобы включить push.'
+  }
+
+  if (pushStatus.value.subscribed) {
+    return 'Push-уведомления включены. Вы будете получать оповещения даже при закрытой вкладке.'
+  }
+
+  return 'Push-уведомления выключены. Нажмите «Включить», чтобы получать оповещения при закрытой вкладке.'
+})
+
+const canEnablePush = computed(() => {
+  if (!pushStatus.value) {
+    return false
+  }
+
+  return pushStatus.value.supported
+    && pushStatus.value.serverEnabled
+    && pushStatus.value.permission !== 'denied'
+    && !pushStatus.value.subscribed
+})
+
+const canDisablePush = computed(() => {
+  return Boolean(pushStatus.value?.subscribed)
+})
+
+async function refreshPushStatus() {
+  pushStatus.value = await getPushSubscriptionStatus()
+}
+
+async function enablePushNotifications() {
+  isPushActionLoading.value = true
+  pushActionMessage.value = ''
+  isPushActionError.value = false
+
+  const result = await registerPushSubscription()
+  pushActionMessage.value = result.message ?? ''
+  isPushActionError.value = !result.success
+  await refreshPushStatus()
+
+  isPushActionLoading.value = false
+}
+
+async function disablePushNotifications() {
+  isPushActionLoading.value = true
+  pushActionMessage.value = ''
+  isPushActionError.value = false
+
+  const result = await unregisterPushSubscription()
+  pushActionMessage.value = result.message ?? ''
+  isPushActionError.value = !result.success
+  await refreshPushStatus()
+
+  isPushActionLoading.value = false
+}
+
 onMounted(() => {
   void notificationsStore.loadNotifications()
+  void refreshPushStatus()
 })
 </script>
 
@@ -25,6 +106,42 @@ onMounted(() => {
       >
         Отметить все прочитанными
       </button>
+    </div>
+
+    <div class="notifications-push-settings">
+      <div class="notifications-push-settings__content">
+        <h2>Push-уведомления</h2>
+        <p>{{ pushStatusText }}</p>
+        <p
+            v-if="pushActionMessage"
+            class="notifications-push-settings__message"
+            :class="{ error: isPushActionError }"
+        >
+          {{ pushActionMessage }}
+        </p>
+      </div>
+
+      <div class="notifications-push-settings__actions">
+        <button
+            v-if="canEnablePush"
+            class="notifications-push-settings__button enable"
+            type="button"
+            :disabled="isPushActionLoading"
+            @click="enablePushNotifications"
+        >
+          Включить
+        </button>
+
+        <button
+            v-if="canDisablePush"
+            class="notifications-push-settings__button disable"
+            type="button"
+            :disabled="isPushActionLoading"
+            @click="disablePushNotifications"
+        >
+          Выключить
+        </button>
+      </div>
     </div>
 
     <p v-if="notificationsStore.isLoading" class="notifications-state">

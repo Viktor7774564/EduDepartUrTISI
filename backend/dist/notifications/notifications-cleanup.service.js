@@ -21,7 +21,7 @@ const notification_entity_1 = require("./notification.entity");
 let NotificationsCleanupService = class NotificationsCleanupService {
     static { NotificationsCleanupService_1 = this; }
     notificationsRepository;
-    static RETENTION_DAYS = 45;
+    static RETENTION_DAYS = 90;
     static CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
     logger = new common_1.Logger(NotificationsCleanupService_1.name);
     cleanupTimer = null;

@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 import api from '@/api/client'
 import { refreshAccessToken } from '@/api/authRefresh'
+import { unregisterPushSubscription } from '@/api/pushNotifications'
 
 const AUTH_STORAGE_KEY = 'edu-depart-auth-user'
 
@@ -167,6 +168,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     try {
+      await unregisterPushSubscription()
       await api.get('/auth/logout')
     } catch {
       // Даже если сервер недоступен, очищаем локальную сессию.

@@ -1,17 +1,23 @@
 import {
+    Body,
     Controller,
+    Delete,
     Get,
     Param,
     ParseIntPipe,
     Patch,
+    Post,
     Req,
     UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
 
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
-import { NotificationsService } from './notifications.service';
+import { PushSubscriptionDto, UnsubscribePushDto } from './dto/push-subscription.dto';
 import { Notification } from './notification.entity';
+import { NotificationsService } from './notifications.service';
+import { PushNotificationsService } from './push-notifications.service';
+import { PushSubscriptionsService } from './push-subscriptions.service';
 
 type AuthRequest = Request & {
     user: {
@@ -25,11 +31,37 @@ type AuthRequest = Request & {
 export class NotificationsController {
     constructor(
         private readonly notificationsService: NotificationsService,
+        private readonly pushNotificationsService: PushNotificationsService,
+        private readonly pushSubscriptionsService: PushSubscriptionsService,
     ) {}
 
     @Get()
     list(@Req() request: AuthRequest): Promise<Notification[]> {
         return this.notificationsService.listForUser(this.getUserId(request));
+    }
+
+    @Get('push/vapid-public-key')
+    getVapidPublicKey(): { publicKey: string | null; enabled: boolean } {
+        return {
+            publicKey: this.pushNotificationsService.getPublicKey(),
+            enabled: this.pushNotificationsService.isEnabled(),
+        };
+    }
+
+    @Post('push/subscribe')
+    subscribe(
+        @Req() request: AuthRequest,
+        @Body() dto: PushSubscriptionDto,
+    ): Promise<void> {
+        return this.pushSubscriptionsService.subscribe(this.getUserId(request), dto);
+    }
+
+    @Delete('push/unsubscribe')
+    unsubscribe(
+        @Req() request: AuthRequest,
+        @Body() dto: UnsubscribePushDto,
+    ): Promise<void> {
+        return this.pushSubscriptionsService.unsubscribe(this.getUserId(request), dto.endpoint);
     }
 
     @Patch(':id/read')

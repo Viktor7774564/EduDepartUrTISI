@@ -8,6 +8,7 @@ import notificationIcon from '@/assets/notification.svg'
 import { useAuthStore } from '@/stores/auth'
 import type { ScheduleKind } from '@/views/schedule/scheduleOptions'
 import { getPhotoUrl } from '@/config/api'
+import { unregisterPushSubscription } from '@/api/pushNotifications'
 import { useNotificationsStore } from '@/stores/notifications'
 
 const notificationsStore = useNotificationsStore()
@@ -78,6 +79,7 @@ const syncNotificationsConnection = () => {
   if (!authStore.isAuthenticated) {
     notificationsStore.disconnectLiveUpdates()
     connectedNotificationsToken = null
+    void unregisterPushSubscription()
     return
   }
 

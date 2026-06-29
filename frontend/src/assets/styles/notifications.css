@@ -84,3 +84,79 @@
 .notifications-state.error {
     color: #b91c1c;
 }
+
+.notifications-push-settings {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    border: 1px solid #dbeafe;
+    border-radius: 16px;
+    padding: 16px;
+    background: #f8fbff;
+}
+
+.notifications-push-settings__content h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.notifications-push-settings__content p {
+    margin: 8px 0 0;
+    color: #4b5563;
+    line-height: 1.5;
+}
+
+.notifications-push-settings__message {
+    margin-top: 8px;
+    color: #047857;
+}
+
+.notifications-push-settings__message.error {
+    color: #b91c1c;
+}
+
+.notifications-push-settings__actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.notifications-push-settings__button {
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.notifications-push-settings__button:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.notifications-push-settings__button.enable {
+    background: #2563eb;
+    color: #fff;
+}
+
+.notifications-push-settings__button.disable {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+@media (max-width: 768px) {
+    .notifications-header,
+    .notifications-push-settings {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .notifications-push-settings__actions {
+        width: 100%;
+    }
+
+    .notifications-push-settings__button {
+        flex: 1;
+    }
+}
