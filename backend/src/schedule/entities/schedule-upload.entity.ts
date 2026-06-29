@@ -4,12 +4,10 @@ import {
     Entity,
     JoinColumn,
     ManyToOne,
-    OneToMany,
     PrimaryGeneratedColumn,
 } from 'typeorm';
 
 import { User } from '../../users/entities/user.entity';
-import { ParsedScheduleLesson } from './parsed-schedule-lesson.entity';
 import { ScheduleType } from './schedule-type.enum';
 
 export enum ScheduleParseStatus {
@@ -70,9 +68,6 @@ export class ScheduleUpload {
     @ManyToOne(() => User, { nullable: false })
     @JoinColumn({ name: 'uploadedById' })
     uploadedBy!: User;
-
-    @OneToMany(() => ParsedScheduleLesson, (lesson) => lesson.upload)
-    parsedLessons!: ParsedScheduleLesson[];
 
     @CreateDateColumn()
     uploadedAt!: Date;

@@ -2,9 +2,10 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { NotificationsService } from '../notifications/notifications.service';
 import { UpdateSchedulePreholidayDayDto } from './dto/schedule-preholiday-day.dto';
 import { SchedulePreholidayDay } from './entities/schedule-preholiday-day.entity';
-import {ScheduleNotifierService} from "./schedule-notifier.service";
+import { ScheduleNotifierService } from './schedule-notifier.service';
 
 @Injectable()
 export class SchedulePreholidayService {
@@ -12,6 +13,7 @@ export class SchedulePreholidayService {
         @InjectRepository(SchedulePreholidayDay)
         private readonly preholidayDaysRepository: Repository<SchedulePreholidayDay>,
         private readonly scheduleNotifier: ScheduleNotifierService,
+        private readonly notificationsService: NotificationsService,
     ) {}
 
     private normalizeDate(value: string): string {
@@ -54,6 +56,7 @@ export class SchedulePreholidayService {
 
     async updatePreholidayDay(dto: UpdateSchedulePreholidayDayDto): Promise<string[]> {
         const date = this.normalizeDate(dto.date);
+        let shouldNotifyUsers = false;
 
         if (dto.isPreholiday) {
             const existing = await this.preholidayDaysRepository.findOne({
@@ -65,6 +68,7 @@ export class SchedulePreholidayService {
                 await this.preholidayDaysRepository.save(
                     this.preholidayDaysRepository.create({ date }),
                 );
+                shouldNotifyUsers = true;
             }
         } else {
             // Удаление по условию тоже написано верно
@@ -76,6 +80,10 @@ export class SchedulePreholidayService {
 
         // Теперь уведомление точно вызовется
         this.scheduleNotifier.notifyPreholidayDaysUpdated(preholidayDays);
+
+        if (shouldNotifyUsers) {
+            await this.notificationsService.notifyPreholidayDayCreated(date);
+        }
 
         // Возвращаем результат в самом конце
         return preholidayDays;

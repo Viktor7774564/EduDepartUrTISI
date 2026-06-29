@@ -8,6 +8,7 @@ import { ScheduleModule } from './schedule/schedule.module';
 import { AcademicModule } from './academic/academic.module';
 import { AdminModule } from './admin/admin.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { NotificationsModule} from './notifications/notifications.module';
 
 @Module({
     imports: [
@@ -42,6 +43,7 @@ import { SessionsModule } from './sessions/sessions.module';
         AcademicModule,
         AdminModule,
         SessionsModule,
+        NotificationsModule,
     ],
 })
 export class AppModule {}

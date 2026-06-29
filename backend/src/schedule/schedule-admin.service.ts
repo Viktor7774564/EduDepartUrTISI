@@ -11,9 +11,14 @@ import { Direction } from '../academic/entities/direction.entity';
 import { Subject } from '../academic/entities/subject.entity';
 import { Subgroup } from '../academic/entities/subgroup.entity';
 
-import { CreateScheduleItemDto, UpdateScheduleItemDto } from './dto/schedule-item.dto';
+import {
+    CreateScheduleItemDto,
+    ScheduleTransferRecommendationDto,
+    UpdateScheduleItemDto,
+} from './dto/schedule-item.dto';
 import { Schedule } from './entities/schedule.entity';
 import { ScheduleItem } from './entities/schedule-item.entity';
+import { SchedulePreholidayDay } from './entities/schedule-preholiday-day.entity';
 import { ScheduleDisplayLesson } from './schedule-display.service';
 import {
     formatRoomLabel,
@@ -22,11 +27,15 @@ import {
     resolveTeacherName,
 } from './schedule-item.mapper';
 import { normalizeWeekStart } from './parser/schedule-slot.utils';
-import { validateScheduleConflicts } from './parser/schedule-conflict.validator';
+import {
+    ScheduleLessonSlot,
+    validateScheduleConflicts,
+} from './parser/schedule-conflict.validator';
 import { LessonTypeResolver } from './resolver/lesson-type.resolver';
 import { RoomResolver } from './resolver/room.resolver';
 import { TeacherResolver } from './resolver/teacher.resolver';
 import { ScheduleNotifierService } from './schedule-notifier.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const ITEM_RELATIONS = [
     'schedule',
@@ -37,6 +46,63 @@ const ITEM_RELATIONS = [
     'teacher',
     'room',
 ] as const;
+
+const DAY_LABELS: Record<number, string> = {
+    1: 'ПН',
+    2: 'ВТ',
+    3: 'СР',
+    4: 'ЧТ',
+    5: 'ПТ',
+    6: 'СБ',
+};
+
+const WEEKDAY_TRANSFER_TIME_SLOTS = [
+    { startTime: '08:30', endTime: '10:00' },
+    { startTime: '10:15', endTime: '11:45' },
+    { startTime: '12:00', endTime: '13:30' },
+    { startTime: '14:15', endTime: '15:45' },
+    { startTime: '16:00', endTime: '17:30' },
+    { startTime: '17:40', endTime: '19:05' },
+    { startTime: '19:15', endTime: '20:40' },
+] as const;
+
+const SATURDAY_TRANSFER_TIME_SLOTS = [
+    { startTime: '08:30', endTime: '10:00' },
+    { startTime: '10:15', endTime: '11:45' },
+    { startTime: '12:00', endTime: '13:30' },
+    { startTime: '13:45', endTime: '15:15' },
+    { startTime: '15:30', endTime: '17:00' },
+    { startTime: '17:40', endTime: '19:05' },
+] as const;
+
+const PREHOLIDAY_TRANSFER_TIME_SLOTS = [
+    { startTime: '08:30', endTime: '10:00' },
+    { startTime: '10:15', endTime: '11:45' },
+    { startTime: '12:00', endTime: '13:30' },
+    { startTime: '13:45', endTime: '14:45' },
+    { startTime: '15:00', endTime: '16:00' },
+] as const;
+
+const PUBLIC_HOLIDAYS = new Set([
+    '01-01',
+    '01-02',
+    '01-03',
+    '01-04',
+    '01-05',
+    '01-06',
+    '01-07',
+    '01-08',
+    '02-23',
+    '03-08',
+    '05-01',
+    '05-09',
+    '06-12',
+    '11-04',
+]);
+
+interface ScoredTransferRecommendation extends ScheduleTransferRecommendationDto {
+    score: number;
+}
 
 @Injectable()
 export class ScheduleAdminService {
@@ -55,10 +121,13 @@ export class ScheduleAdminService {
         private readonly subjectsRepository: Repository<Subject>,
         @InjectRepository(Subgroup)
         private readonly subgroupsRepository: Repository<Subgroup>,
+        @InjectRepository(SchedulePreholidayDay)
+        private readonly preholidayDaysRepository: Repository<SchedulePreholidayDay>,
         private readonly roomResolver: RoomResolver,
         private readonly teacherResolver: TeacherResolver,
         private readonly lessonTypeResolver: LessonTypeResolver,
         private readonly scheduleNotifier: ScheduleNotifierService,
+        private readonly notificationsService: NotificationsService,
     ) {}
 
     private toDate(value: string): string {
@@ -72,6 +141,51 @@ export class ScheduleAdminService {
         const pad = (part: string) => part.padStart(2, '0');
 
         return `${year}-${pad(month)}-${pad(day)}`;
+    }
+
+    private normalizeTeacherLabel(rawTeacherName?: string): string {
+        const trimmed = rawTeacherName?.trim().replace(/\s+/g, ' ') ?? '';
+
+        if (!trimmed) {
+            return '';
+        }
+
+        const initialsMatch = trimmed.match(
+            /^([A-Za-zА-ЯЁа-яё-]+)\s+([A-Za-zА-ЯЁ])\.?\s*([A-Za-zА-ЯЁ])\.?$/u,
+        );
+
+        if (initialsMatch) {
+            const surname = initialsMatch[1];
+            const nameInitial = initialsMatch[2].toUpperCase();
+            const patronymicInitial = initialsMatch[3].toUpperCase();
+
+            return `${surname} ${nameInitial}.${patronymicInitial}.`;
+        }
+
+        const compactInitialsMatch = trimmed.match(
+            /^([A-Za-zА-ЯЁа-яё-]+)\s+([A-Za-zА-ЯЁ])\.?([A-Za-zА-ЯЁ])\.?$/u,
+        );
+
+        if (compactInitialsMatch) {
+            const surname = compactInitialsMatch[1];
+            const nameInitial = compactInitialsMatch[2].toUpperCase();
+            const patronymicInitial = compactInitialsMatch[3].toUpperCase();
+
+            return `${surname} ${nameInitial}.${patronymicInitial}.`;
+        }
+
+        const fullNameParts = trimmed.split(' ');
+        if (fullNameParts.length >= 3) {
+            const surname = fullNameParts[0];
+            const nameInitial = fullNameParts[1].charAt(0).toUpperCase();
+            const patronymicInitial = fullNameParts[2].charAt(0).toUpperCase();
+
+            if (nameInitial && patronymicInitial) {
+                return `${surname} ${nameInitial}.${patronymicInitial}.`;
+            }
+        }
+
+        return trimmed;
     }
 
     private async findOrCreateImportDirection(): Promise<Direction> {
@@ -256,9 +370,10 @@ export class ScheduleAdminService {
         const room = slot.room?.trim()
             ? await this.roomResolver.resolve(slot.room)
             : null;
+        const normalizedTeacherName = this.normalizeTeacherLabel(slot.teacherName);
 
-        const teacher = slot.teacherName?.trim()
-            ? await this.teacherResolver.resolve(slot.teacherName)
+        const teacher = normalizedTeacherName
+            ? await this.teacherResolver.resolve(normalizedTeacherName)
             : null;
 
         const subgroup = await this.findSubgroup(groupId, slot.subgroup ?? null);
@@ -273,7 +388,7 @@ export class ScheduleAdminService {
         item.roomId = room?.id ?? null;
         item.teacherId = teacher?.id ?? null;
         item.subgroupId = subgroup?.id ?? null;
-        item.legacyTeacherName = teacher ? null : (slot.teacherName?.trim() || null);
+        item.legacyTeacherName = teacher ? null : (normalizedTeacherName || null);
 
         if (slot.dayOfWeek !== undefined) {
             item.dayOfWeek = slot.dayOfWeek;
@@ -335,6 +450,389 @@ export class ScheduleAdminService {
         });
     }
 
+    private parseRecommendationDate(weekStart: string, dayOfWeek: number): Date | null {
+        const normalizedWeekStart = normalizeWeekStart(weekStart);
+        const [day, month, year] = normalizedWeekStart.split('.');
+
+        if (!day || !month || !year) {
+            return null;
+        }
+
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
+        if (Number.isNaN(date.getTime())) {
+            return null;
+        }
+
+        date.setDate(date.getDate() + dayOfWeek - 1);
+        date.setHours(0, 0, 0, 0);
+
+        return date;
+    }
+
+    private isPublicHoliday(weekStart: string, dayOfWeek: number): boolean {
+        const date = this.parseRecommendationDate(weekStart, dayOfWeek);
+
+        if (!date) {
+            return false;
+        }
+
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+
+        return PUBLIC_HOLIDAYS.has(`${month}-${day}`);
+    }
+
+    private isWeekInPast(weekStart: string): boolean {
+        const normalizedWeekStart = normalizeWeekStart(this.toDate(weekStart));
+        const [day, month, year] = normalizedWeekStart.split('.');
+
+        if (!day || !month || !year) {
+            return false;
+        }
+
+        const weekStartDate = new Date(Number(year), Number(month) - 1, Number(day));
+        if (Number.isNaN(weekStartDate.getTime())) {
+            return false;
+        }
+
+        const weekEndDate = new Date(weekStartDate);
+        weekEndDate.setDate(weekEndDate.getDate() + 6);
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        weekEndDate.setHours(0, 0, 0, 0);
+
+        return weekEndDate < today;
+    }
+
+    private getDateKey(weekStart: string, dayOfWeek: number): string {
+        const date = this.parseRecommendationDate(weekStart, dayOfWeek);
+
+        if (!date) {
+            return '';
+        }
+
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+
+        return `${year}-${month}-${day}`;
+    }
+
+    private async loadPreholidayDayKeys(weekStart: string): Promise<Set<string>> {
+        const weekStartDate = this.parseRecommendationDate(weekStart, 1);
+
+        if (!weekStartDate) {
+            return new Set();
+        }
+
+        const weekEndDate = new Date(weekStartDate);
+        weekEndDate.setDate(weekEndDate.getDate() + 6);
+
+        const toIso = (date: Date) => {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+
+            return `${year}-${month}-${day}`;
+        };
+
+        const days = await this.preholidayDaysRepository
+            .createQueryBuilder('preholiday')
+            .where('preholiday.date >= :from', { from: toIso(weekStartDate) })
+            .andWhere('preholiday.date <= :to', { to: toIso(weekEndDate) })
+            .getMany();
+
+        return new Set(days.map((day) => day.date));
+    }
+
+    private getRecommendationSlots(
+        weekStart: string,
+        dayOfWeek: number,
+        preholidayDayKeys: Set<string>,
+    ) {
+        const dateKey = this.getDateKey(weekStart, dayOfWeek);
+        if (dateKey && preholidayDayKeys.has(dateKey)) {
+            return PREHOLIDAY_TRANSFER_TIME_SLOTS;
+        }
+
+        return dayOfWeek === 6
+            ? SATURDAY_TRANSFER_TIME_SLOTS
+            : WEEKDAY_TRANSFER_TIME_SLOTS;
+    }
+
+    private getBaseSlotsForDay(dayOfWeek: number) {
+        return dayOfWeek === 6
+            ? SATURDAY_TRANSFER_TIME_SLOTS
+            : WEEKDAY_TRANSFER_TIME_SLOTS;
+    }
+
+    private getOriginalTimeIndex(source: ScheduleLessonSlot): number {
+        const originalSlots = source.dayOfWeek === 6
+            ? SATURDAY_TRANSFER_TIME_SLOTS
+            : WEEKDAY_TRANSFER_TIME_SLOTS;
+
+        return originalSlots.findIndex((slot) => slot.startTime === source.startTime);
+    }
+
+    private scoreDayLoadWithCandidate(
+        candidate: ScheduleLessonSlot,
+        sameGroupDayLessons: ScheduleLessonSlot[],
+    ): { score: number; reason?: string } {
+        if (sameGroupDayLessons.length === 0) {
+            return { score: 6, reason: 'день у группы свободный' };
+        }
+
+        const allTimes = [...sameGroupDayLessons.map((lesson) => lesson.startTime), candidate.startTime]
+            .map((time) => this.getMinutes(time))
+            .sort((left, right) => left - right);
+
+        let longBreaks = 0;
+        for (let index = 1; index < allTimes.length; index += 1) {
+            if ((allTimes[index] - allTimes[index - 1]) > 120) {
+                longBreaks += 1;
+            }
+        }
+
+        if (longBreaks === 0) {
+            return { score: 14, reason: 'без длинных окон у группы' };
+        }
+
+        if (longBreaks === 1) {
+            return { score: 6, reason: 'одно окно у группы' };
+        }
+
+        return { score: -8, reason: 'создаёт несколько окон у группы' };
+    }
+
+    private scoreTeacherLoad(
+        candidate: ScheduleLessonSlot,
+        sameTeacherDayLessons: ScheduleLessonSlot[],
+    ): { score: number; reason?: string } {
+        if (!candidate.teacherName) {
+            return { score: 0 };
+        }
+
+        if (sameTeacherDayLessons.length === 0) {
+            return { score: 0 };
+        }
+
+        const candidateMinutes = this.getMinutes(candidate.startTime);
+        const nearestDistance = sameTeacherDayLessons
+            .map((lesson) => Math.abs(this.getMinutes(lesson.startTime) - candidateMinutes))
+            .sort((left, right) => left - right)[0] ?? 9999;
+
+        if (nearestDistance <= 120) {
+            return { score: 10, reason: 'преподавателю удобно по расписанию дня' };
+        }
+
+        return { score: 3, reason: 'преподаватель уже работает в этот день' };
+    }
+
+    private getMinutes(time: string): number {
+        const [hours, minutes] = time.split(':').map(Number);
+
+        return (hours * 60) + minutes;
+    }
+
+    private scoreRecommendation(
+        candidate: ScheduleLessonSlot,
+        source: ScheduleLessonSlot,
+        existingLessons: ScheduleLessonSlot[],
+    ): { score: number; reasons: string[] } {
+        let score = 0;
+        const reasons: string[] = ['нет конфликтов по группе, преподавателю и аудитории'];
+
+        if (candidate.dayOfWeek === source.dayOfWeek) {
+            score += 30;
+            reasons.push('тот же день недели');
+        }
+
+        if (candidate.startTime === source.startTime) {
+            score += 20;
+            reasons.push('то же время пары');
+        }
+
+        const originalTimeIndex = this.getOriginalTimeIndex(source);
+        const candidateTimeIndex = this.getBaseSlotsForDay(candidate.dayOfWeek)
+            .findIndex((slot) => slot.startTime === candidate.startTime);
+
+        if (originalTimeIndex !== -1 && candidateTimeIndex !== -1) {
+            const distance = Math.abs(originalTimeIndex - candidateTimeIndex);
+            if (distance === 0) {
+                score += 10;
+            } else if (distance === 1) {
+                score += 5;
+                reasons.push('близко к исходной паре');
+            } else if (distance >= 3) {
+                score -= 4;
+                reasons.push('далеко от исходной пары');
+            }
+        }
+
+        if (candidate.dayOfWeek === 6) {
+            score -= 10;
+            reasons.push('суббота');
+        } else {
+            score += 8;
+        }
+
+        const sameGroupDayLessons = existingLessons.filter((lesson) =>
+            lesson.groupName === candidate.groupName
+            && lesson.weekStart === candidate.weekStart
+            && lesson.dayOfWeek === candidate.dayOfWeek,
+        );
+        const groupDayScore = this.scoreDayLoadWithCandidate(candidate, sameGroupDayLessons);
+        score += groupDayScore.score;
+        if (groupDayScore.reason) {
+            reasons.push(groupDayScore.reason);
+        }
+
+        const sameTeacherDayLessons = existingLessons.filter((lesson) =>
+            lesson.teacherName
+            && lesson.teacherName === candidate.teacherName
+            && lesson.weekStart === candidate.weekStart
+            && lesson.dayOfWeek === candidate.dayOfWeek,
+        );
+
+        const teacherScore = this.scoreTeacherLoad(candidate, sameTeacherDayLessons);
+        score += teacherScore.score;
+        if (teacherScore.reason) {
+            reasons.push(teacherScore.reason);
+        }
+
+        if (candidate.startTime <= '16:00') {
+            score += 8;
+        } else if (candidate.startTime < '17:40') {
+            score += 3;
+        } else {
+            score -= 6;
+            reasons.push('поздняя пара');
+        }
+
+        if (candidate.weekStart !== source.weekStart) {
+            score -= 3;
+            reasons.push('другая неделя');
+        }
+
+        return { score, reasons };
+    }
+
+    private buildCandidateSlot(
+        source: ScheduleLessonSlot,
+        weekStart: string,
+        dayOfWeek: number,
+        startTime: string,
+        endTime: string,
+    ): ScheduleLessonSlot {
+        return {
+            ...source,
+            weekStart,
+            dayOfWeek,
+            startTime,
+            endTime,
+        };
+    }
+
+    async getTransferRecommendations(
+        id: number,
+        weekStart?: string,
+    ): Promise<ScheduleTransferRecommendationDto[]> {
+        const item = await this.loadItemWithRelations(id);
+        const sourceSlot = mapItemToLessonSlot(item);
+        const targetWeekStart = normalizeWeekStart(
+            weekStart ? this.toDate(weekStart) : String(item.weekStart),
+        );
+
+        if (this.isWeekInPast(targetWeekStart)) {
+            return [];
+        }
+
+        const existingLessons = await this.loadActiveLessonSlots(id);
+        const preholidayDayKeys = await this.loadPreholidayDayKeys(targetWeekStart);
+        const recommendations: ScoredTransferRecommendation[] = [];
+
+        for (const [dayOfWeekValue, dayLabel] of Object.entries(DAY_LABELS)) {
+            const dayOfWeek = Number(dayOfWeekValue);
+            const dateKey = this.getDateKey(targetWeekStart, dayOfWeek);
+            const isPreholidayDay = Boolean(dateKey && preholidayDayKeys.has(dateKey));
+
+            if (this.isPublicHoliday(targetWeekStart, dayOfWeek)) {
+                continue;
+            }
+
+            for (const slot of this.getRecommendationSlots(
+                targetWeekStart,
+                dayOfWeek,
+                preholidayDayKeys,
+            )) {
+                const candidate = this.buildCandidateSlot(
+                    sourceSlot,
+                    targetWeekStart,
+                    dayOfWeek,
+                    slot.startTime,
+                    slot.endTime,
+                );
+
+                const isOriginalSlot = sourceSlot.weekStart === candidate.weekStart
+                    && sourceSlot.dayOfWeek === candidate.dayOfWeek
+                    && sourceSlot.startTime === candidate.startTime;
+
+                if (isOriginalSlot) {
+                    continue;
+                }
+
+                const conflicts = validateScheduleConflicts([candidate], existingLessons);
+                if (conflicts.length > 0) {
+                    continue;
+                }
+
+                const { score, reasons } = this.scoreRecommendation(
+                    candidate,
+                    sourceSlot,
+                    existingLessons,
+                );
+                const recommendationReasons = isPreholidayDay
+                    ? [...reasons, 'предпраздничный день (короткие пары)']
+                    : reasons;
+
+                recommendations.push({
+                    weekStart: targetWeekStart,
+                    dayOfWeek,
+                    day: dayLabel,
+                    startTime: candidate.startTime,
+                    endTime: candidate.endTime,
+                    label: `${dayLabel}, ${candidate.startTime} - ${candidate.endTime}`,
+                    reasons: recommendationReasons,
+                    score,
+                });
+            }
+        }
+
+        return recommendations
+            .sort((left, right) => {
+                if (right.score !== left.score) {
+                    return right.score - left.score;
+                }
+
+                if (left.dayOfWeek !== right.dayOfWeek) {
+                    return left.dayOfWeek - right.dayOfWeek;
+                }
+
+                return left.startTime.localeCompare(right.startTime);
+            })
+            .slice(0, 5)
+            .map((recommendation) => ({
+                weekStart: recommendation.weekStart,
+                dayOfWeek: recommendation.dayOfWeek,
+                day: recommendation.day,
+                startTime: recommendation.startTime,
+                endTime: recommendation.endTime,
+                label: recommendation.label,
+                reasons: recommendation.reasons,
+            }));
+    }
+
     async createItem(dto: CreateScheduleItemDto): Promise<ScheduleDisplayLesson> {
         const group = await this.findOrCreateGroup(dto.groupName);
         const schedule = await this.findScheduleForWeek(dto.groupName, dto.weekStart);
@@ -359,10 +857,13 @@ export class ScheduleAdminService {
         await this.assertNoConflicts(item);
 
         const saved = await this.itemsRepository.save(item);
+        const savedWithRelations = await this.loadItemWithRelations(saved.id);
 
         this.scheduleNotifier.notifyScheduleChanged('item-created');
+        await this.notificationsService.notifyScheduleItemChanged('created', savedWithRelations);
 
-        return mapItemToDisplayLesson(await this.loadItemWithRelations(saved.id));
+        return mapItemToDisplayLesson(savedWithRelations);
+
     }
 
     async updateItem(
@@ -370,10 +871,20 @@ export class ScheduleAdminService {
         dto: UpdateScheduleItemDto,
     ): Promise<ScheduleDisplayLesson> {
         const item = await this.loadItemWithRelations(id);
+        const previousItem = this.notificationsService.createScheduleItemSnapshot(item);
         const groupName = item.schedule.group?.name;
 
         if (!groupName) {
             throw new BadRequestException('У занятия не указана группа');
+        }
+
+        const currentWeekStart = normalizeWeekStart(String(item.weekStart));
+        const nextWeekStart = dto.weekStart !== undefined
+            ? normalizeWeekStart(this.toDate(dto.weekStart))
+            : currentWeekStart;
+
+        if (this.isWeekInPast(nextWeekStart) && nextWeekStart !== currentWeekStart) {
+            throw new BadRequestException('Нельзя перенести пару на прошедшую неделю');
         }
 
         await this.applySlotFields(item, {
@@ -401,33 +912,38 @@ export class ScheduleAdminService {
 
         await this.itemsRepository.save(item);
 
-        this.scheduleNotifier.notifyScheduleChanged('item-updated');
+        const updatedWithRelations = await this.loadItemWithRelations(id);
 
-        return mapItemToDisplayLesson(await this.loadItemWithRelations(id));
+        this.scheduleNotifier.notifyScheduleChanged('item-updated');
+        await this.notificationsService.notifyScheduleItemChanged(
+            'updated',
+            updatedWithRelations,
+            previousItem,
+        );
+
+        return mapItemToDisplayLesson(updatedWithRelations);
     }
 
     async disableItem(id: number): Promise<void> {
-        const item = await this.itemsRepository.findOne({ where: { id } });
-
+        const item = await this.loadItemWithRelations(id);
         if (!item) {
             throw new NotFoundException('Занятие не найдено');
         }
-
         item.isDisabled = true;
         await this.itemsRepository.save(item);
 
+        const disabledWithRelations = await this.loadItemWithRelations(id);
+
         this.scheduleNotifier.notifyScheduleChanged('item-disabled');
+        await this.notificationsService.notifyScheduleItemChanged('disabled', disabledWithRelations);
     }
 
     async deleteItem(id: number): Promise<void> {
-        const item = await this.itemsRepository.findOne({ where: { id } });
-
-        if (!item) {
-            throw new NotFoundException('Занятие не найдено');
-        }
+        const item = await this.loadItemWithRelations(id);
 
         await this.itemsRepository.delete(id);
 
         this.scheduleNotifier.notifyScheduleChanged('item-deleted');
+        await this.notificationsService.notifyScheduleItemChanged('deleted', item);
     }
 }

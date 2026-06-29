@@ -494,6 +494,46 @@
   @apply text-[#c43636];
 }
 
+.schedule-page .transfer-recommendations {
+  @apply mb-[24px] rounded-[12px] border border-[#d7e0e9] bg-[#f8fbfd] p-[14px];
+}
+
+.schedule-page .transfer-recommendations__head {
+  @apply flex items-center justify-between gap-[12px] mb-[12px];
+}
+
+.schedule-page .transfer-recommendations__head h3 {
+  @apply m-0 text-[16px] font-semibold text-[#24313f];
+}
+
+.schedule-page .transfer-recommendations__head span {
+  @apply text-[12px] text-[#5f6975];
+}
+
+.schedule-page .transfer-recommendations__list {
+  @apply flex flex-col gap-[8px];
+}
+
+.schedule-page .transfer-recommendation {
+  @apply w-full text-left rounded-[10px] border border-[#d7e0e9] bg-white py-[10px] px-[12px] cursor-pointer transition-all duration-[160ms];
+}
+
+.schedule-page .transfer-recommendation:hover {
+  @apply border-[#4ea3d7] shadow-[0_4px_10px_rgba(78,163,215,0.12)];
+}
+
+.schedule-page .transfer-recommendation--selected {
+  @apply border-[#4caf50] bg-[#f2fbf3];
+}
+
+.schedule-page .transfer-recommendation__title {
+  @apply block text-[14px] font-semibold text-[#24313f];
+}
+
+.schedule-page .transfer-recommendation__reasons {
+  @apply block mt-[4px] text-[12px] leading-[1.35] text-[#5f6975];
+}
+
 .schedule-page .edit-actions {
   @apply flex gap-[16px] justify-end pt-[20px] border-t border-[#d7e0e9];
 }

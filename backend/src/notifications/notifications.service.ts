@@ -1,0 +1,615 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
+
+import { ScheduleItem } from '../schedule/entities/schedule-item.entity';
+import {
+    formatRoomLabel,
+    resolveTeacherName,
+} from '../schedule/schedule-item.mapper';
+import { User } from '../users/entities/user.entity';
+import { RoleCode } from '../users/entities/role.entity';
+import { Notification, NotificationType } from './notification.entity';
+import { NotificationsGateway } from './notifications.gateway';
+
+type ScheduleNotificationAction = 'created' | 'updated' | 'disabled' | 'deleted';
+
+type ScheduleItemNotificationSnapshot = {
+    id: number;
+    groupId: number | null;
+    groupName: string | null;
+    subgroupId: number | null;
+    subgroupNumber: number | null;
+    teacherId: number | null;
+    teacherName: string;
+    subject: string;
+    lessonType: string;
+    room: string;
+    weekStart: string;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    comment: string | null;
+};
+
+type ScheduleMessageAudience = 'student' | 'teacher' | 'other';
+
+const DAY_LABELS: Record<number, string> = {
+    1: 'понедельник',
+    2: 'вторник',
+    3: 'среда',
+    4: 'четверг',
+    5: 'пятница',
+    6: 'суббота',
+    7: 'воскресенье',
+};
+
+const PAIR_NUMBERS: Record<string, string> = {
+    '08:30': '1-я пара',
+    '10:15': '2-я пара',
+    '12:00': '3-я пара',
+    '13:45': '4-я пара',
+    '14:15': '4-я пара',
+    '15:00': '5-я пара',
+    '15:30': '5-я пара',
+    '16:00': '5-я пара',
+    '17:40': '6-я пара',
+    '19:15': '7-я пара',
+};
+
+@Injectable()
+export class NotificationsService {
+    private readonly logger = new Logger(NotificationsService.name);
+
+    constructor(
+        @InjectRepository(Notification)
+        private readonly notificationsRepository: Repository<Notification>,
+        @InjectRepository(User)
+        private readonly usersRepository: Repository<User>,
+        private readonly notificationsGateway: NotificationsGateway,
+    ) {}
+
+    async listForUser(userId: number): Promise<Notification[]> {
+        return this.notificationsRepository.find({
+            where: { userId },
+            order: { createdAt: 'DESC' },
+            take: 100,
+        });
+    }
+
+    async markAsRead(userId: number, id: number): Promise<void> {
+        await this.notificationsRepository.update({ id, userId }, { isRead: true });
+    }
+
+    async markAllAsRead(userId: number): Promise<void> {
+        await this.notificationsRepository.update({ userId, isRead: false }, { isRead: true });
+    }
+
+    async notifyPreholidayDayCreated(date: string): Promise<void> {
+        const recipients = await this.usersRepository.find({
+            where: { isActive: true },
+        });
+
+        if (recipients.length === 0) {
+            this.logger.warn(`Preholiday notification has no recipients: date=${date}`);
+            return;
+        }
+
+        const message = this.buildPreholidayMessage(date);
+        const notifications = await this.notificationsRepository.save(
+            recipients.map((user) => this.notificationsRepository.create({
+                userId: user.id,
+                type: NotificationType.SCHEDULE,
+                title: 'Предпраздничный день',
+                message,
+                payload: {
+                    action: 'preholiday-created',
+                    date,
+                },
+            })),
+        );
+
+        for (const notification of notifications) {
+            this.notificationsGateway.sendToUser(notification.userId, notification);
+        }
+    }
+
+    async notifyScheduleItemChanged(
+        action: ScheduleNotificationAction,
+        item: ScheduleItem,
+        previousItem?: ScheduleItemNotificationSnapshot,
+    ): Promise<void> {
+        const recipients = await this.resolveRecipients(item, previousItem);
+
+        if (recipients.length === 0) {
+            const currentItem = this.createScheduleItemSnapshot(item);
+            this.logger.warn(
+                `Schedule notification has no recipients: itemId=${currentItem.id}, groupId=${currentItem.groupId}, subgroupId=${currentItem.subgroupId}, teacherId=${currentItem.teacherId}`,
+            );
+            return;
+        }
+
+        const currentItem = this.createScheduleItemSnapshot(item);
+        const title = this.getScheduleTitle(action);
+
+        const notifications = await this.notificationsRepository.save(
+            recipients.map((user) => {
+                const audience = this.getMessageAudience(user);
+                const message = this.buildScheduleMessage(
+                    action,
+                    currentItem,
+                    previousItem,
+                    audience,
+                );
+
+                return this.notificationsRepository.create({
+                    userId: user.id,
+                    type: NotificationType.SCHEDULE,
+                    title,
+                    message,
+                    payload: {
+                        action,
+                        scheduleItemId: item.id,
+                        groupId: currentItem.groupId,
+                        groupName: currentItem.groupName,
+                        teacherId: currentItem.teacherId,
+                        subgroupId: currentItem.subgroupId,
+                        weekStart: currentItem.weekStart,
+                        dayOfWeek: currentItem.dayOfWeek,
+                        startTime: currentItem.startTime,
+                        endTime: currentItem.endTime,
+                        changes: previousItem
+                            ? this.getScheduleChanges(previousItem, currentItem, audience)
+                            : [],
+                    },
+                });
+            }),
+        );
+
+        for (const notification of notifications) {
+            this.notificationsGateway.sendToUser(notification.userId, notification);
+        }
+    }
+
+    createScheduleItemSnapshot(item: ScheduleItem): ScheduleItemNotificationSnapshot {
+        return {
+            id: item.id,
+            groupId: item.schedule?.groupId ?? null,
+            groupName: item.schedule?.group?.name ?? null,
+            subgroupId: item.subgroupId,
+            subgroupNumber: item.subgroup?.number ?? null,
+            teacherId: item.teacherId,
+            teacherName: resolveTeacherName(item),
+            subject: item.subject?.name ?? '',
+            lessonType: item.lessonType?.name ?? '',
+            room: formatRoomLabel(item.room),
+            weekStart: String(item.weekStart),
+            dayOfWeek: item.dayOfWeek,
+            startTime: this.formatTime(item.startTime),
+            endTime: this.formatTime(item.endTime),
+            comment: item.comment,
+        };
+    }
+
+    private async resolveRecipients(
+        item: ScheduleItem,
+        previousItem?: ScheduleItemNotificationSnapshot,
+    ): Promise<User[]> {
+        const recipientIds = new Set<number>();
+        const currentItem = this.createScheduleItemSnapshot(item);
+
+        await this.addStudentRecipients(recipientIds, currentItem.groupId, currentItem.subgroupId);
+
+        if (
+            previousItem
+            && (
+                previousItem.groupId !== currentItem.groupId
+                || previousItem.subgroupId !== currentItem.subgroupId
+            )
+        ) {
+            await this.addStudentRecipients(
+                recipientIds,
+                previousItem.groupId,
+                previousItem.subgroupId,
+            );
+        }
+
+        if (currentItem.teacherId) {
+            recipientIds.add(currentItem.teacherId);
+        }
+
+        if (previousItem?.teacherId) {
+            recipientIds.add(previousItem.teacherId);
+        }
+
+        if (recipientIds.size === 0) {
+            return [];
+        }
+
+        return this.usersRepository.find({
+            where: {
+                id: In([...recipientIds]),
+                isActive: true,
+            },
+            relations: ['role'],
+        });
+    }
+
+    private async addStudentRecipients(
+        recipientIds: Set<number>,
+        groupId: number | null,
+        subgroupId: number | null,
+    ): Promise<void> {
+        if (!groupId) {
+            return;
+        }
+
+        const students = await this.findStudentsByGroup(groupId, subgroupId);
+        const fallbackStudents = subgroupId && students.length === 0
+            ? await this.findStudentsByGroup(groupId, null)
+            : [];
+
+        for (const student of [...students, ...fallbackStudents]) {
+            recipientIds.add(student.id);
+        }
+    }
+
+    private findStudentsByGroup(
+        groupId: number,
+        subgroupId: number | null,
+    ): Promise<User[]> {
+        const query = this.usersRepository
+            .createQueryBuilder('user')
+            .innerJoin('user.role', 'role')
+            .innerJoin('user.studentProfile', 'studentProfile')
+            .where('user.isActive = :isActive', { isActive: true })
+            .andWhere('role.code = :roleCode', { roleCode: RoleCode.STUDENT })
+            .andWhere('studentProfile.groupId = :groupId', { groupId });
+
+        if (subgroupId) {
+            query.andWhere('studentProfile.subgroupId = :subgroupId', { subgroupId });
+        }
+
+        return query.getMany();
+    }
+
+    private getScheduleTitle(action: ScheduleNotificationAction): string {
+        switch (action) {
+            case 'created':
+                return 'Добавлена пара';
+            case 'updated':
+                return 'Изменена пара';
+            case 'disabled':
+                return 'Пара отменена';
+            case 'deleted':
+                return 'Пара удалена';
+        }
+    }
+
+    private buildPreholidayMessage(date: string): string {
+        const formattedDate = this.formatIsoDate(date);
+
+        if (this.isToday(date)) {
+            return 'Сегодня предпраздничный день, пары сокращены.';
+        }
+
+        return `${formattedDate} предпраздничный день, пары сокращены.`;
+    }
+
+    private buildScheduleMessage(
+        action: ScheduleNotificationAction,
+        item: ScheduleItemNotificationSnapshot,
+        previousItem?: ScheduleItemNotificationSnapshot,
+        audience: ScheduleMessageAudience = 'student',
+    ): string {
+        const base = this.formatLessonSummary(item);
+
+        if (action === 'updated' && previousItem) {
+            return this.buildUpdatedScheduleMessage(previousItem, item, audience) || base;
+        }
+
+        if (action === 'created') {
+            return this.buildCreatedScheduleMessage(item, audience);
+        }
+
+        if (action === 'disabled') {
+            return `${base}. Пара отменена`;
+        }
+
+        if (action === 'deleted') {
+            return `${base}. Пара удалена из расписания`;
+        }
+
+        return base;
+    }
+
+    private buildCreatedScheduleMessage(
+        item: ScheduleItemNotificationSnapshot,
+        audience: ScheduleMessageAudience,
+    ): string {
+        const room = item.room.trim();
+        const summary = audience === 'teacher'
+            ? this.formatTeacherLessonSummary(item)
+            : this.formatLessonSummary(item);
+
+        if (!room) {
+            return summary;
+        }
+
+        return `${summary}. Кабинет: ${room}`;
+    }
+
+    private getScheduleChanges(
+        previousItem: ScheduleItemNotificationSnapshot,
+        item: ScheduleItemNotificationSnapshot,
+        audience: ScheduleMessageAudience = 'student',
+    ): string[] {
+        const changes: string[] = [];
+
+        if (
+            previousItem.weekStart !== item.weekStart
+            || previousItem.dayOfWeek !== item.dayOfWeek
+            || previousItem.startTime !== item.startTime
+            || previousItem.endTime !== item.endTime
+        ) {
+            changes.push(this.formatTransferMessage(previousItem, item, audience));
+        }
+
+        this.addChange(changes, 'Предмет', previousItem.subject, item.subject);
+        this.addChange(changes, 'Тип занятия', previousItem.lessonType, item.lessonType);
+
+        if (audience !== 'teacher') {
+            this.addChange(changes, 'Преподаватель', previousItem.teacherName, item.teacherName);
+        }
+
+        if (previousItem.room.trim() !== item.room.trim()) {
+            changes.push(this.formatRoomChangeMessage(item, audience));
+        }
+
+        this.addChange(
+            changes,
+            'Подгруппа',
+            this.formatSubgroup(previousItem.subgroupNumber),
+            this.formatSubgroup(item.subgroupNumber),
+        );
+        this.addChange(changes, 'Комментарий', previousItem.comment ?? '', item.comment ?? '');
+
+        return changes;
+    }
+
+    private buildUpdatedScheduleMessage(
+        previousItem: ScheduleItemNotificationSnapshot,
+        item: ScheduleItemNotificationSnapshot,
+        audience: ScheduleMessageAudience,
+    ): string {
+        const messages: string[] = [];
+
+        if (this.isLessonPlacementChanged(previousItem, item)) {
+            messages.push(this.formatTransferMessage(previousItem, item, audience));
+        }
+
+        if (previousItem.room.trim() !== item.room.trim()) {
+            messages.push(this.formatRoomChangeMessage(item, audience));
+        }
+
+        this.addChange(messages, 'Предмет', previousItem.subject, item.subject);
+        this.addChange(messages, 'Тип занятия', previousItem.lessonType, item.lessonType);
+
+        if (audience !== 'teacher') {
+            this.addChange(messages, 'Преподаватель', previousItem.teacherName, item.teacherName);
+        }
+        this.addChange(
+            messages,
+            'Подгруппа',
+            this.formatSubgroup(previousItem.subgroupNumber),
+            this.formatSubgroup(item.subgroupNumber),
+        );
+        this.addChange(messages, 'Комментарий', previousItem.comment ?? '', item.comment ?? '');
+
+        return messages.join(' ');
+    }
+
+    private isLessonPlacementChanged(
+        previousItem: ScheduleItemNotificationSnapshot,
+        item: ScheduleItemNotificationSnapshot,
+    ): boolean {
+        return previousItem.weekStart !== item.weekStart
+            || previousItem.dayOfWeek !== item.dayOfWeek
+            || previousItem.startTime !== item.startTime
+            || previousItem.endTime !== item.endTime;
+    }
+
+    private formatTransferMessage(
+        previousItem: ScheduleItemNotificationSnapshot,
+        item: ScheduleItemNotificationSnapshot,
+        audience: ScheduleMessageAudience,
+    ): string {
+        const lesson = this.capitalize(this.formatLessonWithSubject(item));
+        const teacher = this.formatTeacherForNotification(item.teacherName);
+        const teacherPart = audience !== 'teacher' && teacher
+            ? ` у преподавателя ${teacher}`
+            : '';
+        const groupPart = audience === 'teacher'
+            ? ` у группы ${this.formatGroup(item)}`
+            : '';
+        const subgroup = this.formatSubgroupPart(item);
+        const previousDate = this.formatShortLessonDate(previousItem);
+        const nextDate = this.formatShortLessonDate(item);
+        const previousPair = this.formatPair(previousItem);
+        const nextPair = this.formatPair(item);
+        const isPairChanged = previousPair !== nextPair || audience === 'teacher';
+        const previousPlacement = isPairChanged
+            ? `${previousDate}, ${previousPair}`
+            : previousDate;
+        const nextPlacement = isPairChanged
+            ? `${nextDate}, ${nextPair}`
+            : nextDate;
+
+        return `${lesson}${teacherPart}${groupPart}${subgroup} перенесена с ${previousPlacement} на ${nextPlacement}.`;
+    }
+
+    private formatRoomChangeMessage(
+        item: ScheduleItemNotificationSnapshot,
+        audience: ScheduleMessageAudience,
+    ): string {
+        const date = this.formatShortLessonDate(item);
+        const lesson = this.formatLessonForRoomChange(item);
+        const teacher = this.formatTeacherForNotification(item.teacherName);
+        const teacherPart = audience !== 'teacher' && teacher ? ` у ${teacher}` : '';
+        const groupPart = audience === 'teacher'
+            ? ` у группы ${this.formatGroup(item)}, ${this.formatPair(item)}`
+            : '';
+        const subgroup = this.formatSubgroupPart(item);
+        const room = item.room.trim() || 'кабинет не указан';
+        const predicate = room.toLowerCase() === 'дист. форм. об.'
+            ? 'будет проведена в'
+            : 'будет в';
+
+        return `${date} ${lesson}${teacherPart}${groupPart}${subgroup} ${predicate} ${room}.`;
+    }
+
+    private formatLessonForRoomChange(item: ScheduleItemNotificationSnapshot): string {
+        return this.formatLessonWithSubject(item).toLowerCase();
+    }
+
+    private addChange(
+        changes: string[],
+        label: string,
+        previousValue: string,
+        nextValue: string,
+    ): void {
+        const previous = previousValue.trim() || 'не указано';
+        const next = nextValue.trim() || 'не указано';
+
+        if (previous !== next) {
+            changes.push(`${label}: ${previous} -> ${next}`);
+        }
+    }
+
+    private formatLessonSummary(item: ScheduleItemNotificationSnapshot): string {
+        const type = item.lessonType ? ` (${item.lessonType})` : '';
+        const group = item.groupName ?? 'группа не указана';
+        const subgroup = item.subgroupNumber ? `, ${this.formatSubgroup(item.subgroupNumber)}` : '';
+
+        return `${item.subject || 'Предмет не указан'}${type}: ${group}${subgroup}, ${this.formatLessonDateTime(item)}`;
+    }
+
+    private formatTeacherLessonSummary(item: ScheduleItemNotificationSnapshot): string {
+        const lesson = this.formatLessonWithSubject(item).toLowerCase();
+        const subgroup = this.formatSubgroupPart(item);
+
+        return `${lesson} у группы ${this.formatGroup(item)}${subgroup}, ${this.formatPair(item)}`;
+    }
+
+    private formatLessonDateTime(item: ScheduleItemNotificationSnapshot): string {
+        const day = DAY_LABELS[item.dayOfWeek] ?? 'день не указан';
+        const date = this.formatLessonDate(item);
+        const pair = PAIR_NUMBERS[item.startTime] ?? `${item.startTime}-${item.endTime}`;
+
+        return `${day}${date ? `, ${date}` : ''}, ${pair} (${item.startTime}-${item.endTime})`;
+    }
+
+    private formatLessonDate(item: ScheduleItemNotificationSnapshot): string {
+        const [year, month, day] = item.weekStart.slice(0, 10).split('-').map(Number);
+
+        if (!year || !month || !day || !item.dayOfWeek) {
+            return '';
+        }
+
+        const lessonDate = new Date(Date.UTC(year, month - 1, day + item.dayOfWeek - 1));
+        const formattedDay = String(lessonDate.getUTCDate()).padStart(2, '0');
+        const formattedMonth = String(lessonDate.getUTCMonth() + 1).padStart(2, '0');
+
+        return `${formattedDay}.${formattedMonth}.${lessonDate.getUTCFullYear()}`;
+    }
+
+    private formatShortLessonDate(item: ScheduleItemNotificationSnapshot): string {
+        const [day, month] = this.formatLessonDate(item).split('.');
+
+        if (!day || !month) {
+            return 'дата не указана';
+        }
+
+        return `${day}.${month}`;
+    }
+
+    private formatPair(item: ScheduleItemNotificationSnapshot): string {
+        return PAIR_NUMBERS[item.startTime] ?? 'пара не указана';
+    }
+
+    private formatLessonType(item: ScheduleItemNotificationSnapshot): string {
+        return item.lessonType.trim() || item.subject.trim() || 'пара';
+    }
+
+    private formatLessonWithSubject(item: ScheduleItemNotificationSnapshot): string {
+        const lessonType = this.formatLessonType(item);
+        const subject = item.subject.trim();
+
+        if (!subject || lessonType.toLowerCase() === subject.toLowerCase()) {
+            return lessonType;
+        }
+
+        return `${lessonType} по ${subject}`;
+    }
+
+    private formatTeacherForNotification(value: string): string {
+        return value.trim().replace(/[\s.]+/g, '');
+    }
+
+    private formatGroup(item: ScheduleItemNotificationSnapshot): string {
+        return item.groupName?.trim() || 'группа не указана';
+    }
+
+    private getMessageAudience(user: User): ScheduleMessageAudience {
+        if (user.role?.code === RoleCode.TEACHER) {
+            return 'teacher';
+        }
+
+        if (user.role?.code === RoleCode.STUDENT) {
+            return 'student';
+        }
+
+        return 'other';
+    }
+
+    private capitalize(value: string): string {
+        const trimmed = value.trim();
+
+        if (!trimmed) {
+            return '';
+        }
+
+        return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1).toLowerCase()}`;
+    }
+
+    private formatSubgroup(value: number | null): string {
+        return value ? `${value} подгруппа` : 'общая пара';
+    }
+
+    private formatSubgroupPart(item: ScheduleItemNotificationSnapshot): string {
+        return item.subgroupNumber ? ` для ${item.subgroupNumber} подгруппы` : '';
+    }
+
+    private formatTime(value: string): string {
+        return String(value).slice(0, 5);
+    }
+
+    private formatIsoDate(value: string): string {
+        const [year, month, day] = value.slice(0, 10).split('-');
+
+        if (!year || !month || !day) {
+            return value;
+        }
+
+        return `${day}.${month}.${year}`;
+    }
+
+    private isToday(value: string): boolean {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+
+        return value.slice(0, 10) === `${year}-${month}-${day}`;
+    }
+}

@@ -29,6 +29,16 @@ export interface UpdateScheduleItemPayload {
   comment?: string
 }
 
+export interface ScheduleTransferRecommendation {
+  weekStart: string
+  dayOfWeek: number
+  day: string
+  startTime: string
+  endTime: string
+  label: string
+  reasons: string[]
+}
+
 export async function createScheduleItem(
   payload: CreateScheduleItemPayload,
 ): Promise<DisplayScheduleItem> {
@@ -46,6 +56,19 @@ export async function updateScheduleItem(
   const response = await api.patch<DisplayScheduleItem>(
     `/education-department/schedules/items/${id}`,
     payload,
+  )
+  return response.data
+}
+
+export async function fetchScheduleTransferRecommendations(
+  id: number,
+  weekStart?: string | null,
+): Promise<ScheduleTransferRecommendation[]> {
+  const response = await api.get<ScheduleTransferRecommendation[]>(
+    `/education-department/schedules/items/${id}/recommendations`,
+    {
+      params: weekStart ? { weekStart } : undefined,
+    },
   )
   return response.data
 }

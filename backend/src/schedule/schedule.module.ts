@@ -17,7 +17,6 @@ import { Consultation } from './entities/consultation.entity';
 import { Schedule } from './entities/schedule.entity';
 import { ScheduleItem } from './entities/schedule-item.entity';
 import { ScheduleUpload } from './entities/schedule-upload.entity';
-import { ParsedScheduleLesson } from './entities/parsed-schedule-lesson.entity';
 import { SchedulePreholidayDay } from './entities/schedule-preholiday-day.entity';
 import { Room } from './entities/room.entity';
 import { LessonType } from './entities/lesson-type.entity';
@@ -38,19 +37,21 @@ import { ScheduleUploadService } from './schedule-upload.service';
 import { LessonTypeResolver } from './resolver/lesson-type.resolver';
 import { RoomResolver } from './resolver/room.resolver';
 import { TeacherResolver } from './resolver/teacher.resolver';
-import { ScheduleGateway } from './schedule.gateway'
-import { ScheduleNotifierService } from './schedule-notifier.service'
+import { ScheduleGateway } from './schedule.gateway';
+import { ScheduleNotifierService } from './schedule-notifier.service';
+import { NotificationsModule } from '../notifications/notifications.module';
+
 
 @Module({
     imports: [
         AcademicModule,
         AuthModule,
         UsersModule,
+        NotificationsModule,
         TypeOrmModule.forFeature([
             Schedule,
             ScheduleItem,
             ScheduleUpload,
-            ParsedScheduleLesson,
             SchedulePreholidayDay,
             Room,
             LessonType,

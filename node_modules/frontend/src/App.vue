@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import logoUrtisi from '@/assets/urtisi-logo.png'
 import avatarIcon from '@/assets/Avatar.png'
 import caretIcon from '@/assets/Down.png'
+import notificationIcon from '@/assets/notification.svg'
 import { useAuthStore } from '@/stores/auth'
 import type { ScheduleKind } from '@/views/schedule/scheduleOptions'
 import { getPhotoUrl } from '@/config/api'
+import { useNotificationsStore } from '@/stores/notifications'
+
+const notificationsStore = useNotificationsStore()
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -64,9 +68,28 @@ const goToScheduleUpload = async () => {
 }
 
 const isProfileOpen = ref(false)
+let connectedNotificationsToken: string | null = null
 
 const toggleProfileMenu = () => {
   isProfileOpen.value = !isProfileOpen.value
+}
+
+const syncNotificationsConnection = () => {
+  if (!authStore.isAuthenticated) {
+    notificationsStore.disconnectLiveUpdates()
+    connectedNotificationsToken = null
+    return
+  }
+
+  const accessToken = localStorage.getItem('access_token')
+
+  if (!accessToken || accessToken === connectedNotificationsToken) {
+    return
+  }
+
+  connectedNotificationsToken = accessToken
+  void notificationsStore.loadNotifications()
+  notificationsStore.connectLiveUpdates(accessToken)
 }
 
 const handleClickOutside = (event: MouseEvent) => {
@@ -81,6 +104,8 @@ onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('visibilitychange', handleVisibilityChange)
 
+  syncNotificationsConnection()
+
   sessionCheckTimer = window.setInterval(async () => {
     if (!authStore.isAuthenticated) {
       return
@@ -93,11 +118,18 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
-
+  notificationsStore.disconnectLiveUpdates()
   if (sessionCheckTimer !== null) {
     window.clearInterval(sessionCheckTimer)
   }
 })
+
+watch(
+  () => authStore.isAuthenticated,
+  () => {
+    syncNotificationsConnection()
+  },
+)
 
 let sessionCheckTimer: number | null = null
 
@@ -107,6 +139,7 @@ const handleVisibilityChange = async () => {
   }
 
   await authStore.validateSession()
+  syncNotificationsConnection()
 }
 </script>
 
@@ -129,6 +162,17 @@ const handleVisibilityChange = async () => {
         </nav>
 
         <div class="profile-actions">
+          <RouterLink
+            :to="{ name: 'notifications' }"
+            class="notifications-icon-link"
+            aria-label="Уведомления"
+          >
+            <img :src="notificationIcon" alt="" />
+            <span v-if="notificationsStore.unreadCount > 0" class="notifications-badge">
+              {{ notificationsStore.unreadCount }}
+            </span>
+          </RouterLink>
+
           <div class="profile-wrapper">
             <button class="profile-btn" type="button" @click="toggleProfileMenu">
               <img
@@ -136,7 +180,7 @@ const handleVisibilityChange = async () => {
                 :src="currentUserPhoto || avatarIcon"
                 alt=""
               />
-              <span>{{ currentUserName }}</span>
+              <span class="profile-name">{{ currentUserName }}</span>
               <span class="profile-role">{{ currentUserRole }}</span>
               <img class="caret" :src="caretIcon" alt="" />
             </button>

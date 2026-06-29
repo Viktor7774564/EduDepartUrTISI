@@ -1,5 +1,4 @@
 import { User } from '../../users/entities/user.entity';
-import { ParsedScheduleLesson } from './parsed-schedule-lesson.entity';
 import { ScheduleType } from './schedule-type.enum';
 export declare enum ScheduleParseStatus {
     SUCCESS = "success",
@@ -23,6 +22,5 @@ export declare class ScheduleUpload {
     periodEnd: string | null;
     uploadedById: number;
     uploadedBy: User;
-    parsedLessons: ParsedScheduleLesson[];
     uploadedAt: Date;
 }

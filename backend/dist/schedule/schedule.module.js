@@ -24,7 +24,6 @@ const consultation_entity_1 = require("./entities/consultation.entity");
 const schedule_entity_1 = require("./entities/schedule.entity");
 const schedule_item_entity_1 = require("./entities/schedule-item.entity");
 const schedule_upload_entity_1 = require("./entities/schedule-upload.entity");
-const parsed_schedule_lesson_entity_1 = require("./entities/parsed-schedule-lesson.entity");
 const schedule_preholiday_day_entity_1 = require("./entities/schedule-preholiday-day.entity");
 const room_entity_1 = require("./entities/room.entity");
 const lesson_type_entity_1 = require("./entities/lesson-type.entity");
@@ -44,6 +43,7 @@ const room_resolver_1 = require("./resolver/room.resolver");
 const teacher_resolver_1 = require("./resolver/teacher.resolver");
 const schedule_gateway_1 = require("./schedule.gateway");
 const schedule_notifier_service_1 = require("./schedule-notifier.service");
+const notifications_module_1 = require("../notifications/notifications.module");
 let ScheduleModule = class ScheduleModule {
 };
 exports.ScheduleModule = ScheduleModule;
@@ -53,11 +53,11 @@ exports.ScheduleModule = ScheduleModule = __decorate([
             academic_module_1.AcademicModule,
             auth_module_1.AuthModule,
             users_module_1.UsersModule,
+            notifications_module_1.NotificationsModule,
             typeorm_1.TypeOrmModule.forFeature([
                 schedule_entity_1.Schedule,
                 schedule_item_entity_1.ScheduleItem,
                 schedule_upload_entity_1.ScheduleUpload,
-                parsed_schedule_lesson_entity_1.ParsedScheduleLesson,
                 schedule_preholiday_day_entity_1.SchedulePreholidayDay,
                 room_entity_1.Room,
                 lesson_type_entity_1.LessonType,

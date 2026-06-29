@@ -103,3 +103,19 @@ export class UpdateScheduleItemDto {
     @IsString()
     comment?: string;
 }
+
+export class ScheduleTransferRecommendationQueryDto {
+    @IsOptional()
+    @IsString()
+    weekStart?: string;
+}
+
+export interface ScheduleTransferRecommendationDto {
+    weekStart: string;
+    dayOfWeek: number;
+    day: string;
+    startTime: string;
+    endTime: string;
+    label: string;
+    reasons: string[];
+}

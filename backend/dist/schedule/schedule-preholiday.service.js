@@ -16,14 +16,17 @@ exports.SchedulePreholidayService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const notifications_service_1 = require("../notifications/notifications.service");
 const schedule_preholiday_day_entity_1 = require("./entities/schedule-preholiday-day.entity");
 const schedule_notifier_service_1 = require("./schedule-notifier.service");
 let SchedulePreholidayService = class SchedulePreholidayService {
     preholidayDaysRepository;
     scheduleNotifier;
-    constructor(preholidayDaysRepository, scheduleNotifier) {
+    notificationsService;
+    constructor(preholidayDaysRepository, scheduleNotifier, notificationsService) {
         this.preholidayDaysRepository = preholidayDaysRepository;
         this.scheduleNotifier = scheduleNotifier;
+        this.notificationsService = notificationsService;
     }
     normalizeDate(value) {
         const trimmed = value.trim();
@@ -55,12 +58,14 @@ let SchedulePreholidayService = class SchedulePreholidayService {
     }
     async updatePreholidayDay(dto) {
         const date = this.normalizeDate(dto.date);
+        let shouldNotifyUsers = false;
         if (dto.isPreholiday) {
             const existing = await this.preholidayDaysRepository.findOne({
                 where: { date },
             });
             if (!existing) {
                 await this.preholidayDaysRepository.save(this.preholidayDaysRepository.create({ date }));
+                shouldNotifyUsers = true;
             }
         }
         else {
@@ -68,6 +73,9 @@ let SchedulePreholidayService = class SchedulePreholidayService {
         }
         const preholidayDays = await this.listPreholidayDays();
         this.scheduleNotifier.notifyPreholidayDaysUpdated(preholidayDays);
+        if (shouldNotifyUsers) {
+            await this.notificationsService.notifyPreholidayDayCreated(date);
+        }
         return preholidayDays;
     }
 };
@@ -76,6 +84,7 @@ exports.SchedulePreholidayService = SchedulePreholidayService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(schedule_preholiday_day_entity_1.SchedulePreholidayDay)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        schedule_notifier_service_1.ScheduleNotifierService])
+        schedule_notifier_service_1.ScheduleNotifierService,
+        notifications_service_1.NotificationsService])
 ], SchedulePreholidayService);
 //# sourceMappingURL=schedule-preholiday.service.js.map

@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateScheduleItemDto = exports.CreateScheduleItemDto = void 0;
+exports.ScheduleTransferRecommendationQueryDto = exports.UpdateScheduleItemDto = exports.CreateScheduleItemDto = void 0;
 const class_validator_1 = require("class-validator");
 class CreateScheduleItemDto {
     groupName;
@@ -152,4 +152,13 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateScheduleItemDto.prototype, "comment", void 0);
+class ScheduleTransferRecommendationQueryDto {
+    weekStart;
+}
+exports.ScheduleTransferRecommendationQueryDto = ScheduleTransferRecommendationQueryDto;
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ScheduleTransferRecommendationQueryDto.prototype, "weekStart", void 0);
 //# sourceMappingURL=schedule-item.dto.js.map

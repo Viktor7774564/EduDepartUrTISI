@@ -16,6 +16,7 @@ const schedule_module_1 = require("./schedule/schedule.module");
 const academic_module_1 = require("./academic/academic.module");
 const admin_module_1 = require("./admin/admin.module");
 const sessions_module_1 = require("./sessions/sessions.module");
+const notifications_module_1 = require("./notifications/notifications.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -46,6 +47,7 @@ exports.AppModule = AppModule = __decorate([
             academic_module_1.AcademicModule,
             admin_module_1.AdminModule,
             sessions_module_1.SessionsModule,
+            notifications_module_1.NotificationsModule,
         ],
     })
 ], AppModule);

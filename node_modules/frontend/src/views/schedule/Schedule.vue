@@ -17,7 +17,9 @@ import {
 import {
   createScheduleItem,
   disableScheduleItem,
+  fetchScheduleTransferRecommendations,
   getScheduleAdminErrorMessage,
+  type ScheduleTransferRecommendation,
   updatePreholidayDay,
   updateScheduleItem,
 } from '@/api/scheduleAdmin'
@@ -201,6 +203,9 @@ const isSaving = ref(false)
 const isTransferModalVisible = ref(false)
 const transferringLesson = ref<CellLesson | null>(null)
 const isTransferSaving = ref(false)
+const isLoadingTransferRecommendations = ref(false)
+const transferRecommendationError = ref<string | null>(null)
+const transferRecommendations = ref<ScheduleTransferRecommendation[]>([])
 const editSlotContext = ref<{
   weekLabel: string
   weekStart: string | null
@@ -222,6 +227,8 @@ const transferForm = ref({
   weekKey: '',
   day: 'ПН',
   time: '',
+  building: '',
+  room: '',
 })
 
 const applySchedulePeriodMeta = (meta?: Partial<SchedulePeriodMeta> | null) => {
@@ -405,6 +412,21 @@ const parseWeekRange = (key: string) => {
   end.setDate(end.getDate() + 6)
 
   return { start, end }
+}
+
+const isPastWeek = (weekKey: string): boolean => {
+  const { end } = parseWeekRange(weekKey)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+
+  return end < today
+}
+
+const getFirstAvailableTransferWeekKey = (): string => {
+  const availableWeekKey = weekKeys.value.find((key) => !isPastWeek(key))
+
+  return availableWeekKey ?? currentWeekKey.value
 }
 
 const syncWeekIndex = () => {
@@ -794,6 +816,55 @@ const findDisplaySlotForLesson = (lesson: CellLesson): TimeSlot | null => {
   ) ?? null
 }
 
+const visibleTransferRecommendations = computed(() =>
+  transferRecommendations.value.filter((recommendation) =>
+    getTimeSlotsForDay(recommendation.day, transferForm.value.weekKey).some((slot) =>
+      slot.startTime === recommendation.startTime && slot.endTime === recommendation.endTime,
+    ),
+  ),
+)
+
+const resolveTransferWeekStartForRecommendations = (): string | null => {
+  const transferWeekStart = resolveWeekStartDate(transferForm.value.weekKey)
+
+  return transferWeekStart
+    ? formatFullDate(transferWeekStart)
+    : transferringLesson.value?.weekStart ?? resolveWeekStartForSave()
+}
+
+const loadTransferRecommendations = async () => {
+  const lesson = transferringLesson.value
+  if (!lesson || !isTransferModalVisible.value) {
+    transferRecommendations.value = []
+    return
+  }
+
+  const weekStart = resolveTransferWeekStartForRecommendations()
+  isLoadingTransferRecommendations.value = true
+  transferRecommendationError.value = null
+
+  try {
+    const recommendations = await fetchScheduleTransferRecommendations(lesson.id, weekStart)
+    if (transferringLesson.value?.id === lesson.id && isTransferModalVisible.value) {
+      transferRecommendations.value = recommendations
+    }
+  } catch {
+    if (transferringLesson.value?.id === lesson.id && isTransferModalVisible.value) {
+      transferRecommendations.value = []
+      transferRecommendationError.value = 'Не удалось загрузить рекомендации'
+    }
+  } finally {
+    if (transferringLesson.value?.id === lesson.id && isTransferModalVisible.value) {
+      isLoadingTransferRecommendations.value = false
+    }
+  }
+}
+
+const applyTransferRecommendation = (recommendation: ScheduleTransferRecommendation) => {
+  transferForm.value.day = recommendation.day
+  transferForm.value.time = `${recommendation.startTime} - ${recommendation.endTime}`
+}
+
 watch(
   () => [transferForm.value.weekKey, transferForm.value.day],
   () => {
@@ -824,16 +895,41 @@ watch(
   },
 )
 
+watch(
+  () => [isTransferModalVisible.value, transferringLesson.value?.id, transferForm.value.weekKey],
+  () => {
+    if (!isTransferModalVisible.value || !transferringLesson.value) {
+      transferRecommendations.value = []
+      transferRecommendationError.value = null
+      return
+    }
+
+    void loadTransferRecommendations()
+  },
+)
+
 const openTransferModalForLesson = (lesson: CellLesson) => {
   const displaySlot = findDisplaySlotForLesson(lesson)
+  const parsedRoom = parseRoomForForm(lesson.room)
+  const roomFields = scheduleType.value === 'auditories'
+    ? {
+      building: firstValue.value || parsedRoom.building,
+      room: parsedRoom.room || lesson.room,
+    }
+    : parsedRoom
 
   transferringLesson.value = lesson
+  const initialWeekKey = isPastWeek(currentWeekKey.value)
+    ? getFirstAvailableTransferWeekKey()
+    : currentWeekKey.value
   transferForm.value = {
-    weekKey: currentWeekKey.value,
+    weekKey: initialWeekKey,
     day: lesson.day,
     time: displaySlot
       ? formatTimeSlotValue(displaySlot)
       : `${lesson.startTime} - ${lesson.endTime}`,
+    building: roomFields.building,
+    room: roomFields.room,
   }
   isTransferModalVisible.value = true
 }
@@ -842,6 +938,9 @@ const closeTransferModal = () => {
   isTransferModalVisible.value = false
   transferringLesson.value = null
   isTransferSaving.value = false
+  isLoadingTransferRecommendations.value = false
+  transferRecommendationError.value = null
+  transferRecommendations.value = []
 }
 
 const saveTransfer = async () => {
@@ -857,6 +956,7 @@ const saveTransfer = async () => {
   const weekStart = transferWeekStart
     ? formatFullDate(transferWeekStart)
     : transferringLesson.value.weekStart ?? resolveWeekStartForSave()
+  const room = formatRoomForApi(transferForm.value.building, transferForm.value.room)
 
   if (!dayOfWeek || !startTime || !endTime || !weekStart) {
     alert('Выберите день и время для переноса')
@@ -868,6 +968,11 @@ const saveTransfer = async () => {
     return
   }
 
+  if (isPastWeek(transferForm.value.weekKey)) {
+    alert('Нельзя перенести пару на прошедшую неделю')
+    return
+  }
+
   isTransferSaving.value = true
 
   try {
@@ -876,6 +981,7 @@ const saveTransfer = async () => {
       startTime,
       endTime,
       weekStart,
+      room,
     })
     await refreshSchedulePreservingView()
     closeTransferModal()
@@ -1297,6 +1403,24 @@ watch(
 
     if (editForm.value.room === DISTANCE_ROOM_LABEL) {
       editForm.value.room = ''
+    }
+  },
+)
+
+watch(
+  () => transferForm.value.building,
+  (building) => {
+    if (!isTransferModalVisible.value) {
+      return
+    }
+
+    if (building === DISTANCE_BUILDING) {
+      transferForm.value.room = DISTANCE_ROOM_LABEL
+      return
+    }
+
+    if (transferForm.value.room === DISTANCE_ROOM_LABEL) {
+      transferForm.value.room = ''
     }
   },
 )
@@ -1889,10 +2013,21 @@ onUnmounted(() => {
               <div class="form-group">
                 <label for="transfer-week" class="form-label">Неделя</label>
                 <select id="transfer-week" v-model="transferForm.weekKey" class="form-select">
-                  <option v-for="key in weekKeys" :key="key" :value="key">
-                    {{ key }}
+                  <option
+                      v-for="key in weekKeys"
+                      :key="key"
+                      :value="key"
+                      :disabled="isPastWeek(key)"
+                  >
+                    {{ key }}{{ isPastWeek(key) ? ' · прошла' : '' }}
                   </option>
                 </select>
+                <span
+                    v-if="isPastWeek(transferForm.weekKey)"
+                    class="form-hint form-hint--danger"
+                >
+                  На прошедшую неделю переносить нельзя.
+                </span>
               </div>
 
               <div class="form-group">
@@ -1928,6 +2063,77 @@ onUnmounted(() => {
                   </option>
                 </select>
               </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="transfer-building" class="form-label">Корпус</label>
+                  <select
+                      id="transfer-building"
+                      v-model="transferForm.building"
+                      class="form-select"
+                  >
+                    <option value="">Не выбран</option>
+                    <option v-for="building in BUILDING_OPTIONS" :key="building" :value="building">
+                      {{ building }}
+                    </option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="transfer-room" class="form-label">Аудитория</label>
+                  <input
+                      id="transfer-room"
+                      v-model="transferForm.room"
+                      type="text"
+                      class="form-input"
+                      placeholder="312 или дист. форм. об."
+                      :readonly="transferForm.building === DISTANCE_BUILDING"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="transfer-recommendations">
+              <div class="transfer-recommendations__head">
+                <h3>Рекомендуемые варианты</h3>
+                <span v-if="isLoadingTransferRecommendations">Подбираем...</span>
+              </div>
+
+              <p v-if="transferRecommendationError" class="form-hint form-hint--danger">
+                {{ transferRecommendationError }}
+              </p>
+
+              <div
+                  v-else-if="visibleTransferRecommendations.length > 0"
+                  class="transfer-recommendations__list"
+              >
+                <button
+                    v-for="(recommendation, index) in visibleTransferRecommendations"
+                    :key="`${recommendation.day}-${recommendation.startTime}-${recommendation.endTime}`"
+                    type="button"
+                    class="transfer-recommendation"
+                    :class="{
+                      'transfer-recommendation--selected':
+                        transferForm.day === recommendation.day
+                        && transferForm.time === `${recommendation.startTime} - ${recommendation.endTime}`,
+                    }"
+                    @click="applyTransferRecommendation(recommendation)"
+                >
+                  <span class="transfer-recommendation__title">
+                    {{ index === 0 ? 'Лучший вариант: ' : '' }}{{ recommendation.label }}
+                  </span>
+                  <span class="transfer-recommendation__reasons">
+                    {{ recommendation.reasons.join(', ') }}
+                  </span>
+                </button>
+              </div>
+
+              <p
+                  v-else-if="!isLoadingTransferRecommendations"
+                  class="form-hint"
+              >
+                Для выбранной недели нет свободных вариантов без конфликтов.
+              </p>
             </div>
 
             <div class="edit-actions">
@@ -1937,7 +2143,7 @@ onUnmounted(() => {
               <button
                   type="button"
                   class="btn btn-primary"
-                  :disabled="isTransferSaving || isHolidayDayInWeek(transferForm.day, transferForm.weekKey)"
+                  :disabled="isTransferSaving || isHolidayDayInWeek(transferForm.day, transferForm.weekKey) || isPastWeek(transferForm.weekKey)"
                   @click="saveTransfer"
               >
                 {{ isTransferSaving ? 'Перенос...' : 'Перенести' }}

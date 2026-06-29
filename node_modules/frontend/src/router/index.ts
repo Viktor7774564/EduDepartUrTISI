@@ -38,6 +38,11 @@ const router = createRouter({
       component: () => import('../views/ScheduleUpload.vue'),
     },
     {
+      path: '/notifications',
+      name: 'notifications',
+      component: () => import('../views/NotificationsView.vue'),
+    },
+    {
       path: '/admin',
       name: 'admin-panel',
       component: () => import('../views/AdminPanel.vue'),
@@ -81,6 +86,17 @@ router.beforeEach((to) => {
       return {
         name: 'login',
         query: { redirect: to.fullPath },
+      }
+    }
+
+    if (to.path === '/notifications') {
+      const isAuthenticated = Boolean(window.localStorage.getItem(AUTH_STORAGE_KEY))
+
+      if (!isAuthenticated) {
+        return {
+          name: 'login',
+          query: { redirect: to.fullPath },
+        }
       }
     }
 

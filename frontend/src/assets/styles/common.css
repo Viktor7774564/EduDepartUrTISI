@@ -27,7 +27,7 @@
 }
 
 .profile-actions {
-  @apply justify-self-end;
+  @apply justify-self-end flex items-center gap-[12px];
 }
 
 .profile-btn {
@@ -117,6 +117,22 @@
 
 .greetings h3 {
   @apply text-[1.2rem];
+}
+
+.notifications-icon-link {
+  @apply relative inline-flex items-center justify-center w-[42px] h-[42px] rounded-[12px] no-underline;
+}
+
+.notifications-icon-link:hover {
+  @apply bg-[rgba(255,255,255,0.08)];
+}
+
+.notifications-icon-link img {
+  @apply w-[28px] h-[28px];
+}
+
+.notifications-badge {
+  @apply absolute top-[2px] right-[2px] min-w-[18px] h-[18px] rounded-full px-[5px] bg-[#ef4444] text-white text-[11px] leading-[18px] text-center;
 }
 
 @media (min-width: 1024px) {
@@ -226,13 +242,26 @@
   }
 
   .profile-actions {
-    @apply justify-self-end;
+    @apply justify-self-end gap-[6px];
+  }
+
+  .notifications-icon-link {
+    @apply w-[32px] h-[32px] rounded-[10px];
+  }
+
+  .notifications-icon-link img {
+    @apply w-[21px] h-[21px];
+  }
+
+  .notifications-badge {
+    @apply top-[-2px] right-[-2px] min-w-[16px] h-[16px] px-[4px] text-[10px] leading-[16px];
   }
 
   .profile-btn {
-    @apply gap-[6px] px-[8px] py-[4px] text-[13px];
+    @apply gap-[6px] px-[6px] py-[4px] text-[13px];
   }
 
+  .profile-name,
   .profile-role {
     @apply hidden;
   }

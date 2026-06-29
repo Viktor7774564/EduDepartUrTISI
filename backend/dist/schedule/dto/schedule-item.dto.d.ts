@@ -23,3 +23,15 @@ export declare class UpdateScheduleItemDto {
     subgroup?: number | null;
     comment?: string;
 }
+export declare class ScheduleTransferRecommendationQueryDto {
+    weekStart?: string;
+}
+export interface ScheduleTransferRecommendationDto {
+    weekStart: string;
+    dayOfWeek: number;
+    day: string;
+    startTime: string;
+    endTime: string;
+    label: string;
+    reasons: string[];
+}

@@ -33,3 +33,7 @@ export function getPhotoUrl(photoUrl?: string | null): string | null {
 export function getScheduleSocketUrl(): string{
   return `${getApiBaseUrl()}/schedules/live`
 }
+
+export function getNotificationsSocketUrl(): string {
+  return `${getApiBaseUrl()}/notifications/live`
+}

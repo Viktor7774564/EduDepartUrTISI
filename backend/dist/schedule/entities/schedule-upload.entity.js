@@ -12,7 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScheduleUpload = exports.ScheduleParseStatus = void 0;
 const typeorm_1 = require("typeorm");
 const user_entity_1 = require("../../users/entities/user.entity");
-const parsed_schedule_lesson_entity_1 = require("./parsed-schedule-lesson.entity");
 const schedule_type_enum_1 = require("./schedule-type.enum");
 var ScheduleParseStatus;
 (function (ScheduleParseStatus) {
@@ -37,7 +36,6 @@ let ScheduleUpload = class ScheduleUpload {
     periodEnd;
     uploadedById;
     uploadedBy;
-    parsedLessons;
     uploadedAt;
 };
 exports.ScheduleUpload = ScheduleUpload;
@@ -110,10 +108,6 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'uploadedById' }),
     __metadata("design:type", user_entity_1.User)
 ], ScheduleUpload.prototype, "uploadedBy", void 0);
-__decorate([
-    (0, typeorm_1.OneToMany)(() => parsed_schedule_lesson_entity_1.ParsedScheduleLesson, (lesson) => lesson.upload),
-    __metadata("design:type", Array)
-], ScheduleUpload.prototype, "parsedLessons", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
