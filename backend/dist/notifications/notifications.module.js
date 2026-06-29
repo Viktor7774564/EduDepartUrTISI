@@ -13,6 +13,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const user_entity_1 = require("../users/entities/user.entity");
 const notification_entity_1 = require("./notification.entity");
 const notifications_controller_1 = require("./notifications.controller");
+const notifications_cleanup_service_1 = require("./notifications-cleanup.service");
 const notifications_gateway_1 = require("./notifications.gateway");
 const notifications_service_1 = require("./notifications.service");
 let NotificationsModule = class NotificationsModule {
@@ -28,7 +29,7 @@ exports.NotificationsModule = NotificationsModule = __decorate([
             ]),
         ],
         controllers: [notifications_controller_1.NotificationsController],
-        providers: [notifications_service_1.NotificationsService, notifications_gateway_1.NotificationsGateway],
+        providers: [notifications_service_1.NotificationsService, notifications_gateway_1.NotificationsGateway, notifications_cleanup_service_1.NotificationsCleanupService],
         exports: [notifications_service_1.NotificationsService],
     })
 ], NotificationsModule);

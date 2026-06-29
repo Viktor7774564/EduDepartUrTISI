@@ -100,9 +100,15 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 }
 
+const handleTokenRefreshed = () => {
+  connectedNotificationsToken = null
+  syncNotificationsConnection()
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('visibilitychange', handleVisibilityChange)
+  window.addEventListener('auth:token-refreshed', handleTokenRefreshed)
 
   syncNotificationsConnection()
 
@@ -118,6 +124,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
+  window.removeEventListener('auth:token-refreshed', handleTokenRefreshed)
   notificationsStore.disconnectLiveUpdates()
   if (sessionCheckTimer !== null) {
     window.clearInterval(sessionCheckTimer)

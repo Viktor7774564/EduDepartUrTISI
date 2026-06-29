@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import api from '@/api/client'
+import { refreshAccessToken } from '@/api/authRefresh'
 
 const AUTH_STORAGE_KEY = 'edu-depart-auth-user'
 
@@ -75,6 +76,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function validateSession(): Promise<boolean> {
     const accessToken = localStorage.getItem('access_token')
+    const storedRefreshToken = localStorage.getItem('refresh_token')
 
     if (!accessToken) {
       clearSession()
@@ -87,13 +89,42 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(response.data))
       return true
     } catch {
-      clearSession()
+      if (!storedRefreshToken) {
+        clearSession()
 
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-        window.location.assign('/login')
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.assign('/login')
+        }
+
+        return false
       }
 
-      return false
+      const nextAccessToken = await refreshAccessToken()
+
+      if (!nextAccessToken) {
+        clearSession()
+
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.assign('/login')
+        }
+
+        return false
+      }
+
+      try {
+        const response = await api.get<AuthUser>('/auth/me')
+        currentUser.value = response.data
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(response.data))
+        return true
+      } catch {
+        clearSession()
+
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.assign('/login')
+        }
+
+        return false
+      }
     }
   }
 
