@@ -29,3 +29,7 @@ export function getPhotoUrl(photoUrl?: string | null): string | null {
 
   return `${getApiBaseUrl()}${photoUrl.startsWith('/') ? photoUrl : `/${photoUrl}`}`
 }
+
+export function getScheduleSocketUrl(): string{
+  return `${getApiBaseUrl()}/schedules/live`
+}

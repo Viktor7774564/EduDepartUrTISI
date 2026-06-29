@@ -16,7 +16,7 @@ import { getSchedulesDir } from '../config/storage';
 import { ScheduleParseStatus, ScheduleUpload } from './entities/schedule-upload.entity';
 import { Schedule, ScheduleType } from './entities/schedule.entity';
 import { ScheduleItem } from './entities/schedule-item.entity';
-import { parseScheduleWorkbook } from './parser/excel-grid.parser';
+import { parseScheduleWorkbook, type ParseScheduleResult } from './parser/excel-grid.parser';
 import {
     ScheduleLessonSlot,
     validateScheduleConflicts,
@@ -167,6 +167,21 @@ export class ScheduleUploadService implements OnModuleInit {
                 errors: [
                     'Добавьте в шапку Excel период, например: на период с 01.09.26г. по 10.10.26г.',
                 ],
+            });
+        }
+    }
+
+    private parseUploadedWorkbook(buffer: Buffer): ParseScheduleResult {
+        try {
+            return parseScheduleWorkbook(buffer);
+        } catch (error) {
+            const parseError = error instanceof Error && error.message
+                ? error.message
+                : 'Не удалось разобрать файл расписания';
+
+            throw new BadRequestException({
+                message: 'Не удалось разобрать файл расписания',
+                errors: [parseError],
             });
         }
     }
@@ -362,7 +377,7 @@ export class ScheduleUploadService implements OnModuleInit {
             );
         }
 
-        const parsed = parseScheduleWorkbook(file.buffer);
+        const parsed = this.parseUploadedWorkbook(file.buffer);
         this.assertGroupMatches(expectedGroupName, parsed.groupName);
         this.assertPeriodDefined(parsed.periodStart, parsed.periodEnd);
 

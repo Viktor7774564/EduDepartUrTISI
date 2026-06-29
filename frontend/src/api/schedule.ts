@@ -65,3 +65,8 @@ export async function fetchRoomSchedule(roomName: string): Promise<RoomScheduleR
   )
   return response.data
 }
+
+export async function fetchPreholidayDays(): Promise<string[]> {
+  const response = await api.get<string[]>('/schedules/preholiday-days')
+  return response.data
+}

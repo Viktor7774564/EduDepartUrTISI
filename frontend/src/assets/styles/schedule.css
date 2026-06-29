@@ -128,7 +128,7 @@
 }
 
 .schedule-page {
-  @apply pt-[36px] px-[24px] pb-[56px];
+  @apply relative min-h-[calc(100vh-180px)] pt-[36px] px-[24px] pb-[56px];
 }
 
 .schedule-page .page-head {

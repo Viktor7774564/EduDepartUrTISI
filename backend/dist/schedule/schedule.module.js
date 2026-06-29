@@ -25,20 +25,25 @@ const schedule_entity_1 = require("./entities/schedule.entity");
 const schedule_item_entity_1 = require("./entities/schedule-item.entity");
 const schedule_upload_entity_1 = require("./entities/schedule-upload.entity");
 const parsed_schedule_lesson_entity_1 = require("./entities/parsed-schedule-lesson.entity");
+const schedule_preholiday_day_entity_1 = require("./entities/schedule-preholiday-day.entity");
 const room_entity_1 = require("./entities/room.entity");
 const lesson_type_entity_1 = require("./entities/lesson-type.entity");
 const education_department_guard_1 = require("./guards/education-department.guard");
 const teacher_guard_1 = require("./guards/teacher.guard");
+const schedule_preholiday_controller_1 = require("./schedule-preholiday.controller");
 const schedule_admin_controller_1 = require("./schedule-admin.controller");
 const schedule_admin_service_1 = require("./schedule-admin.service");
 const schedule_display_controller_1 = require("./schedule-display.controller");
 const schedule_display_service_1 = require("./schedule-display.service");
 const schedule_upload_controller_1 = require("./schedule-upload.controller");
 const schedule_import_service_1 = require("./schedule-import.service");
+const schedule_preholiday_service_1 = require("./schedule-preholiday.service");
 const schedule_upload_service_1 = require("./schedule-upload.service");
 const lesson_type_resolver_1 = require("./resolver/lesson-type.resolver");
 const room_resolver_1 = require("./resolver/room.resolver");
 const teacher_resolver_1 = require("./resolver/teacher.resolver");
+const schedule_gateway_1 = require("./schedule.gateway");
+const schedule_notifier_service_1 = require("./schedule-notifier.service");
 let ScheduleModule = class ScheduleModule {
 };
 exports.ScheduleModule = ScheduleModule;
@@ -53,6 +58,7 @@ exports.ScheduleModule = ScheduleModule = __decorate([
                 schedule_item_entity_1.ScheduleItem,
                 schedule_upload_entity_1.ScheduleUpload,
                 parsed_schedule_lesson_entity_1.ParsedScheduleLesson,
+                schedule_preholiday_day_entity_1.SchedulePreholidayDay,
                 room_entity_1.Room,
                 lesson_type_entity_1.LessonType,
                 consultation_entity_1.Consultation,
@@ -68,11 +74,14 @@ exports.ScheduleModule = ScheduleModule = __decorate([
             schedule_upload_controller_1.ScheduleUploadController,
             schedule_admin_controller_1.ScheduleAdminController,
             schedule_display_controller_1.ScheduleDisplayController,
+            schedule_preholiday_controller_1.SchedulePreholidayDisplayController,
+            schedule_preholiday_controller_1.SchedulePreholidayAdminController,
             consultation_controller_1.ConsultationController,
         ],
         providers: [
             schedule_upload_service_1.ScheduleUploadService,
             schedule_import_service_1.ScheduleImportService,
+            schedule_preholiday_service_1.SchedulePreholidayService,
             schedule_admin_service_1.ScheduleAdminService,
             schedule_display_service_1.ScheduleDisplayService,
             consultation_service_1.ConsultationService,
@@ -81,6 +90,8 @@ exports.ScheduleModule = ScheduleModule = __decorate([
             lesson_type_resolver_1.LessonTypeResolver,
             education_department_guard_1.EducationDepartmentGuard,
             teacher_guard_1.TeacherGuard,
+            schedule_gateway_1.ScheduleGateway,
+            schedule_notifier_service_1.ScheduleNotifierService,
         ],
         exports: [typeorm_1.TypeOrmModule],
     })

@@ -58,6 +58,18 @@ export async function deleteScheduleItem(id: number): Promise<void> {
   await api.delete(`/education-department/schedules/items/${id}`)
 }
 
+export async function updatePreholidayDay(
+  date: string,
+  isPreholiday: boolean,
+): Promise<string[]> {
+  const response = await api.patch<string[]>(
+    '/education-department/schedules/preholiday-days',
+    { date, isPreholiday },
+  )
+
+  return response.data
+}
+
 export function getScheduleAdminErrorMessage(error: unknown): string {
   if (!axios.isAxiosError(error)) {
     return 'Не удалось выполнить операцию'

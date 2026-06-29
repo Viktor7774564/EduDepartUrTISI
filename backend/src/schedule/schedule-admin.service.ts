@@ -26,6 +26,7 @@ import { validateScheduleConflicts } from './parser/schedule-conflict.validator'
 import { LessonTypeResolver } from './resolver/lesson-type.resolver';
 import { RoomResolver } from './resolver/room.resolver';
 import { TeacherResolver } from './resolver/teacher.resolver';
+import { ScheduleNotifierService } from './schedule-notifier.service';
 
 const ITEM_RELATIONS = [
     'schedule',
@@ -57,6 +58,7 @@ export class ScheduleAdminService {
         private readonly roomResolver: RoomResolver,
         private readonly teacherResolver: TeacherResolver,
         private readonly lessonTypeResolver: LessonTypeResolver,
+        private readonly scheduleNotifier: ScheduleNotifierService,
     ) {}
 
     private toDate(value: string): string {
@@ -358,6 +360,8 @@ export class ScheduleAdminService {
 
         const saved = await this.itemsRepository.save(item);
 
+        this.scheduleNotifier.notifyScheduleChanged('item-created');
+
         return mapItemToDisplayLesson(await this.loadItemWithRelations(saved.id));
     }
 
@@ -397,6 +401,8 @@ export class ScheduleAdminService {
 
         await this.itemsRepository.save(item);
 
+        this.scheduleNotifier.notifyScheduleChanged('item-updated');
+
         return mapItemToDisplayLesson(await this.loadItemWithRelations(id));
     }
 
@@ -409,6 +415,8 @@ export class ScheduleAdminService {
 
         item.isDisabled = true;
         await this.itemsRepository.save(item);
+
+        this.scheduleNotifier.notifyScheduleChanged('item-disabled');
     }
 
     async deleteItem(id: number): Promise<void> {
@@ -419,5 +427,7 @@ export class ScheduleAdminService {
         }
 
         await this.itemsRepository.delete(id);
+
+        this.scheduleNotifier.notifyScheduleChanged('item-deleted');
     }
 }

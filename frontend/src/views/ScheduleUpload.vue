@@ -85,6 +85,57 @@ const formatDate = (value: string) => {
   }).format(new Date(value))
 }
 
+function toStringList(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    const list = value
+      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+
+    return list.length > 0 ? list : undefined
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return [value]
+  }
+
+  return undefined
+}
+
+function getErrorPayload(data: unknown): {
+  message?: unknown
+  errors?: unknown
+  warnings?: unknown
+} {
+  if (!data || typeof data !== 'object') {
+    return {}
+  }
+
+  const payload = data as {
+    message?: unknown
+    errors?: unknown
+    warnings?: unknown
+  }
+
+  if (
+    payload.message
+    && typeof payload.message === 'object'
+    && !Array.isArray(payload.message)
+  ) {
+    const nested = payload.message as {
+      message?: unknown
+      errors?: unknown
+      warnings?: unknown
+    }
+
+    return {
+      message: nested.message ?? payload.message,
+      errors: nested.errors ?? payload.errors,
+      warnings: nested.warnings ?? payload.warnings,
+    }
+  }
+
+  return payload
+}
+
 async function loadUploads() {
   isLoading.value = true
   loadError.value = null
@@ -155,17 +206,14 @@ async function handleUpload() {
       warnings: uploaded.parseWarnings?.length ? uploaded.parseWarnings : undefined,
     }
   } catch (err: any) {
-    const data = err.response?.data
-    const details = Array.isArray(data?.errors)
-      ? data.errors
-      : Array.isArray(data?.message)
-        ? data.message
-        : undefined
-    const warnings = Array.isArray(data?.warnings) ? data.warnings : undefined
+    const data = getErrorPayload(err.response?.data)
+    const details = toStringList(data.errors)
+      ?? (Array.isArray(data.message) ? toStringList(data.message) : undefined)
+    const warnings = toStringList(data.warnings)
 
     submitMessage.value = {
       type: 'error',
-      text: typeof data?.message === 'string'
+      text: typeof data.message === 'string'
         ? data.message
         : 'Не удалось загрузить файл',
       details,
@@ -226,7 +274,7 @@ const toggleUploadWarnings = (id: number) => {
           <p>{{ submitMessage.text }}</p>
 
           <div v-if="submitMessage.details?.length" class="message-block">
-            <strong>{{ submitMessage.type === 'error' ? 'Конфликты:' : 'Детали:' }}</strong>
+            <strong>{{ submitMessage.type === 'error' ? 'Детали ошибки:' : 'Детали:' }}</strong>
             <ul class="message-list">
               <li v-for="(detail, index) in submitMessage.details" :key="index">
                 {{ detail }}

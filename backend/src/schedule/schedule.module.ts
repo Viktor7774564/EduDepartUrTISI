@@ -18,20 +18,28 @@ import { Schedule } from './entities/schedule.entity';
 import { ScheduleItem } from './entities/schedule-item.entity';
 import { ScheduleUpload } from './entities/schedule-upload.entity';
 import { ParsedScheduleLesson } from './entities/parsed-schedule-lesson.entity';
+import { SchedulePreholidayDay } from './entities/schedule-preholiday-day.entity';
 import { Room } from './entities/room.entity';
 import { LessonType } from './entities/lesson-type.entity';
 import { EducationDepartmentGuard } from './guards/education-department.guard';
 import { TeacherGuard } from './guards/teacher.guard';
+import {
+    SchedulePreholidayAdminController,
+    SchedulePreholidayDisplayController,
+} from './schedule-preholiday.controller';
 import { ScheduleAdminController } from './schedule-admin.controller';
 import { ScheduleAdminService } from './schedule-admin.service';
 import { ScheduleDisplayController } from './schedule-display.controller';
 import { ScheduleDisplayService } from './schedule-display.service';
 import { ScheduleUploadController } from './schedule-upload.controller';
 import { ScheduleImportService } from './schedule-import.service';
+import { SchedulePreholidayService } from './schedule-preholiday.service';
 import { ScheduleUploadService } from './schedule-upload.service';
 import { LessonTypeResolver } from './resolver/lesson-type.resolver';
 import { RoomResolver } from './resolver/room.resolver';
 import { TeacherResolver } from './resolver/teacher.resolver';
+import { ScheduleGateway } from './schedule.gateway'
+import { ScheduleNotifierService } from './schedule-notifier.service'
 
 @Module({
     imports: [
@@ -43,6 +51,7 @@ import { TeacherResolver } from './resolver/teacher.resolver';
             ScheduleItem,
             ScheduleUpload,
             ParsedScheduleLesson,
+            SchedulePreholidayDay,
             Room,
             LessonType,
             Consultation,
@@ -58,11 +67,14 @@ import { TeacherResolver } from './resolver/teacher.resolver';
         ScheduleUploadController,
         ScheduleAdminController,
         ScheduleDisplayController,
+        SchedulePreholidayDisplayController,
+        SchedulePreholidayAdminController,
         ConsultationController,
     ],
     providers: [
         ScheduleUploadService,
         ScheduleImportService,
+        SchedulePreholidayService,
         ScheduleAdminService,
         ScheduleDisplayService,
         ConsultationService,
@@ -71,6 +83,8 @@ import { TeacherResolver } from './resolver/teacher.resolver';
         LessonTypeResolver,
         EducationDepartmentGuard,
         TeacherGuard,
+        ScheduleGateway,
+        ScheduleNotifierService,
     ],
     exports: [TypeOrmModule],
 })

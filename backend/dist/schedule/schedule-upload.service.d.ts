@@ -43,6 +43,7 @@ export declare class ScheduleUploadService implements OnModuleInit {
     private toDate;
     private assertGroupMatches;
     private assertPeriodDefined;
+    private parseUploadedWorkbook;
     private findPeriodUploads;
     private deleteSchedulesByUploadIds;
     private removeUploads;

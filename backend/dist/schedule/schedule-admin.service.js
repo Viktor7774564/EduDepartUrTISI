@@ -29,6 +29,7 @@ const schedule_conflict_validator_1 = require("./parser/schedule-conflict.valida
 const lesson_type_resolver_1 = require("./resolver/lesson-type.resolver");
 const room_resolver_1 = require("./resolver/room.resolver");
 const teacher_resolver_1 = require("./resolver/teacher.resolver");
+const schedule_notifier_service_1 = require("./schedule-notifier.service");
 const ITEM_RELATIONS = [
     'schedule',
     'schedule.group',
@@ -49,8 +50,9 @@ let ScheduleAdminService = class ScheduleAdminService {
     roomResolver;
     teacherResolver;
     lessonTypeResolver;
+    scheduleNotifier;
     static IMPORT_DIRECTION_CODE = 'SCHEDULE_IMPORT';
-    constructor(itemsRepository, schedulesRepository, groupsRepository, directionsRepository, subjectsRepository, subgroupsRepository, roomResolver, teacherResolver, lessonTypeResolver) {
+    constructor(itemsRepository, schedulesRepository, groupsRepository, directionsRepository, subjectsRepository, subgroupsRepository, roomResolver, teacherResolver, lessonTypeResolver, scheduleNotifier) {
         this.itemsRepository = itemsRepository;
         this.schedulesRepository = schedulesRepository;
         this.groupsRepository = groupsRepository;
@@ -60,6 +62,7 @@ let ScheduleAdminService = class ScheduleAdminService {
         this.roomResolver = roomResolver;
         this.teacherResolver = teacherResolver;
         this.lessonTypeResolver = lessonTypeResolver;
+        this.scheduleNotifier = scheduleNotifier;
     }
     toDate(value) {
         const trimmed = value.trim();
@@ -273,6 +276,7 @@ let ScheduleAdminService = class ScheduleAdminService {
         item.schedule.group = group;
         await this.assertNoConflicts(item);
         const saved = await this.itemsRepository.save(item);
+        this.scheduleNotifier.notifyScheduleChanged('item-created');
         return (0, schedule_item_mapper_1.mapItemToDisplayLesson)(await this.loadItemWithRelations(saved.id));
     }
     async updateItem(id, dto) {
@@ -303,6 +307,7 @@ let ScheduleAdminService = class ScheduleAdminService {
         }, item.schedule.groupId);
         await this.assertNoConflicts(item, id);
         await this.itemsRepository.save(item);
+        this.scheduleNotifier.notifyScheduleChanged('item-updated');
         return (0, schedule_item_mapper_1.mapItemToDisplayLesson)(await this.loadItemWithRelations(id));
     }
     async disableItem(id) {
@@ -312,6 +317,7 @@ let ScheduleAdminService = class ScheduleAdminService {
         }
         item.isDisabled = true;
         await this.itemsRepository.save(item);
+        this.scheduleNotifier.notifyScheduleChanged('item-disabled');
     }
     async deleteItem(id) {
         const item = await this.itemsRepository.findOne({ where: { id } });
@@ -319,6 +325,7 @@ let ScheduleAdminService = class ScheduleAdminService {
             throw new common_1.NotFoundException('Занятие не найдено');
         }
         await this.itemsRepository.delete(id);
+        this.scheduleNotifier.notifyScheduleChanged('item-deleted');
     }
 };
 exports.ScheduleAdminService = ScheduleAdminService;
@@ -338,6 +345,7 @@ exports.ScheduleAdminService = ScheduleAdminService = ScheduleAdminService_1 = _
         typeorm_2.Repository,
         room_resolver_1.RoomResolver,
         teacher_resolver_1.TeacherResolver,
-        lesson_type_resolver_1.LessonTypeResolver])
+        lesson_type_resolver_1.LessonTypeResolver,
+        schedule_notifier_service_1.ScheduleNotifierService])
 ], ScheduleAdminService);
 //# sourceMappingURL=schedule-admin.service.js.map

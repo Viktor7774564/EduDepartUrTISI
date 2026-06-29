@@ -117,6 +117,20 @@ let ScheduleUploadService = class ScheduleUploadService {
             });
         }
     }
+    parseUploadedWorkbook(buffer) {
+        try {
+            return (0, excel_grid_parser_1.parseScheduleWorkbook)(buffer);
+        }
+        catch (error) {
+            const parseError = error instanceof Error && error.message
+                ? error.message
+                : 'Не удалось разобрать файл расписания';
+            throw new common_1.BadRequestException({
+                message: 'Не удалось разобрать файл расписания',
+                errors: [parseError],
+            });
+        }
+    }
     async findPeriodUploads(groupName, periodStart, periodEnd) {
         return this.uploadsRepository.find({
             where: {
@@ -242,7 +256,7 @@ let ScheduleUploadService = class ScheduleUploadService {
         if (extension === '.csv') {
             throw new common_1.BadRequestException('Парсер поддерживает только Excel (.xlsx, .xls). Загрузите файл в формате Excel.');
         }
-        const parsed = (0, excel_grid_parser_1.parseScheduleWorkbook)(file.buffer);
+        const parsed = this.parseUploadedWorkbook(file.buffer);
         this.assertGroupMatches(expectedGroupName, parsed.groupName);
         this.assertPeriodDefined(parsed.periodStart, parsed.periodEnd);
         const obsoleteUploads = await this.findPeriodUploads(parsed.groupName, parsed.periodStart, parsed.periodEnd);

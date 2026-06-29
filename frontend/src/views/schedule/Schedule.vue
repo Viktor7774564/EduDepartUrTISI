@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { fetchGroupSchedule, fetchRoomSchedule, fetchTeacherSchedule } from '@/api/schedule'
+import {
+  fetchGroupSchedule,
+  fetchPreholidayDays,
+  fetchRoomSchedule,
+  fetchTeacherSchedule,
+} from '@/api/schedule'
 import {
   createConsultation,
   deleteConsultation,
@@ -13,6 +18,7 @@ import {
   createScheduleItem,
   disableScheduleItem,
   getScheduleAdminErrorMessage,
+  updatePreholidayDay,
   updateScheduleItem,
 } from '@/api/scheduleAdmin'
 import editIcon from '@/assets/edit.svg'
@@ -35,10 +41,42 @@ import {
   normalizeLessonTypeForForm,
   parseRoomForForm,
 } from './scheduleOptions'
+import type { Socket } from 'socket.io-client'
+import { connectScheduleSocket } from '@/api/scheduleSocket'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+
+let scheduleSocket: Socket | null = null
+let scheduleReloadTimer: ReturnType<typeof setTimeout> | null = null
+
+const reloadScheduleSoon = () => {
+  if (scheduleReloadTimer) {
+    clearTimeout(scheduleReloadTimer)
+  }
+
+  scheduleReloadTimer = setTimeout(() => {
+    void refreshSchedulePreservingView()
+  }, 200)
+}
+
+const connectScheduleLiveUpdates = () => {
+  scheduleSocket?.removeAllListeners()
+  scheduleSocket?.disconnect()
+
+  scheduleSocket = connectScheduleSocket({
+    onScheduleChanged: () => {
+      reloadScheduleSoon()
+    },
+    onPreholidayDaysUpdated: ({ preholidayDays }) => {
+      preholidayDayKeys.value = normalizePreholidayDayKeys(preholidayDays)
+    },
+    onConnectError: () => {
+      console.warn('Не удалось подключиться к live-обновлениям расписания')
+    },
+  })
+}
 
 type TimeSlot = {
   pairNumber: number
@@ -75,7 +113,6 @@ const preholidayTimeSlots: TimeSlot[] = [
   { pairNumber: 5, startTime: '15:00', endTime: '16:00', matchingStartTimes: ['15:00', '16:00'] },
 ]
 const times = weekdayTimeSlots.map((slot) => slot.startTime)
-const PREHOLIDAY_STORAGE_KEY = 'schedule-preholiday-days'
 
 const PAIR_END_TIMES: Record<string, string> = {
   '08:30': '10:00',
@@ -137,6 +174,8 @@ type CellLesson = DisplayScheduleItem & {
 const selectedLesson = ref<CellLesson | null>(null)
 const editingLesson = ref<CellLesson | null>(null)
 const currentWeekIndex = ref(0)
+const hasSyncedInitialWeek = ref(false)
+const pendingWeekKeyToRestore = ref<string | null>(null)
 const studentWeeklySchedules = ref<Record<string, DisplayScheduleItem[]>>({})
 const schedulePeriodMeta = ref<SchedulePeriodMeta>({
   academicYearLabel: null,
@@ -147,6 +186,7 @@ const schedulePeriodMeta = ref<SchedulePeriodMeta>({
 const isLoadingSchedule = ref(false)
 const scheduleLoadError = ref<string | null>(null)
 const preholidayDayKeys = ref<string[]>([])
+const isSavingPreholidayDay = ref(false)
 
 const isMenuVisible = ref(false)
 const menuX = ref(0)
@@ -257,6 +297,8 @@ const loadSchedule = async () => {
 }
 
 watch([scheduleType, firstValue, secondValue], () => {
+  hasSyncedInitialWeek.value = false
+  pendingWeekKeyToRestore.value = null
   void loadSchedule()
 }, { immediate: true })
 
@@ -398,11 +440,66 @@ const syncWeekIndex = () => {
       : 0
 }
 
-watch(weekKeys, syncWeekIndex, { immediate: true })
-
 const currentWeekKey = computed(() => weekKeys.value[currentWeekIndex.value] ?? '')
 const weekLabel = computed(() => currentWeekKey.value)
 const currentWeekStartDate = computed(() => resolveWeekStartDate(currentWeekKey.value))
+
+const restoreWeekIndex = (weekKey: string | null): boolean => {
+  if (!weekKey) {
+    return false
+  }
+
+  const restoredIndex = weekKeys.value.indexOf(weekKey)
+
+  if (restoredIndex === -1) {
+    return false
+  }
+
+  currentWeekIndex.value = restoredIndex
+  return true
+}
+
+watch(weekKeys, (keys) => {
+  if (keys.length === 0) {
+    currentWeekIndex.value = 0
+    return
+  }
+
+  // При live-обновлении возвращаем пользователя на ту же неделю.
+  const pendingWeekKey = pendingWeekKeyToRestore.value
+  if (pendingWeekKey) {
+    pendingWeekKeyToRestore.value = null
+    if (restoreWeekIndex(pendingWeekKey)) {
+      return
+    }
+  }
+
+  if (!hasSyncedInitialWeek.value) {
+    // Автовыбор текущей недели нужен только при первом открытии расписания.
+    syncWeekIndex()
+    hasSyncedInitialWeek.value = true
+    return
+  }
+
+  if (currentWeekIndex.value >= keys.length) {
+    currentWeekIndex.value = keys.length - 1
+  }
+}, { immediate: true })
+
+const refreshSchedulePreservingView = async () => {
+  // Обновляем данные, но не сбрасываем выбранную неделю и прокрутку.
+  const weekKeyToRestore = currentWeekKey.value
+  const scrollX = window.scrollX
+  const scrollY = window.scrollY
+
+  pendingWeekKeyToRestore.value = weekKeyToRestore || null
+
+  await loadSchedule()
+  await nextTick()
+
+  restoreWeekIndex(weekKeyToRestore)
+  window.scrollTo({ left: scrollX, top: scrollY })
+}
 
 const getDateForDayInWeek = (day: string, weekKey = currentWeekKey.value): Date | null => {
   const start = weekKey === currentWeekKey.value
@@ -460,37 +557,35 @@ const getPreholidayDayKey = (day: string, weekKey = currentWeekKey.value): strin
   return formatFullDate(date)
 }
 
-const loadPreholidayDays = () => {
+const normalizePreholidayDayKeys = (values: string[]): string[] => {
+  const normalizedKeys = values
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => {
+      const legacyParts = value.split('|')
+      const legacyDate = legacyParts[3]
+
+      if (legacyDate && /^\d{2}\.\d{2}\.\d{4}$/.test(legacyDate)) {
+        return legacyDate
+      }
+
+      const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      if (isoMatch) {
+        return `${isoMatch[3]}.${isoMatch[2]}.${isoMatch[1]}`
+      }
+
+      return value
+    })
+    .filter((value) => /^\d{2}\.\d{2}\.\d{4}$/.test(value))
+
+  return Array.from(new Set(normalizedKeys))
+}
+
+const loadPreholidayDays = async () => {
   try {
-    const storedValue = localStorage.getItem(PREHOLIDAY_STORAGE_KEY)
-    const parsedValue = storedValue ? JSON.parse(storedValue) : []
-
-    if (!Array.isArray(parsedValue)) {
-      preholidayDayKeys.value = []
-      return
-    }
-
-    const normalizedKeys = parsedValue
-      .filter((value): value is string => typeof value === 'string')
-      .map((value) => {
-        const legacyParts = value.split('|')
-        const legacyDate = legacyParts[3]
-
-        return legacyDate && /^\d{2}\.\d{2}\.\d{4}$/.test(legacyDate)
-          ? legacyDate
-          : value
-      })
-      .filter((value) => /^\d{2}\.\d{2}\.\d{4}$/.test(value))
-
-    preholidayDayKeys.value = Array.from(new Set(normalizedKeys))
-    persistPreholidayDays()
+    preholidayDayKeys.value = normalizePreholidayDayKeys(await fetchPreholidayDays())
   } catch {
     preholidayDayKeys.value = []
   }
-}
-
-const persistPreholidayDays = () => {
-  localStorage.setItem(PREHOLIDAY_STORAGE_KEY, JSON.stringify(preholidayDayKeys.value))
 }
 
 const isPreholidayDay = (day: string, weekKey = currentWeekKey.value): boolean => {
@@ -499,8 +594,8 @@ const isPreholidayDay = (day: string, weekKey = currentWeekKey.value): boolean =
   return Boolean(key && preholidayDayKeys.value.includes(key))
 }
 
-const togglePreholidayDay = (day: string) => {
-  if (!canManagePairs.value) {
+const togglePreholidayDay = async (day: string) => {
+  if (!canManagePairs.value || isSavingPreholidayDay.value) {
     return
   }
 
@@ -510,11 +605,25 @@ const togglePreholidayDay = (day: string) => {
     return
   }
 
-  preholidayDayKeys.value = preholidayDayKeys.value.includes(key)
-    ? preholidayDayKeys.value.filter((value) => value !== key)
-    : [...preholidayDayKeys.value, key]
+  const previousKeys = preholidayDayKeys.value
+  const shouldMarkAsPreholiday = !preholidayDayKeys.value.includes(key)
 
-  persistPreholidayDays()
+  preholidayDayKeys.value = shouldMarkAsPreholiday
+    ? [...preholidayDayKeys.value, key]
+    : preholidayDayKeys.value.filter((value) => value !== key)
+
+  isSavingPreholidayDay.value = true
+
+  try {
+    preholidayDayKeys.value = normalizePreholidayDayKeys(
+      await updatePreholidayDay(key, shouldMarkAsPreholiday),
+    )
+  } catch {
+    preholidayDayKeys.value = previousKeys
+    alert('Не удалось сохранить предпраздничный день')
+  } finally {
+    isSavingPreholidayDay.value = false
+  }
 }
 
 const getDaySlot = (day: string, rowIndex: number): TimeSlot | null => {
@@ -768,7 +877,7 @@ const saveTransfer = async () => {
       endTime,
       weekStart,
     })
-    await loadSchedule()
+    await refreshSchedulePreservingView()
     closeTransferModal()
   } catch (error) {
     alert(getScheduleAdminErrorMessage(error))
@@ -879,7 +988,7 @@ const saveEdit = async () => {
         })
       }
 
-      await loadSchedule()
+      await refreshSchedulePreservingView()
       closeEditModal()
     } catch (error) {
       alert(getScheduleAdminErrorMessage(error))
@@ -939,7 +1048,7 @@ const saveEdit = async () => {
       })
     }
 
-    await loadSchedule()
+    await refreshSchedulePreservingView()
     closeEditModal()
   } catch {
     alert('Не удалось сохранить консультацию')
@@ -1058,14 +1167,14 @@ const cancelLesson = async () => {
   if (scheduleType.value === 'consults') {
     try {
       await deleteConsultation(contextLesson.value.id)
-      await loadSchedule()
+      await refreshSchedulePreservingView()
     } catch {
       alert('Не удалось удалить консультацию')
     }
   } else {
     try {
       await disableScheduleItem(contextLesson.value.id)
-      await loadSchedule()
+      await refreshSchedulePreservingView()
     } catch (error) {
       alert(getScheduleAdminErrorMessage(error))
     }
@@ -1412,7 +1521,8 @@ const syncMobileLayout = (queryList: MediaQueryList | MediaQueryListEvent) => {
 }
 
 onMounted(() => {
-  loadPreholidayDays()
+  void loadPreholidayDays()
+  connectScheduleLiveUpdates()
   document.addEventListener('click', closeMenu as EventListener)
 
   mobileMediaQuery = window.matchMedia('(max-width: 640px)')
@@ -1423,6 +1533,14 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', closeMenu)
   mobileMediaQuery?.removeEventListener('change', syncMobileLayout)
+
+  if (scheduleReloadTimer) {
+    clearTimeout(scheduleReloadTimer)
+  }
+
+  scheduleSocket?.removeAllListeners()
+  scheduleSocket?.disconnect()
+  scheduleSocket = null
 })
 </script>
 
@@ -1545,6 +1663,7 @@ onUnmounted(() => {
                   v-if="canManagePairs"
                   type="button"
                   class="preholiday-toggle"
+                  :disabled="isSavingPreholidayDay"
                   @click.stop="togglePreholidayDay(day)"
               >
                 {{ isPreholidayDay(day) ? 'Обычный' : 'Предпраздн.' }}
@@ -1573,6 +1692,7 @@ onUnmounted(() => {
                   v-if="canManagePairs"
                   type="button"
                   class="preholiday-toggle"
+                  :disabled="isSavingPreholidayDay"
                   @click.stop="togglePreholidayDay(saturdayDay)"
               >
                 {{ isPreholidayDay(saturdayDay) ? 'Обычный' : 'Предпраздн.' }}

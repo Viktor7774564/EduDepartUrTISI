@@ -10,6 +10,7 @@ import { ScheduleDisplayLesson } from './schedule-display.service';
 import { LessonTypeResolver } from './resolver/lesson-type.resolver';
 import { RoomResolver } from './resolver/room.resolver';
 import { TeacherResolver } from './resolver/teacher.resolver';
+import { ScheduleNotifierService } from './schedule-notifier.service';
 export declare class ScheduleAdminService {
     private readonly itemsRepository;
     private readonly schedulesRepository;
@@ -20,8 +21,9 @@ export declare class ScheduleAdminService {
     private readonly roomResolver;
     private readonly teacherResolver;
     private readonly lessonTypeResolver;
+    private readonly scheduleNotifier;
     private static readonly IMPORT_DIRECTION_CODE;
-    constructor(itemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>, groupsRepository: Repository<Group>, directionsRepository: Repository<Direction>, subjectsRepository: Repository<Subject>, subgroupsRepository: Repository<Subgroup>, roomResolver: RoomResolver, teacherResolver: TeacherResolver, lessonTypeResolver: LessonTypeResolver);
+    constructor(itemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>, groupsRepository: Repository<Group>, directionsRepository: Repository<Direction>, subjectsRepository: Repository<Subject>, subgroupsRepository: Repository<Subgroup>, roomResolver: RoomResolver, teacherResolver: TeacherResolver, lessonTypeResolver: LessonTypeResolver, scheduleNotifier: ScheduleNotifierService);
     private toDate;
     private findOrCreateImportDirection;
     private findOrCreateGroup;
