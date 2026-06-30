@@ -78,7 +78,7 @@ const getRoleLabel = (role: UserRole): string => {
 
     teacher: 'Преподаватель',
 
-    education_department: 'Учебный отдел',
+    employee: 'Сотрудник',
 
   }
 

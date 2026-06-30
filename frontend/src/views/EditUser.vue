@@ -67,7 +67,7 @@ const teacherDepartments = ref<TeacherDepartmentInfo[]>([])
 const roleOptions = [
   { value: 'student', label: 'Студент' },
   { value: 'teacher', label: 'Преподаватель' },
-  { value: 'education_department', label: 'Сотрудник учебного отдела' },
+  { value: 'employee', label: 'Сотрудник' },
   { value: 'admin', label: 'Администратор' },
 ]
 
@@ -232,7 +232,7 @@ const validate = (): boolean => {
     if (!form.value.departmentId) errors.value.departmentId = 'Выберите кафедру'
   }
 
-  if (form.value.role === 'education_department') {
+  if (form.value.role === 'employee') {
     if (!form.value.position?.trim()) errors.value.position = 'Введите должность'
     if (!form.value.department?.trim()) errors.value.department = 'Введите отдел'
   }
@@ -495,8 +495,8 @@ const goBack = () => router.push({ name: 'admin-edit-user' })
               </div>
             </div>
 
-            <div v-if="form.role === 'education_department'" class="form-section">
-              <h2 class="section-title">Данные сотрудника учебного отдела</h2>
+            <div v-if="form.role === 'employee'" class="form-section">
+              <h2 class="section-title">Данные сотрудника</h2>
               <div class="form-row">
                 <div class="form-group">
                   <label for="position" class="form-label">Должность <span class="required">*</span></label>
@@ -511,7 +511,7 @@ const goBack = () => router.push({ name: 'admin-edit-user' })
               <div class="form-row">
                 <div class="form-group full-width">
                   <label for="department" class="form-label">Отдел <span class="required">*</span></label>
-                  <input id="department" v-model="form.department" type="text" class="form-input" :class="{ error: errors.department }" :disabled="isSubmitting" />
+                  <input id="department" v-model="form.department" type="text" class="form-input" :class="{ error: errors.department }" placeholder="Например: Учебный отдел (для доступа к расписанию)" :disabled="isSubmitting" />
                   <span v-if="errors.department" class="error-message">{{ errors.department }}</span>
                 </div>
               </div>

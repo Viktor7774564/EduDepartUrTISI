@@ -8,8 +8,10 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
-const typeorm_1 = require("@nestjs/typeorm");
+const typeorm_1 = require("typeorm");
+const typeorm_2 = require("@nestjs/typeorm");
 const config_1 = require("@nestjs/config");
+const role_enum_migration_1 = require("./database/role-enum-migration");
 const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const schedule_module_1 = require("./schedule/schedule.module");
@@ -27,7 +29,7 @@ exports.AppModule = AppModule = __decorate([
                 isGlobal: true,
                 envFilePath: '.env',
             }),
-            typeorm_1.TypeOrmModule.forRootAsync({
+            typeorm_2.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
                 inject: [config_1.ConfigService],
                 useFactory: (config) => ({
@@ -40,6 +42,15 @@ exports.AppModule = AppModule = __decorate([
                     autoLoadEntities: true,
                     synchronize: true,
                 }),
+                dataSourceFactory: async (options) => {
+                    if (!options) {
+                        throw new Error('TypeORM data source options are not configured');
+                    }
+                    const dataSourceOptions = options;
+                    await (0, role_enum_migration_1.migrateRoleEnumBeforeSync)(dataSourceOptions);
+                    const dataSource = new typeorm_1.DataSource(dataSourceOptions);
+                    return dataSource.initialize();
+                },
             }),
             auth_module_1.AuthModule,
             users_module_1.UsersModule,

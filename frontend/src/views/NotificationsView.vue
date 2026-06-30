@@ -182,7 +182,7 @@ onBeforeUnmount(() => {
           class="notification-card"
           :class="{ unread: !notification.isRead }"
       >
-        <div>
+        <div class="notification-card__content">
           <h2>{{ notification.title }}</h2>
           <p>{{ notification.message }}</p>
           <time>{{ new Date(notification.createdAt).toLocaleString('ru-RU') }}</time>

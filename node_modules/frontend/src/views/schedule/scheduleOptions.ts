@@ -254,18 +254,43 @@ export const LESSON_TYPE_OPTIONS = [
 export const ROMAN_BUILDING = 'Римская' as const
 export const DISTANCE_BUILDING = 'Дистанционное' as const
 export const DISTANCE_ROOM_LABEL = 'дист. форм. об.' as const
+export const SPORTS_HALL_BUILDING = 'Спортивный зал' as const
+export const SPORTS_HALL_ROOM_LABEL = 'С/З, Т/З' as const
 
 export const BUILDING_OPTIONS = [
   'УК1',
-  'УК2',
-  'УК3',
   'УК4',
   'УК5',
+  SPORTS_HALL_BUILDING,
   DISTANCE_BUILDING,
 ] as const
 
 export function isDistanceRoomLabel(room: string): boolean {
   return /дист/i.test(room.trim())
+}
+
+export function isSportsHallRoomLabel(room: string): boolean {
+  const normalized = room.trim().toUpperCase()
+
+  return normalized === SPORTS_HALL_ROOM_LABEL.toUpperCase()
+    || normalized.includes('С/З')
+    || normalized.includes('Т/З')
+}
+
+export function isAutoFilledRoomBuilding(building: string): boolean {
+  return building === DISTANCE_BUILDING || building === SPORTS_HALL_BUILDING
+}
+
+export function getAutoFilledRoomLabel(building: string): string | null {
+  if (building === DISTANCE_BUILDING) {
+    return DISTANCE_ROOM_LABEL
+  }
+
+  if (building === SPORTS_HALL_BUILDING) {
+    return SPORTS_HALL_ROOM_LABEL
+  }
+
+  return null
 }
 
 export function isRomanRoomUk5(room: string): boolean {
@@ -385,7 +410,7 @@ export function normalizeLessonTypeForForm(type: string): string {
 
 export function getLessonGridClass(type: string): string {
   if (isSpecialLessonType(type)) {
-    return ''
+    return 'special'
   }
 
   const lessonType = type.toLowerCase()
@@ -424,6 +449,10 @@ export function parseRoomForForm(room: string): { building: string; room: string
     return { building: DISTANCE_BUILDING, room: DISTANCE_ROOM_LABEL }
   }
 
+  if (isSportsHallRoomLabel(normalized)) {
+    return { building: SPORTS_HALL_BUILDING, room: SPORTS_HALL_ROOM_LABEL }
+  }
+
   const building = getBuildingFromRoom(normalized)
 
   if (!building) {
@@ -446,6 +475,10 @@ export function formatRoomForApi(building: string, room: string): string | undef
 
   if (buildingCode === DISTANCE_BUILDING || isDistanceRoomLabel(roomNumber)) {
     return DISTANCE_ROOM_LABEL
+  }
+
+  if (buildingCode === SPORTS_HALL_BUILDING || isSportsHallRoomLabel(roomNumber)) {
+    return SPORTS_HALL_ROOM_LABEL
   }
 
   if (!roomNumber) {

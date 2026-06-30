@@ -263,6 +263,14 @@
   @apply bg-[#e74c3c] text-white;
 }
 
+.schedule-upload-page .close-btn {
+  width: auto;
+  height: auto;
+  padding: 6px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
   .admin-panel-page .admin-card {
     @apply py-[32px] px-[24px];

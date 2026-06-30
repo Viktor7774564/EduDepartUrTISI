@@ -232,14 +232,14 @@ let AdminService = class AdminService {
                 throw new common_1.BadRequestException('Для преподавателя нужны должность и кафедра');
             }
         }
-        if (dto.role === role_entity_1.RoleCode.EDUCATION_DEPARTMENT ||
+        if (dto.role === role_entity_1.RoleCode.EMPLOYEE ||
             dto.role === role_entity_1.RoleCode.ADMIN) {
             if (!dto.department?.trim()) {
                 throw new common_1.BadRequestException('Укажите структурное подразделение');
             }
-            if (dto.role === role_entity_1.RoleCode.EDUCATION_DEPARTMENT &&
+            if (dto.role === role_entity_1.RoleCode.EMPLOYEE &&
                 !dto.position?.trim()) {
-                throw new common_1.BadRequestException('Для сотрудника учебного отдела нужна должность');
+                throw new common_1.BadRequestException('Для сотрудника нужна должность');
             }
         }
     }
@@ -252,7 +252,7 @@ let AdminService = class AdminService {
                 await this.createTeacherProfile(userId, dto);
                 return;
             case role_entity_1.RoleCode.ADMIN:
-            case role_entity_1.RoleCode.EDUCATION_DEPARTMENT:
+            case role_entity_1.RoleCode.EMPLOYEE:
                 await this.createStaffProfile(userId, dto);
                 return;
         }
@@ -324,7 +324,7 @@ let AdminService = class AdminService {
                 return;
             }
             case role_entity_1.RoleCode.ADMIN:
-            case role_entity_1.RoleCode.EDUCATION_DEPARTMENT: {
+            case role_entity_1.RoleCode.EMPLOYEE: {
                 const profile = await this.staffProfileRepository.findOne({
                     where: { userId },
                 });

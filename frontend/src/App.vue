@@ -10,6 +10,7 @@ import type { ScheduleKind } from '@/views/schedule/scheduleOptions'
 import { getPhotoUrl } from '@/config/api'
 import { unregisterPushSubscription } from '@/api/pushNotifications'
 import { useNotificationsStore } from '@/stores/notifications'
+import { hasScheduleManageAccess } from '@/utils/educationDepartmentAccess'
 
 const notificationsStore = useNotificationsStore()
 
@@ -22,7 +23,7 @@ const currentUserRole = computed(() => authStore.roleLabel)
 const currentUserPhoto = computed(() => getPhotoUrl(authStore.currentUser?.photoUrl))
 
 const isAdmin = computed(() => authStore.currentUser?.role === 'admin')
-const isEducationDepartment = computed(() => authStore.currentUser?.role === 'education_department')
+const canManageSchedule = computed(() => hasScheduleManageAccess(authStore.currentUser))
 
 const mainLinks = [
   { id: 'teachers', title: 'Расписание преподавателей' },
@@ -213,7 +214,7 @@ const handleVisibilityChange = async () => {
               </button>
 
               <button
-                v-if="isEducationDepartment"
+                v-if="canManageSchedule"
                 class="dropdown-item"
                 type="button"
                 @click="goToScheduleUpload"
@@ -235,9 +236,11 @@ const handleVisibilityChange = async () => {
 
       <template v-else>
         <div class="header-spacer" />
-        <RouterLink to="/login">
-          <button class="signin-btn" type="button">Войти</button>
-        </RouterLink>
+        <div class="header-auth">
+          <RouterLink to="/login" class="signin-link">
+            <button class="signin-btn" type="button">Войти</button>
+          </RouterLink>
+        </div>
       </template>
     </header>
 

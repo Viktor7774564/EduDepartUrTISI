@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mapUserToAuthResponse = mapUserToAuthResponse;
 const group_entity_1 = require("../academic/entities/group.entity");
+const education_department_access_1 = require("../users/education-department-access");
 const educationFormLabels = {
     [group_entity_1.EducationForm.FULL_TIME]: 'Очная',
     [group_entity_1.EducationForm.PART_TIME]: 'Заочная',
@@ -41,6 +42,7 @@ function mapUserToAuthResponse(user) {
             position: user.staffProfile.position,
             department: user.staffProfile.department.name,
             cabinet: user.staffProfile.cabinet ?? undefined,
+            canManageSchedule: (0, education_department_access_1.canManageSchedule)(user),
         };
     }
     return base;

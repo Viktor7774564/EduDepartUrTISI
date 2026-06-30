@@ -2,6 +2,7 @@
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { hasScheduleManageAccess } from '@/utils/educationDepartmentAccess'
 import {
   fetchGroupSchedule,
   fetchPreholidayDays,
@@ -33,6 +34,9 @@ import {
   BUILDING_OPTIONS,
   DISTANCE_BUILDING,
   DISTANCE_ROOM_LABEL,
+  SPORTS_HALL_ROOM_LABEL,
+  getAutoFilledRoomLabel,
+  isAutoFilledRoomBuilding,
   LESSON_TYPE_OPTIONS,
   buildConsultationAcademicWeeks,
   formatRoomForApi,
@@ -59,6 +63,7 @@ const authStore = useAuthStore()
 
 let scheduleSocket: Socket | null = null
 let scheduleReloadTimer: ReturnType<typeof setTimeout> | null = null
+let scheduleLoadGeneration = 0
 
 const reloadScheduleSoon = () => {
   if (scheduleReloadTimer) {
@@ -97,6 +102,7 @@ type TimeSlot = {
 const days = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ']
 const saturdayDay = 'СБ'
 const weekdayDays = days.filter((day) => day !== saturdayDay)
+//Будний дни
 const weekdayTimeSlots: TimeSlot[] = [
   { pairNumber: 1, startTime: '08:30', endTime: '10:00' },
   { pairNumber: 2, startTime: '10:15', endTime: '11:45' },
@@ -106,14 +112,18 @@ const weekdayTimeSlots: TimeSlot[] = [
   { pairNumber: 6, startTime: '17:40', endTime: '19:05' },
   { pairNumber: 7, startTime: '19:15', endTime: '20:40' },
 ]
+
+//Суббота
 const saturdayTimeSlots: TimeSlot[] = [
   { pairNumber: 1, startTime: '08:30', endTime: '10:00' },
   { pairNumber: 2, startTime: '10:15', endTime: '11:45' },
   { pairNumber: 3, startTime: '12:00', endTime: '13:30' },
   { pairNumber: 4, startTime: '13:45', endTime: '15:15' },
   { pairNumber: 5, startTime: '15:30', endTime: '17:00' },
-  { pairNumber: 6, startTime: '17:40', endTime: '19:05' },
+  { pairNumber: 6, startTime: '17:10', endTime: '18:40' },
 ]
+
+//Предпраздничный день
 const preholidayTimeSlots: TimeSlot[] = [
   { pairNumber: 1, startTime: '08:30', endTime: '10:00' },
   { pairNumber: 2, startTime: '10:15', endTime: '11:45' },
@@ -154,6 +164,7 @@ const DAY_TO_OFFSET: Record<string, number> = {
   СБ: 5,
 }
 
+//Праздники
 const PUBLIC_HOLIDAYS: Record<string, string> = {
   '01-01': 'Новогодние каникулы',
   '01-02': 'Новогодние каникулы',
@@ -183,8 +194,10 @@ type CellLesson = DisplayScheduleItem & {
 const selectedLesson = ref<CellLesson | null>(null)
 const editingLesson = ref<CellLesson | null>(null)
 const currentWeekIndex = ref(0)
+const selectedWeekKey = ref<string | null>(null)
 const hasSyncedInitialWeek = ref(false)
 const pendingWeekKeyToRestore = ref<string | null>(null)
+const hasLoadedScheduleOnce = ref(false)
 const studentWeeklySchedules = ref<Record<string, DisplayScheduleItem[]>>({})
 const schedulePeriodMeta = ref<SchedulePeriodMeta>({
   academicYearLabel: null,
@@ -248,12 +261,20 @@ const applySchedulePeriodMeta = (meta?: Partial<SchedulePeriodMeta> | null) => {
   }
 }
 
-const loadSchedule = async () => {
+type LoadScheduleOptions = {
+  silent?: boolean
+}
+
+const loadSchedule = async (options: LoadScheduleOptions = {}) => {
+  const silent = options.silent ?? false
+  const generation = ++scheduleLoadGeneration
+
   if (!secondValue.value && scheduleType.value !== 'consults') {
     studentWeeklySchedules.value = {}
     applySchedulePeriodMeta(null)
     scheduleLoadError.value = null
     isLoadingSchedule.value = false
+    hasLoadedScheduleOnce.value = false
     return
   }
 
@@ -262,15 +283,21 @@ const loadSchedule = async () => {
     applySchedulePeriodMeta(null)
     scheduleLoadError.value = null
     isLoadingSchedule.value = false
+    hasLoadedScheduleOnce.value = false
     return
   }
 
-  isLoadingSchedule.value = true
+  if (!silent) {
+    isLoadingSchedule.value = true
+  }
   scheduleLoadError.value = null
 
   try {
     if (scheduleType.value === 'students') {
       const response = await fetchGroupSchedule(secondValue.value)
+      if (generation !== scheduleLoadGeneration) {
+        return
+      }
       studentWeeklySchedules.value = response.weeks
       applySchedulePeriodMeta(response)
       return
@@ -278,6 +305,9 @@ const loadSchedule = async () => {
 
     if (scheduleType.value === 'teachers') {
       const response = await fetchTeacherSchedule(secondValue.value)
+      if (generation !== scheduleLoadGeneration) {
+        return
+      }
       studentWeeklySchedules.value = response.weeks
       applySchedulePeriodMeta(response)
       return
@@ -285,6 +315,9 @@ const loadSchedule = async () => {
 
     if (scheduleType.value === 'consults') {
       const response = await fetchDepartmentConsultations(Number(firstValue.value))
+      if (generation !== scheduleLoadGeneration) {
+        return
+      }
       studentWeeklySchedules.value = response.weeks
       applySchedulePeriodMeta(null)
       return
@@ -292,22 +325,40 @@ const loadSchedule = async () => {
 
     if (scheduleType.value === 'auditories') {
       const response = await fetchRoomSchedule(secondValue.value)
+      if (generation !== scheduleLoadGeneration) {
+        return
+      }
       studentWeeklySchedules.value = response.weeks
       applySchedulePeriodMeta(response)
+      return
+    }
+
+    if (generation !== scheduleLoadGeneration) {
       return
     }
 
     studentWeeklySchedules.value = {}
     applySchedulePeriodMeta(null)
   } catch {
-    studentWeeklySchedules.value = {}
-    applySchedulePeriodMeta(null)
+    if (generation !== scheduleLoadGeneration) {
+      return
+    }
 
-    if (scheduleType.value !== 'consults') {
-      scheduleLoadError.value = 'Не удалось загрузить расписание'
+    if (!silent) {
+      studentWeeklySchedules.value = {}
+      applySchedulePeriodMeta(null)
+
+      if (scheduleType.value !== 'consults') {
+        scheduleLoadError.value = 'Не удалось загрузить расписание'
+      }
     }
   } finally {
-    isLoadingSchedule.value = false
+    if (generation === scheduleLoadGeneration) {
+      if (!silent) {
+        isLoadingSchedule.value = false
+      }
+      hasLoadedScheduleOnce.value = true
+    }
   }
 }
 
@@ -327,6 +378,8 @@ async function loadConsultationTeachers() {
 watch([scheduleType, firstValue, secondValue], () => {
   hasSyncedInitialWeek.value = false
   pendingWeekKeyToRestore.value = null
+  selectedWeekKey.value = null
+  hasLoadedScheduleOnce.value = false
   void loadSchedule()
   void loadConsultationTeachers()
 }, { immediate: true })
@@ -500,12 +553,21 @@ const restoreWeekIndex = (weekKey: string | null): boolean => {
   }
 
   currentWeekIndex.value = restoredIndex
+  selectedWeekKey.value = weekKey
   return true
 }
 
+watch(currentWeekKey, (weekKey) => {
+  if (weekKey) {
+    selectedWeekKey.value = weekKey
+  }
+})
+
 watch(weekKeys, (keys) => {
   if (keys.length === 0) {
-    currentWeekIndex.value = 0
+    if (!selectedWeekKey.value) {
+      currentWeekIndex.value = 0
+    }
     return
   }
 
@@ -518,31 +580,47 @@ watch(weekKeys, (keys) => {
     }
   }
 
+  if (selectedWeekKey.value && restoreWeekIndex(selectedWeekKey.value)) {
+    return
+  }
+
   if (!hasSyncedInitialWeek.value) {
     // Автовыбор текущей недели нужен только при первом открытии расписания.
     syncWeekIndex()
     hasSyncedInitialWeek.value = true
+    if (currentWeekKey.value) {
+      selectedWeekKey.value = currentWeekKey.value
+    }
     return
   }
 
   if (currentWeekIndex.value >= keys.length) {
     currentWeekIndex.value = keys.length - 1
+    if (currentWeekKey.value) {
+      selectedWeekKey.value = currentWeekKey.value
+    }
   }
 }, { immediate: true })
 
 const refreshSchedulePreservingView = async () => {
-  // Обновляем данные, но не сбрасываем выбранную неделю и прокрутку.
-  const weekKeyToRestore = currentWeekKey.value
+  // Обновляем данные в фоне, не сбрасываем выбранную неделю и прокрутку.
+  const weekKeyToRestore = selectedWeekKey.value || currentWeekKey.value
   const scrollX = window.scrollX
   const scrollY = window.scrollY
 
-  pendingWeekKeyToRestore.value = weekKeyToRestore || null
+  if (weekKeyToRestore) {
+    pendingWeekKeyToRestore.value = weekKeyToRestore
+    selectedWeekKey.value = weekKeyToRestore
+  }
 
-  await loadSchedule()
+  await loadSchedule({ silent: true })
   await nextTick()
 
-  restoreWeekIndex(weekKeyToRestore)
-  window.scrollTo({ left: scrollX, top: scrollY })
+  if (weekKeyToRestore) {
+    restoreWeekIndex(weekKeyToRestore)
+  }
+
+  window.scrollTo({ left: scrollX, top: scrollY, behavior: 'instant' })
 }
 
 const getDateForDayInWeek = (day: string, weekKey = currentWeekKey.value): Date | null => {
@@ -1526,7 +1604,7 @@ watch(
       editForm.value.building = ''
     }
 
-    if (editForm.value.room === DISTANCE_ROOM_LABEL) {
+    if (editForm.value.room === DISTANCE_ROOM_LABEL || editForm.value.room === SPORTS_HALL_ROOM_LABEL) {
       editForm.value.room = ''
     }
   },
@@ -1557,12 +1635,14 @@ watch(
       return
     }
 
-    if (building === DISTANCE_BUILDING) {
-      editForm.value.room = DISTANCE_ROOM_LABEL
+    const autoFilledRoom = getAutoFilledRoomLabel(building)
+
+    if (autoFilledRoom) {
+      editForm.value.room = autoFilledRoom
       return
     }
 
-    if (editForm.value.room === DISTANCE_ROOM_LABEL) {
+    if (editForm.value.room === DISTANCE_ROOM_LABEL || editForm.value.room === SPORTS_HALL_ROOM_LABEL) {
       editForm.value.room = ''
     }
   },
@@ -1575,12 +1655,14 @@ watch(
       return
     }
 
-    if (building === DISTANCE_BUILDING) {
-      transferForm.value.room = DISTANCE_ROOM_LABEL
+    const autoFilledRoom = getAutoFilledRoomLabel(building)
+
+    if (autoFilledRoom) {
+      transferForm.value.room = autoFilledRoom
       return
     }
 
-    if (transferForm.value.room === DISTANCE_ROOM_LABEL) {
+    if (transferForm.value.room === DISTANCE_ROOM_LABEL || transferForm.value.room === SPORTS_HALL_ROOM_LABEL) {
       transferForm.value.room = ''
     }
   },
@@ -1808,7 +1890,7 @@ const canEdit = computed(() => {
     return authStore.currentUser.departmentId === Number(firstValue.value)
   }
 
-  return authStore.currentUser?.role === 'education_department'
+  return hasScheduleManageAccess(authStore.currentUser)
 })
 
 const canManagePairs = computed(() => canEdit.value && scheduleType.value !== 'consults')
@@ -1848,7 +1930,7 @@ onUnmounted(() => {
         <h1 class="title">{{ pageTitle }}</h1>
       </div>
 
-      <div v-if="isLoadingSchedule && !isConsultationSchedule" class="empty-state">
+      <div v-if="isLoadingSchedule && !hasLoadedScheduleOnce && !isConsultationSchedule" class="empty-state">
         <h2>Загрузка расписания...</h2>
       </div>
 
@@ -1871,7 +1953,7 @@ onUnmounted(() => {
 
           <div class="week-buttons">
             <button type="button" @click="prevWeek" :disabled="currentWeekIndex === 0">
-              ← Предыдущая неделя
+              {{ isMobileLayout ? '← Назад' : '← Предыдущая неделя' }}
             </button>
 
             <button
@@ -1879,7 +1961,7 @@ onUnmounted(() => {
                 @click="nextWeek"
                 :disabled="currentWeekIndex >= weekKeys.length - 1"
             >
-              Следующая неделя →
+              {{ isMobileLayout ? 'Вперёд →' : 'Следующая неделя →' }}
             </button>
           </div>
         </div>
@@ -1927,7 +2009,8 @@ onUnmounted(() => {
               Зачёт
             </div>
 
-            <div class="legend-item legend-item--note">
+            <div class="legend-item">
+              <span class="box special"></span>
               Особое
             </div>
           </template>
@@ -1935,7 +2018,9 @@ onUnmounted(() => {
 
         <div class="table">
           <div class="header">
-            <div></div>
+            <div class="weekday-time-header">
+              <span class="time-header-label">Время</span>
+            </div>
 
             <div
                 v-for="day in weekdayDays"
@@ -1967,7 +2052,9 @@ onUnmounted(() => {
               </button>
             </div>
 
-            <div class="saturday-time-header">Время</div>
+            <div class="saturday-time-header">
+              <span class="time-header-label">Время</span>
+            </div>
             <div
                 class="header-day"
                 :class="{
@@ -1998,7 +2085,7 @@ onUnmounted(() => {
           </div>
 
           <div v-for="(time, rowIndex) in times" :key="time" class="row">
-            <div class="time">{{ time }}</div>
+            <div class="time time--weekday">{{ time }}</div>
 
             <template v-for="day in weekdayDays" :key="day">
               <template v-for="daySlot in [getDaySlot(day, rowIndex)]" :key="`${day}-${time}`">
@@ -2046,7 +2133,7 @@ onUnmounted(() => {
 
             <template v-for="saturdaySlot in [getSaturdaySlot(rowIndex)]" :key="`saturday-${time}`">
               <template v-if="saturdaySlot">
-                <div class="time">{{ saturdaySlot.startTime }}</div>
+                <div class="time time--saturday">{{ saturdaySlot.startTime }}</div>
 
                 <div
                     class="cell"
@@ -2106,8 +2193,60 @@ onUnmounted(() => {
           Попробуйте вернуться назад и выбрать другие параметры.
         </p>
       </div>
+    </section>
 
-      <!-- Первое модальное окно (просмотр) -->
+    <div
+        v-if="isMenuVisible && isMobileLayout"
+        class="context-menu-overlay"
+        @click="closeMenu"
+    />
+
+    <ul
+        v-if="isMenuVisible"
+        class="context-menu"
+        :style="contextMenuStyle"
+    >
+      <!-- Если слот пустой -->
+      <template v-if="!contextLesson">
+
+        <li v-if="canManagePairs || (canEdit && isConsultationSchedule)" @click="commandAddLesson">
+          {{ isConsultationSchedule ? 'Добавить консультацию' : 'Добавить пару' }}
+        </li>
+
+      </template>
+
+      <!-- Если есть пара -->
+      <template v-else>
+
+        <li @click="viewLesson">
+          Просмотр
+        </li>
+
+        <li v-if="canManagePairs || canEdit" @click="EditLesson">
+          Внести изменения
+        </li>
+
+        <li v-if="canManagePairs" @click="transferLesson">
+          Перенести пару
+        </li>
+
+        <li v-if="canManagePairs || canEdit" @click="cancelLesson">
+          {{ isConsultationSchedule ? 'Удалить консультацию' : 'Отменить пару' }}
+        </li>
+
+      </template>
+
+      <li @click="closeMenu">
+        Отмена
+      </li>
+    </ul>
+  </PageFrame>
+
+  <Teleport to="body">
+    <div
+        v-if="selectedLesson || (isTransferModalVisible && transferringLesson) || isEditModalVisible"
+        class="schedule-page schedule-modal-host"
+    >
       <div v-if="selectedLesson" class="modal-overlay" @click="closeModal">
         <div class="modal" @click.stop>
           <div class="modal-header-actions">
@@ -2121,7 +2260,6 @@ onUnmounted(() => {
               <img :src="editIcon" alt="Редактировать" />
             </button>
 
-            <!-- Кнопка закрытия -->
             <button class="close-btn-main" type="button" @click="closeModal">✕</button>
           </div>
 
@@ -2179,7 +2317,6 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
-
 
       <div v-if="isTransferModalVisible && transferringLesson" class="modal-overlay" @click="closeTransferModal">
         <div class="modal transfer-modal" @click.stop>
@@ -2283,7 +2420,7 @@ onUnmounted(() => {
                       type="text"
                       class="form-input"
                       placeholder="312 или дист. форм. об."
-                      :readonly="transferForm.building === DISTANCE_BUILDING"
+                      :readonly="isAutoFilledRoomBuilding(transferForm.building)"
                   />
                 </div>
               </div>
@@ -2506,7 +2643,7 @@ onUnmounted(() => {
                       type="text"
                       class="form-input"
                       placeholder="312 или дист. форм. об."
-                      :readonly="isRoomFieldsReadonly || editForm.building === DISTANCE_BUILDING"
+                      :readonly="isRoomFieldsReadonly || isAutoFilledRoomBuilding(editForm.building)"
                   />
                 </div>
               </div>
@@ -2550,46 +2687,6 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
-    </section>
-
-    <ul
-        v-if="isMenuVisible"
-        class="context-menu"
-        :style="contextMenuStyle"
-    >
-      <!-- Если слот пустой -->
-      <template v-if="!contextLesson">
-
-        <li v-if="canManagePairs || (canEdit && isConsultationSchedule)" @click="commandAddLesson">
-          {{ isConsultationSchedule ? 'Добавить консультацию' : 'Добавить пару' }}
-        </li>
-
-      </template>
-
-      <!-- Если есть пара -->
-      <template v-else>
-
-        <li @click="viewLesson">
-          Просмотр
-        </li>
-
-        <li v-if="canManagePairs || canEdit" @click="EditLesson">
-          Внести изменения
-        </li>
-
-        <li v-if="canManagePairs" @click="transferLesson">
-          Перенести пару
-        </li>
-
-        <li v-if="canManagePairs || canEdit" @click="cancelLesson">
-          {{ isConsultationSchedule ? 'Удалить консультацию' : 'Отменить пару' }}
-        </li>
-
-      </template>
-
-      <li @click="closeMenu">
-        Отмена
-      </li>
-    </ul>
-  </PageFrame>
+    </div>
+  </Teleport>
 </template>

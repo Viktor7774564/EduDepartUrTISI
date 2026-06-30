@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
+import { DataSource, DataSourceOptions } from 'typeorm';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+
+import { migrateRoleEnumBeforeSync } from './database/role-enum-migration';
 
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -35,6 +38,20 @@ import { NotificationsModule} from './notifications/notifications.module';
 
                 synchronize: true,
             }),
+
+            dataSourceFactory: async (options) => {
+                if (!options) {
+                    throw new Error('TypeORM data source options are not configured');
+                }
+
+                const dataSourceOptions = options as DataSourceOptions;
+
+                await migrateRoleEnumBeforeSync(dataSourceOptions);
+
+                const dataSource = new DataSource(dataSourceOptions);
+
+                return dataSource.initialize();
+            },
         }),
 
         AuthModule,

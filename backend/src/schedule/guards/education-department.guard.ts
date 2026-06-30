@@ -9,7 +9,7 @@ import {
 import { Request } from 'express';
 
 import { UsersService } from '../../users/users.service';
-import { RoleCode } from '../../users/entities/role.entity';
+import { canManageSchedule } from '../../users/education-department-access';
 
 @Injectable()
 export class EducationDepartmentGuard implements CanActivate {
@@ -30,7 +30,7 @@ export class EducationDepartmentGuard implements CanActivate {
 
         const user = await this.usersService.findByIdWithDetails(userId);
 
-        if (user.role.code !== RoleCode.EDUCATION_DEPARTMENT) {
+        if (!canManageSchedule(user)) {
             throw new ForbiddenException(
                 'Доступ только для сотрудников учебного отдела',
             );

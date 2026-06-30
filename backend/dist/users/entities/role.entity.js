@@ -17,7 +17,7 @@ var RoleCode;
     RoleCode["ADMIN"] = "admin";
     RoleCode["STUDENT"] = "student";
     RoleCode["TEACHER"] = "teacher";
-    RoleCode["EDUCATION_DEPARTMENT"] = "education_department";
+    RoleCode["EMPLOYEE"] = "employee";
 })(RoleCode || (exports.RoleCode = RoleCode = {}));
 let Role = class Role {
     id;

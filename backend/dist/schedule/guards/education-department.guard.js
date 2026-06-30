@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EducationDepartmentGuard = void 0;
 const common_1 = require("@nestjs/common");
 const users_service_1 = require("../../users/users.service");
-const role_entity_1 = require("../../users/entities/role.entity");
+const education_department_access_1 = require("../../users/education-department-access");
 let EducationDepartmentGuard = class EducationDepartmentGuard {
     usersService;
     constructor(usersService) {
@@ -27,7 +27,7 @@ let EducationDepartmentGuard = class EducationDepartmentGuard {
             throw new common_1.UnauthorizedException();
         }
         const user = await this.usersService.findByIdWithDetails(userId);
-        if (user.role.code !== role_entity_1.RoleCode.EDUCATION_DEPARTMENT) {
+        if (!(0, education_department_access_1.canManageSchedule)(user)) {
             throw new common_1.ForbiddenException('Доступ только для сотрудников учебного отдела');
         }
         return true;

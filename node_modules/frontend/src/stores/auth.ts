@@ -7,7 +7,7 @@ import { unregisterPushSubscription } from '@/api/pushNotifications'
 
 const AUTH_STORAGE_KEY = 'edu-depart-auth-user'
 
-export type UserRole = 'admin' | 'student' | 'teacher' | 'education_department'
+export type UserRole = 'admin' | 'student' | 'teacher' | 'employee'
 
 export type AuthUser = {
   id: number
@@ -17,6 +17,7 @@ export type AuthUser = {
   name: string
   patronymic: string
   photoUrl?: string | null
+  canManageSchedule?: boolean
   group?: string
   direction?: string
   educationForm?: string
@@ -42,7 +43,7 @@ export const useAuthStore = defineStore('auth', () => {
       case 'admin': return 'Администратор'
       case 'student': return 'Студент'
       case 'teacher': return 'Преподаватель'
-      case 'education_department': return 'Учебный отдел'
+      case 'employee': return 'Сотрудник'
       default: return ''
     }
   })

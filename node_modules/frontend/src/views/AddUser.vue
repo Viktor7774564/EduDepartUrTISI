@@ -35,11 +35,11 @@ interface UserForm {
   name: string
   patronymic: string
   
-  // Для admin, teacher, education_department
+  // Для admin, teacher, employee
   department?: string
   departmentId?: number
   
-  // Для teacher, education_department
+  // Для teacher, employee
   position?: string
   cabinet?: string
   
@@ -75,7 +75,7 @@ const isSubmitting = ref(false)
 const roleOptions = [
   { value: 'student', label: 'Студент' },
   { value: 'teacher', label: 'Преподаватель' },
-  { value: 'education_department', label: 'Сотрудник учебного отдела' },
+  { value: 'employee', label: 'Сотрудник' },
   { value: 'admin', label: 'Администратор' },
 ]
 
@@ -166,7 +166,7 @@ const validate = (): boolean => {
     }
   }
   
-  if (form.value.role === 'education_department') {
+  if (form.value.role === 'employee') {
     if (!form.value.position?.trim()) {
       errors.value.position = 'Введите должность'
     }
@@ -537,9 +537,9 @@ const resetForm = () => {
             </div>
           </div>
 
-          <!-- Поля для СОТРУДНИКА УЧЕБНОГО ОТДЕЛА -->
-          <div v-if="form.role === 'education_department'" class="form-section">
-            <h2 class="section-title">Данные сотрудника учебного отдела</h2>
+          <!-- Поля для СОТРУДНИКА -->
+          <div v-if="form.role === 'employee'" class="form-section">
+            <h2 class="section-title">Данные сотрудника</h2>
             
             <div class="form-row">
               <div class="form-group">
@@ -584,7 +584,7 @@ const resetForm = () => {
                   type="text"
                   class="form-input"
                   :class="{ error: errors.department }"
-                  placeholder="Например: Учебный отдел"
+                  placeholder="Например: Учебный отдел (для доступа к расписанию)"
                   :disabled="isSubmitting"
                 />
                 <span v-if="errors.department" class="error-message">{{ errors.department }}</span>

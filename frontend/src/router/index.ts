@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import { hasScheduleManageAccess } from '@/utils/educationDepartmentAccess'
 
 const AUTH_STORAGE_KEY = 'edu-depart-auth-user'
 const protectedScheduleTypes = new Set(['teachers', 'auditories', 'consults'])
@@ -127,7 +128,7 @@ router.beforeEach((to) => {
     try {
       const user = JSON.parse(storedUser)
 
-      if (user.role !== 'education_department') {
+      if (!hasScheduleManageAccess(user)) {
         return { name: 'home' }
       }
     } catch {

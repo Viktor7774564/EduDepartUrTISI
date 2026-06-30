@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageFrame from '@/components/PageFrame.vue'
 import { useAuthStore } from '@/stores/auth'
+import { hasScheduleManageAccess } from '@/utils/educationDepartmentAccess'
 import {
   deleteScheduleUpload,
   fetchScheduleUploads,
@@ -35,7 +36,7 @@ const expandedWarningId = ref<number | null>(null)
 const deletingId = ref<number | null>(null)
 
 onMounted(async () => {
-  if (!authStore.isAuthenticated || authStore.currentUser?.role !== 'education_department') {
+  if (!authStore.isAuthenticated || !hasScheduleManageAccess(authStore.currentUser)) {
     await router.replace({ name: 'home' })
     return
   }
@@ -532,6 +533,14 @@ const toggleUploadWarnings = (id: number) => {
   margin-bottom: 4px;
   font-size: 12px;
   color: #355f8c;
+}
+
+.schedule-upload-page .close-btn {
+  width: auto;
+  height: auto;
+  padding: 6px 12px;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 @media (max-width: 900px) {

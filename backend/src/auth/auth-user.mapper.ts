@@ -1,6 +1,7 @@
 import { EducationForm } from '../academic/entities/group.entity';
 import { RoleCode } from '../users/entities/role.entity';
 import { User } from '../users/entities/user.entity';
+import { canManageSchedule } from '../users/education-department-access';
 
 export type AuthUserResponse = {
     id: number;
@@ -10,6 +11,7 @@ export type AuthUserResponse = {
     name: string;
     patronymic: string;
     photoUrl: string | null;
+    canManageSchedule?: boolean;
     group?: string;
     direction?: string;
     educationForm?: string;
@@ -63,6 +65,7 @@ export function mapUserToAuthResponse(user: User): AuthUserResponse {
             position: user.staffProfile.position,
             department: user.staffProfile.department.name,
             cabinet: user.staffProfile.cabinet ?? undefined,
+            canManageSchedule: canManageSchedule(user),
         };
     }
 

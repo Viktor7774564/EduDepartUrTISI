@@ -307,7 +307,7 @@ export class AdminService {
         }
 
         if (
-            dto.role === RoleCode.EDUCATION_DEPARTMENT ||
+            dto.role === RoleCode.EMPLOYEE ||
             dto.role === RoleCode.ADMIN
         ) {
             if (!dto.department?.trim()) {
@@ -317,11 +317,11 @@ export class AdminService {
             }
 
             if (
-                dto.role === RoleCode.EDUCATION_DEPARTMENT &&
+                dto.role === RoleCode.EMPLOYEE &&
                 !dto.position?.trim()
             ) {
                 throw new BadRequestException(
-                    'Для сотрудника учебного отдела нужна должность',
+                    'Для сотрудника нужна должность',
                 );
             }
         }
@@ -341,7 +341,7 @@ export class AdminService {
                 return;
 
             case RoleCode.ADMIN:
-            case RoleCode.EDUCATION_DEPARTMENT:
+            case RoleCode.EMPLOYEE:
                 await this.createStaffProfile(userId, dto);
                 return;
         }
@@ -458,7 +458,7 @@ export class AdminService {
             }
 
             case RoleCode.ADMIN:
-            case RoleCode.EDUCATION_DEPARTMENT: {
+            case RoleCode.EMPLOYEE: {
                 const profile = await this.staffProfileRepository.findOne({
                     where: { userId },
                 });

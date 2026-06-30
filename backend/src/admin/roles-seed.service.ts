@@ -8,7 +8,7 @@ const DEFAULT_ROLES: Array<{ code: RoleCode; name: string }> = [
     { code: RoleCode.ADMIN, name: 'Администратор' },
     { code: RoleCode.STUDENT, name: 'Студент' },
     { code: RoleCode.TEACHER, name: 'Преподаватель' },
-    { code: RoleCode.EDUCATION_DEPARTMENT, name: 'Учебный отдел' },
+    { code: RoleCode.EMPLOYEE, name: 'Сотрудник' },
 ];
 
 @Injectable()
@@ -26,6 +26,9 @@ export class RolesSeedService implements OnModuleInit {
 
             if (!existing) {
                 await this.roleRepository.save(role);
+            } else if (existing.name !== role.name) {
+                existing.name = role.name;
+                await this.roleRepository.save(existing);
             }
         }
     }

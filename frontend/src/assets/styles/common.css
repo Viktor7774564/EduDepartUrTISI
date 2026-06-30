@@ -26,7 +26,8 @@
   @apply relative;
 }
 
-.profile-actions {
+.profile-actions,
+.header-auth {
   @apply justify-self-end flex items-center gap-[12px];
 }
 
@@ -64,6 +65,10 @@
 
 .signin-btn {
   @apply min-w-[120px] h-[40px] bg-[#4ea3d7] border-0 rounded-[10px] text-white cursor-pointer;
+}
+
+.header-auth .signin-link {
+  @apply inline-flex no-underline;
 }
 
 .bottombar {
@@ -200,9 +205,14 @@
     grid-area: brand;
   }
 
-  .profile-actions {
+  .profile-actions,
+  .header-auth {
     grid-area: auth;
     justify-self: end;
+  }
+
+  .header-spacer {
+    display: none;
   }
 
   .menu {
@@ -230,6 +240,10 @@
   .menu,
   .header-spacer {
     display: none;
+  }
+
+  .header-auth {
+    @apply justify-self-end;
   }
 
   .signin-btn {

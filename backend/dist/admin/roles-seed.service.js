@@ -21,7 +21,7 @@ const DEFAULT_ROLES = [
     { code: role_entity_1.RoleCode.ADMIN, name: 'Администратор' },
     { code: role_entity_1.RoleCode.STUDENT, name: 'Студент' },
     { code: role_entity_1.RoleCode.TEACHER, name: 'Преподаватель' },
-    { code: role_entity_1.RoleCode.EDUCATION_DEPARTMENT, name: 'Учебный отдел' },
+    { code: role_entity_1.RoleCode.EMPLOYEE, name: 'Сотрудник' },
 ];
 let RolesSeedService = class RolesSeedService {
     roleRepository;
@@ -35,6 +35,10 @@ let RolesSeedService = class RolesSeedService {
             });
             if (!existing) {
                 await this.roleRepository.save(role);
+            }
+            else if (existing.name !== role.name) {
+                existing.name = role.name;
+                await this.roleRepository.save(existing);
             }
         }
     }

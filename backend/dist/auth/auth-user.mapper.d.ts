@@ -8,6 +8,7 @@ export type AuthUserResponse = {
     name: string;
     patronymic: string;
     photoUrl: string | null;
+    canManageSchedule?: boolean;
     group?: string;
     direction?: string;
     educationForm?: string;

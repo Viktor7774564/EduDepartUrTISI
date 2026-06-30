@@ -5,7 +5,7 @@ export enum RoleCode {
     ADMIN = 'admin',
     STUDENT = 'student',
     TEACHER = 'teacher',
-    EDUCATION_DEPARTMENT = 'education_department',
+    EMPLOYEE = 'employee',
 }
 
 @Entity('roles')

@@ -33,7 +33,7 @@ const getRoleLabel = (role: UserRole): string => {
     admin: 'Администратор',
     student: 'Студент',
     teacher: 'Преподаватель',
-    education_department: 'Учебный отдел',
+    employee: 'Сотрудник',
   }
   return labels[role]
 }

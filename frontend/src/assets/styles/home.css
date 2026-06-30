@@ -11,12 +11,16 @@
 }
 
 .cards-grid {
-  @apply grid grid-cols-2 gap-y-[9vh] gap-x-[37vh] justify-self-center;
-  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  @apply grid mx-auto max-w-full;
+  grid-template-columns: repeat(2, 38vh);
+  column-gap: 37vh;
+  row-gap: 9vh;
+  width: fit-content;
 }
 
 .menu-card {
-  @apply relative overflow-hidden w-[38vh] min-h-[168px] grid place-content-center gap-[13px] rounded-[18px] border border-[#c8c8c8] bg-[#dcdcdc] shadow-[0_7px_10px_rgb(0_0_0_/20%)] text-center no-underline text-inherit transition-[transform,box-shadow,background-color,color] duration-[250ms] ease-in-out;
+  @apply relative box-border overflow-hidden w-full min-h-[168px] grid place-content-center gap-[13px] rounded-[18px] border border-[#c8c8c8] bg-[#dcdcdc] text-center no-underline text-inherit transition-[transform,box-shadow,background-color,color] duration-[250ms] ease-in-out;
+  box-shadow: 0 7px 10px rgba(0, 0, 0, 0.2);
 }
 
 .menu-card::before {
@@ -31,7 +35,7 @@
 .menu-card:hover {
   @apply bg-white text-[#101215];
   transform: translateY(-6px);
-  box-shadow: 0 14px 28px rgb(0 0 0 / 22%);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
 }
 
 .menu-card:hover::before {
@@ -60,8 +64,8 @@
   }
 
   .cards-grid {
+    @apply max-w-none gap-[20px];
     grid-template-columns: 1fr;
-    gap: 20px;
   }
 
   .menu-card {

@@ -34,13 +34,8 @@ const isLoadingOptions = ref(false)
 
 const studentFacultyOptions = [
   { label: 'СПО', value: 'СПО' },
-  {
-    label: 'Факультет',
-    options: [
-      { label: 'ФИИиУ', value: 'ФИИиУ' },
-      { label: 'ФНО', value: 'ФНО' },
-    ],
-  },
+  { label: 'ФИИиУ', value: 'ФИИиУ' },
+  { label: 'ФНО', value: 'ФНО' },
   { label: 'Магистратура', value: 'Магистратура' },
   { label: 'Аспирантура', value: 'Аспирантура' },
 ]
