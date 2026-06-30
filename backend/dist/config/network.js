@@ -1,31 +1,70 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isLocalNetworkOrigin = isLocalNetworkOrigin;
+exports.isAllowedCorsOrigin = isAllowedCorsOrigin;
 exports.getLocalIpAddresses = getLocalIpAddresses;
 const node_os_1 = require("node:os");
+const NGROK_HOST_SUFFIXES = [
+    '.ngrok-free.dev',
+    '.ngrok-free.app',
+    '.ngrok.io',
+    '.ngrok.app',
+];
+function parseOriginHostname(origin) {
+    try {
+        return new URL(origin).hostname;
+    }
+    catch {
+        return null;
+    }
+}
+function isNgrokHostname(hostname) {
+    return NGROK_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
+}
+function getExtraAllowedOrigins() {
+    const raw = process.env.CORS_EXTRA_ORIGINS?.trim();
+    if (!raw) {
+        return [];
+    }
+    return raw
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+}
 function isLocalNetworkOrigin(origin) {
     if (!origin) {
         return true;
     }
-    try {
-        const { hostname } = new URL(origin);
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            return true;
-        }
-        if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
-            return true;
-        }
-        if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
-            return true;
-        }
-        if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
-            return true;
-        }
+    const hostname = parseOriginHostname(origin);
+    if (!hostname) {
         return false;
     }
-    catch {
-        return false;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return true;
     }
+    if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+        return true;
+    }
+    if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+        return true;
+    }
+    if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+        return true;
+    }
+    return false;
+}
+function isAllowedCorsOrigin(origin) {
+    if (!origin) {
+        return true;
+    }
+    if (isLocalNetworkOrigin(origin)) {
+        return true;
+    }
+    const hostname = parseOriginHostname(origin);
+    if (hostname && isNgrokHostname(hostname)) {
+        return true;
+    }
+    return getExtraAllowedOrigins().includes(origin);
 }
 function getLocalIpAddresses() {
     const interfaces = (0, node_os_1.networkInterfaces)();

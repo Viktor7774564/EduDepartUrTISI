@@ -7,6 +7,7 @@ import {
     ParseIntPipe,
     Patch,
     Post,
+    Query,
     Req,
     UseGuards,
 } from '@nestjs/common';
@@ -46,6 +47,23 @@ export class NotificationsController {
             publicKey: this.pushNotificationsService.getPublicKey(),
             enabled: this.pushNotificationsService.isEnabled(),
         };
+    }
+
+    @Get('push/status')
+    async getPushStatus(
+        @Req() request: AuthRequest,
+        @Query('endpoint') endpoint?: string,
+    ): Promise<{ subscribed: boolean }> {
+        if (!endpoint?.trim()) {
+            return { subscribed: false };
+        }
+
+        const subscribed = await this.pushSubscriptionsService.isSubscribed(
+            this.getUserId(request),
+            endpoint.trim(),
+        );
+
+        return { subscribed };
     }
 
     @Post('push/subscribe')

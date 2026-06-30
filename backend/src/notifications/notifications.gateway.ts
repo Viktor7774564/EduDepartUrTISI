@@ -10,7 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Server, Socket } from 'socket.io';
 
-import { isLocalNetworkOrigin } from '../config/network';
+import { isAllowedCorsOrigin } from '../config/network';
 import { Notification } from './notification.entity';
 
 @Injectable()
@@ -18,7 +18,7 @@ import { Notification } from './notification.entity';
     namespace: '/notifications/live',
     cors: {
         origin: (origin, callback) => {
-            if (isLocalNetworkOrigin(origin)) {
+            if (isAllowedCorsOrigin(origin)) {
                 callback(null, true);
                 return;
             }

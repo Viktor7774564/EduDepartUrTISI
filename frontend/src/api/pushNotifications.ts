@@ -5,6 +5,10 @@ type VapidPublicKeyResponse = {
   enabled: boolean
 }
 
+type PushServerStatusResponse = {
+  subscribed: boolean
+}
+
 export type PushBlockReason =
   | 'ok'
   | 'insecure'
@@ -18,14 +22,13 @@ export type PushSubscriptionStatus = {
   serverEnabled: boolean
   permission: NotificationPermission | 'unsupported'
   subscribed: boolean
+  browserSubscribed: boolean
 }
 
 export type PushActionResult = {
   success: boolean
   message?: string
 }
-
-let registeredEndpoint: string | null = null
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -47,6 +50,10 @@ function hasPushApi(): boolean {
 
   return 'ServiceWorkerRegistration' in window
     && 'pushManager' in ServiceWorkerRegistration.prototype
+}
+
+function hasAccessToken(): boolean {
+  return Boolean(localStorage.getItem('access_token'))
 }
 
 export function getPushAvailability(): Pick<PushSubscriptionStatus, 'supported' | 'blockReason' | 'hint'> {
@@ -107,6 +114,95 @@ async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration
   return navigator.serviceWorker.register('/sw.js')
 }
 
+async function getBrowserPushSubscription(): Promise<PushSubscription | null> {
+  const registration = await getServiceWorkerRegistration()
+
+  if (!registration) {
+    return null
+  }
+
+  await registration.ready
+
+  return registration.pushManager.getSubscription()
+}
+
+async function isSubscribedOnServer(endpoint: string): Promise<boolean> {
+  if (!hasAccessToken()) {
+    return false
+  }
+
+  try {
+    const response = await api.get<PushServerStatusResponse>('/notifications/push/status', {
+      params: { endpoint },
+    })
+
+    return response.data.subscribed
+  } catch {
+    return false
+  }
+}
+
+async function syncSubscriptionWithServer(subscription: PushSubscription): Promise<void> {
+  const json = subscription.toJSON()
+
+  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+    throw new Error('Invalid push subscription')
+  }
+
+  await api.post('/notifications/push/subscribe', {
+    endpoint: json.endpoint,
+    p256dh: json.keys.p256dh,
+    auth: json.keys.auth,
+  })
+}
+
+async function createBrowserPushSubscription(publicKey: string): Promise<PushSubscription> {
+  const registration = await getServiceWorkerRegistration()
+
+  if (!registration) {
+    throw new Error('Service worker is not available')
+  }
+
+  await registration.ready
+
+  let subscription = await registration.pushManager.getSubscription()
+
+  if (subscription) {
+    return subscription
+  }
+
+  if (Notification.permission === 'denied') {
+    throw new Error('denied')
+  }
+
+  if (Notification.permission !== 'granted') {
+    const permission = await Notification.requestPermission()
+
+    if (permission === 'denied') {
+      throw new Error('denied')
+    }
+
+    if (permission !== 'granted') {
+      throw new Error('not-granted')
+    }
+  }
+
+  try {
+    return await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    })
+  } catch {
+    const staleSubscription = await registration.pushManager.getSubscription()
+    await staleSubscription?.unsubscribe()
+
+    return registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    })
+  }
+}
+
 export async function getPushSubscriptionStatus(): Promise<PushSubscriptionStatus> {
   const availability = getPushAvailability()
 
@@ -116,6 +212,7 @@ export async function getPushSubscriptionStatus(): Promise<PushSubscriptionStatu
       serverEnabled: false,
       permission: 'unsupported',
       subscribed: false,
+      browserSubscribed: false,
     }
   }
 
@@ -124,12 +221,12 @@ export async function getPushSubscriptionStatus(): Promise<PushSubscriptionStatu
       .get<VapidPublicKeyResponse>('/notifications/push/vapid-public-key')
       .then((response) => response.data)
 
-    const registration = await getServiceWorkerRegistration()
-    await registration?.ready
-    const subscription = await registration?.pushManager.getSubscription()
+    const browserSubscription = await getBrowserPushSubscription()
+    const browserSubscribed = Boolean(browserSubscription)
+    let subscribed = false
 
-    if (subscription?.endpoint) {
-      registeredEndpoint = subscription.endpoint
+    if (browserSubscription?.endpoint) {
+      subscribed = await isSubscribedOnServer(browserSubscription.endpoint)
     }
 
     return {
@@ -138,7 +235,8 @@ export async function getPushSubscriptionStatus(): Promise<PushSubscriptionStatu
       hint: '',
       serverEnabled: enabled,
       permission: Notification.permission,
-      subscribed: Boolean(subscription),
+      subscribed,
+      browserSubscribed,
     }
   } catch {
     return {
@@ -148,6 +246,7 @@ export async function getPushSubscriptionStatus(): Promise<PushSubscriptionStatu
       serverEnabled: false,
       permission: Notification.permission,
       subscribed: false,
+      browserSubscribed: false,
     }
   }
 }
@@ -159,6 +258,13 @@ export async function registerPushSubscription(): Promise<PushActionResult> {
     return {
       success: false,
       message: availability.hint,
+    }
+  }
+
+  if (!hasAccessToken()) {
+    return {
+      success: false,
+      message: 'Войдите в аккаунт, чтобы включить push-уведомления.',
     }
   }
 
@@ -174,66 +280,30 @@ export async function registerPushSubscription(): Promise<PushActionResult> {
       }
     }
 
-    const registration = await getServiceWorkerRegistration()
+    const subscription = await createBrowserPushSubscription(publicKey)
+    await syncSubscriptionWithServer(subscription)
 
-    if (!registration) {
-      return {
-        success: false,
-        message: 'Не удалось зарегистрировать service worker.',
-      }
+    return {
+      success: true,
+      message: 'Push-уведомления включены.',
     }
-
-    await registration.ready
-
-    let subscription = await registration.pushManager.getSubscription()
-
-    if (!subscription) {
-      const permission = await Notification.requestPermission()
-
-      if (permission === 'denied') {
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      if (error.message === 'denied') {
         return {
           success: false,
           message: 'Разрешите уведомления в настройках браузера.',
         }
       }
 
-      if (permission !== 'granted') {
+      if (error.message === 'not-granted') {
         return {
           success: false,
           message: 'Разрешение на уведомления не получено.',
         }
       }
-
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-      })
     }
 
-    const json = subscription.toJSON()
-
-    if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) {
-      return {
-        success: false,
-        message: 'Не удалось создать подписку на уведомления.',
-      }
-    }
-
-    if (registeredEndpoint !== json.endpoint) {
-      await api.post('/notifications/push/subscribe', {
-        endpoint: json.endpoint,
-        p256dh: json.keys.p256dh,
-        auth: json.keys.auth,
-      })
-    }
-
-    registeredEndpoint = json.endpoint
-
-    return {
-      success: true,
-      message: 'Push-уведомления включены.',
-    }
-  } catch {
     return {
       success: false,
       message: 'Не удалось включить push-уведомления.',
@@ -242,31 +312,29 @@ export async function registerPushSubscription(): Promise<PushActionResult> {
 }
 
 export async function unregisterPushSubscription(): Promise<PushActionResult> {
-  registeredEndpoint = null
-
   if (!isPushSupported()) {
-    return { success: true }
+    return {
+      success: true,
+      message: 'Push-уведомления выключены.',
+    }
   }
 
   try {
-    const registration = await navigator.serviceWorker.getRegistration('/sw.js')
-    const subscription = await registration?.pushManager.getSubscription()
+    const subscription = await getBrowserPushSubscription()
+    const endpoint = subscription?.endpoint
 
-    if (!subscription) {
-      return {
-        success: true,
-        message: 'Push-уведомления уже выключены.',
+    if (endpoint && hasAccessToken()) {
+      try {
+        await api.delete('/notifications/push/unsubscribe', {
+          data: { endpoint },
+        })
+      } catch {
+        // Если сервер недоступен, всё равно отключаем подписку в браузере.
       }
     }
 
-    const endpoint = subscription.endpoint
-
-    await subscription.unsubscribe()
-
-    if (endpoint) {
-      await api.delete('/notifications/push/unsubscribe', {
-        data: { endpoint },
-      })
+    if (subscription) {
+      await subscription.unsubscribe()
     }
 
     return {

@@ -59,7 +59,7 @@ exports.ScheduleGateway = ScheduleGateway = ScheduleGateway_1 = __decorate([
         namespace: `/schedules/live`,
         cors: {
             origin: (origin, callback) => {
-                if (!origin || (0, network_1.isLocalNetworkOrigin)(origin)) {
+                if (!origin || (0, network_1.isAllowedCorsOrigin)(origin)) {
                     callback(null, true);
                     return;
                 }

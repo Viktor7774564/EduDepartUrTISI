@@ -27,6 +27,11 @@ let PushSubscriptionsService = class PushSubscriptionsService {
             where: { userId },
         });
     }
+    findByUserAndEndpoint(userId, endpoint) {
+        return this.pushSubscriptionsRepository.findOne({
+            where: { userId, endpoint },
+        });
+    }
     async subscribe(userId, dto) {
         const existing = await this.pushSubscriptionsRepository.findOne({
             where: { endpoint: dto.endpoint },
@@ -47,6 +52,10 @@ let PushSubscriptionsService = class PushSubscriptionsService {
     }
     async unsubscribe(userId, endpoint) {
         await this.pushSubscriptionsRepository.delete({ userId, endpoint });
+    }
+    async isSubscribed(userId, endpoint) {
+        const subscription = await this.findByUserAndEndpoint(userId, endpoint);
+        return Boolean(subscription);
     }
     async removeById(id) {
         await this.pushSubscriptionsRepository.delete({ id });

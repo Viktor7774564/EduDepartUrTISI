@@ -18,6 +18,12 @@ export class PushSubscriptionsService {
         });
     }
 
+    findByUserAndEndpoint(userId: number, endpoint: string): Promise<PushSubscription | null> {
+        return this.pushSubscriptionsRepository.findOne({
+            where: { userId, endpoint },
+        });
+    }
+
     async subscribe(userId: number, dto: PushSubscriptionDto): Promise<void> {
         const existing = await this.pushSubscriptionsRepository.findOne({
             where: { endpoint: dto.endpoint },
@@ -43,6 +49,12 @@ export class PushSubscriptionsService {
 
     async unsubscribe(userId: number, endpoint: string): Promise<void> {
         await this.pushSubscriptionsRepository.delete({ userId, endpoint });
+    }
+
+    async isSubscribed(userId: number, endpoint: string): Promise<boolean> {
+        const subscription = await this.findByUserAndEndpoint(userId, endpoint);
+
+        return Boolean(subscription);
     }
 
     async removeById(id: number): Promise<void> {

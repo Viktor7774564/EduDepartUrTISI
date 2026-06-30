@@ -37,6 +37,13 @@ let NotificationsController = class NotificationsController {
             enabled: this.pushNotificationsService.isEnabled(),
         };
     }
+    async getPushStatus(request, endpoint) {
+        if (!endpoint?.trim()) {
+            return { subscribed: false };
+        }
+        const subscribed = await this.pushSubscriptionsService.isSubscribed(this.getUserId(request), endpoint.trim());
+        return { subscribed };
+    }
     subscribe(request, dto) {
         return this.pushSubscriptionsService.subscribe(this.getUserId(request), dto);
     }
@@ -67,6 +74,14 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Object)
 ], NotificationsController.prototype, "getVapidPublicKey", null);
+__decorate([
+    (0, common_1.Get)('push/status'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Query)('endpoint')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], NotificationsController.prototype, "getPushStatus", null);
 __decorate([
     (0, common_1.Post)('push/subscribe'),
     __param(0, (0, common_1.Req)()),

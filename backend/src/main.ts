@@ -6,7 +6,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import {
     getLocalIpAddresses,
-    isLocalNetworkOrigin,
+    isAllowedCorsOrigin,
 } from './config/network';
 import { getStorageRoot } from './config/storage';
 
@@ -29,7 +29,7 @@ const bootstrap = async () => {
         origin: string | undefined,
         callback: (error: Error | null, allow?: boolean) => void,
     ) => {
-      if (isLocalNetworkOrigin(origin)) {
+      if (isAllowedCorsOrigin(origin)) {
         callback(null, true);
         return;
       }

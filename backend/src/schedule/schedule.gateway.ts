@@ -7,7 +7,7 @@ import {
 } from "@nestjs/websockets";
 import {Injectable, Logger} from "@nestjs/common";
 import {Server, Socket} from "socket.io";
-import {isLocalNetworkOrigin} from "../config/network";
+import {isAllowedCorsOrigin} from "../config/network";
 
 export type ScheduleChangedPayload = {
     reason:
@@ -23,7 +23,7 @@ export type ScheduleChangedPayload = {
     namespace: `/schedules/live`,
     cors: {
         origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-            if (!origin || isLocalNetworkOrigin(origin)) {
+            if (!origin || isAllowedCorsOrigin(origin)) {
                 callback(null, true);
                 return;
             }

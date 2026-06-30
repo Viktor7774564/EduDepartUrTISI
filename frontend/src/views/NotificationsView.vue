@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   getPushSubscriptionStatus,
   registerPushSubscription,
@@ -36,6 +36,10 @@ const pushStatusText = computed(() => {
     return 'Push-уведомления включены. Вы будете получать оповещения даже при закрытой вкладке.'
   }
 
+  if (pushStatus.value.browserSubscribed) {
+    return 'Подписка в браузере есть, но на сервере она не активна. Нажмите «Включить», чтобы синхронизировать.'
+  }
+
   return 'Push-уведомления выключены. Нажмите «Включить», чтобы получать оповещения при закрытой вкладке.'
 })
 
@@ -51,7 +55,11 @@ const canEnablePush = computed(() => {
 })
 
 const canDisablePush = computed(() => {
-  return Boolean(pushStatus.value?.subscribed)
+  if (!pushStatus.value) {
+    return false
+  }
+
+  return pushStatus.value.subscribed || pushStatus.value.browserSubscribed
 })
 
 async function refreshPushStatus() {
@@ -84,9 +92,20 @@ async function disablePushNotifications() {
   isPushActionLoading.value = false
 }
 
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    void refreshPushStatus()
+  }
+}
+
 onMounted(() => {
   void notificationsStore.loadNotifications()
   void refreshPushStatus()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 

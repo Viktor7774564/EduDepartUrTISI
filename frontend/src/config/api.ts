@@ -1,5 +1,20 @@
 const DEFAULT_API_PORT = '3000'
 
+const NGROK_HOST_SUFFIXES = [
+  '.ngrok-free.dev',
+  '.ngrok-free.app',
+  '.ngrok.io',
+  '.ngrok.app',
+]
+
+function shouldUseSameOriginApi(hostname: string): boolean {
+  if (import.meta.env.VITE_USE_PROXY === 'true') {
+    return true
+  }
+
+  return NGROK_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix))
+}
+
 export function getApiBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_API_URL?.trim()
 
@@ -8,7 +23,13 @@ export function getApiBaseUrl(): string {
   }
 
   if (typeof window !== 'undefined') {
-    return `http://${window.location.hostname}:${DEFAULT_API_PORT}`
+    const { hostname, origin } = window.location
+
+    if (shouldUseSameOriginApi(hostname)) {
+      return origin
+    }
+
+    return `http://${hostname}:${DEFAULT_API_PORT}`
   }
 
   return `http://localhost:${DEFAULT_API_PORT}`

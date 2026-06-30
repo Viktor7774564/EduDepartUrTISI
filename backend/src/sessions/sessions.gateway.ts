@@ -13,7 +13,7 @@ import { Server, Socket } from 'socket.io';
 
 import { UsersService } from '../users/users.service';
 import { RoleCode } from '../users/entities/role.entity';
-import { isLocalNetworkOrigin } from '../config/network';
+import { isAllowedCorsOrigin } from '../config/network';
 import { SessionsService } from './sessions.service';
 import {
     AdminSessionResponse,
@@ -25,7 +25,7 @@ import {
     namespace: '/admin/sessions',
     cors: {
         origin: (origin, callback) => {
-            if (isLocalNetworkOrigin(origin)) {
+            if (isAllowedCorsOrigin(origin)) {
                 callback(null, true);
                 return;
             }

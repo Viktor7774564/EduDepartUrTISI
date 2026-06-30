@@ -20,6 +20,9 @@ export declare class NotificationsController {
         publicKey: string | null;
         enabled: boolean;
     };
+    getPushStatus(request: AuthRequest, endpoint?: string): Promise<{
+        subscribed: boolean;
+    }>;
     subscribe(request: AuthRequest, dto: PushSubscriptionDto): Promise<void>;
     unsubscribe(request: AuthRequest, dto: UnsubscribePushDto): Promise<void>;
     markAsRead(request: AuthRequest, id: number): Promise<void>;

@@ -103,7 +103,7 @@ exports.SessionsGateway = SessionsGateway = SessionsGateway_1 = __decorate([
         namespace: '/admin/sessions',
         cors: {
             origin: (origin, callback) => {
-                if ((0, network_1.isLocalNetworkOrigin)(origin)) {
+                if ((0, network_1.isAllowedCorsOrigin)(origin)) {
                     callback(null, true);
                     return;
                 }
