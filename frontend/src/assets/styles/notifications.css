@@ -43,6 +43,10 @@
   @apply border-[#4ea3d7] bg-[rgba(232,244,255,0.88)] shadow-[0_10px_24px_rgba(78,163,215,0.12)];
 }
 
+.notification-card.highlighted {
+  @apply border-[#4ea3d7] shadow-[0_0_0_3px_rgba(78,163,215,0.28)];
+}
+
 .notification-card__content {
   @apply min-w-0 flex-1;
 }

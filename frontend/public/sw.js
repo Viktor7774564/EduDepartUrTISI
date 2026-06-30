@@ -27,16 +27,44 @@ self.addEventListener('push', (event) => {
   )
 })
 
+function buildNotificationTargetPath(data) {
+  const notificationId = data?.notificationId
+  let targetPath = data?.url ?? '/notifications'
+
+  if (!notificationId) {
+    return targetPath
+  }
+
+  const url = new URL(targetPath, self.location.origin)
+
+  if (!url.searchParams.has('id')) {
+    url.searchParams.set('id', String(notificationId))
+  }
+
+  return `${url.pathname}${url.search}`
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
 
-  const targetPath = event.notification.data?.url ?? '/notifications'
+  const data = event.notification.data ?? {}
+  const targetPath = buildNotificationTargetPath(data)
   const targetUrl = new URL(targetPath, self.location.origin).href
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+        if (!client.url.startsWith(self.location.origin)) {
+          continue
+        }
+
+        client.postMessage({
+          type: 'notification-click',
+          url: targetPath,
+          notificationId: data.notificationId ?? null,
+        })
+
+        if ('focus' in client) {
           return client.focus()
         }
       }

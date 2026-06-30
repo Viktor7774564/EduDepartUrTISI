@@ -54,8 +54,8 @@ export class PushNotificationsService implements OnModuleInit {
             body: notification.message,
             data: {
                 notificationId: notification.id,
-                url: '/notifications',
                 ...(notification.payload ?? {}),
+                url: `/notifications?id=${notification.id}`,
             },
         });
 
