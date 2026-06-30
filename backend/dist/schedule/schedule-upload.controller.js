@@ -24,21 +24,22 @@ let ScheduleUploadController = class ScheduleUploadController {
     constructor(scheduleUploadService) {
         this.scheduleUploadService = scheduleUploadService;
     }
-    listUploads() {
-        return this.scheduleUploadService.listUploads();
+    listUploads(req) {
+        return this.scheduleUploadService.listUploads(req.user.sub);
     }
     uploadSchedule(req, file) {
         return this.scheduleUploadService.uploadSchedule(req.user.sub, req.body?.scheduleType, req.body?.groupName, req.body?.facultyName, file);
     }
-    deleteUpload(id) {
-        return this.scheduleUploadService.deleteUpload(id);
+    deleteUpload(req, id) {
+        return this.scheduleUploadService.deleteUpload(id, req.user.sub);
     }
 };
 exports.ScheduleUploadController = ScheduleUploadController;
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], ScheduleUploadController.prototype, "listUploads", null);
 __decorate([
@@ -55,9 +56,10 @@ __decorate([
 ], ScheduleUploadController.prototype, "uploadSchedule", null);
 __decorate([
     (0, common_1.Delete)(':id'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [Object, Number]),
     __metadata("design:returntype", void 0)
 ], ScheduleUploadController.prototype, "deleteUpload", null);
 exports.ScheduleUploadController = ScheduleUploadController = __decorate([

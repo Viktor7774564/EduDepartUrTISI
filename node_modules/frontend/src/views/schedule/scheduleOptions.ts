@@ -10,6 +10,7 @@ export interface DisplayScheduleItem {
   type: string
   room: string
   group: string
+  linkedGroups?: string[]
   subgroup?: number | null
   isSameCellParallel?: boolean
   comment?: string | null
@@ -323,6 +324,48 @@ export function isSpecialLessonType(type: string): boolean {
     || value.includes('куратор')
     || value.includes('субботник')
     || value.includes('суббот')
+}
+
+export function isLectureLessonType(type: string): boolean {
+  return type.trim().toLowerCase().includes('лек')
+}
+
+export function isMultiGroupLessonType(type: string): boolean {
+  return isLectureLessonType(type) || isSpecialLessonType(type)
+}
+
+export function parseGroupNames(raw: string): string[] {
+  const seen = new Set<string>()
+  const groupNames: string[] = []
+
+  for (const part of raw.split(/[,;]/)) {
+    const trimmed = part.trim()
+
+    if (!trimmed) {
+      continue
+    }
+
+    const normalized = trimmed.toUpperCase()
+
+    if (seen.has(normalized)) {
+      continue
+    }
+
+    seen.add(normalized)
+    groupNames.push(trimmed)
+  }
+
+  return groupNames
+}
+
+export function resolveLessonGroups(
+  lesson: Pick<DisplayScheduleItem, 'group' | 'linkedGroups'>,
+): string[] {
+  if (lesson.linkedGroups?.length) {
+    return [...lesson.linkedGroups]
+  }
+
+  return lesson.group ? [lesson.group] : []
 }
 
 export function normalizeLessonTypeForForm(type: string): string {

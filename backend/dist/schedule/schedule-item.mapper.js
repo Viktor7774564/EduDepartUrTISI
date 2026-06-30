@@ -45,8 +45,11 @@ function resolveTeacherName(item) {
 function formatTime(value) {
     return value.slice(0, 5);
 }
-function mapItemToDisplayLesson(item) {
+function mapItemToDisplayLesson(item, linkedGroups) {
     const groupName = item.schedule?.group?.name ?? '';
+    const resolvedLinkedGroups = linkedGroups?.length
+        ? linkedGroups
+        : (groupName ? [groupName] : []);
     return {
         id: item.id,
         day: DAY_LABELS[item.dayOfWeek] ?? '',
@@ -57,6 +60,7 @@ function mapItemToDisplayLesson(item) {
         type: item.lessonType.name,
         room: formatRoomLabel(item.room),
         group: groupName,
+        linkedGroups: resolvedLinkedGroups,
         subgroup: item.subgroup?.number ?? null,
         isSameCellParallel: item.isSameCellParallel,
         comment: item.comment,

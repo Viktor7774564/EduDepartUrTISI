@@ -28,9 +28,15 @@ import {
 } from './schedule-item.mapper';
 import { normalizeWeekStart } from './parser/schedule-slot.utils';
 import {
+    assertParallelGroupSet,
+    parseGroupNames,
+} from './parser/group-parallel.utils';
+import {
     ScheduleLessonSlot,
     validateScheduleConflicts,
 } from './parser/schedule-conflict.validator';
+import { LessonTypeCode } from './entities/lesson-type.entity';
+import { LinkedLessonService } from './linked-lesson.service';
 import { LessonTypeResolver } from './resolver/lesson-type.resolver';
 import { RoomResolver } from './resolver/room.resolver';
 import { TeacherResolver } from './resolver/teacher.resolver';
@@ -128,6 +134,7 @@ export class ScheduleAdminService {
         private readonly lessonTypeResolver: LessonTypeResolver,
         private readonly scheduleNotifier: ScheduleNotifierService,
         private readonly notificationsService: NotificationsService,
+        private readonly linkedLessonService: LinkedLessonService,
     ) {}
 
     private toDate(value: string): string {
@@ -364,9 +371,11 @@ export class ScheduleAdminService {
             comment?: string | null;
         },
         groupId: number,
+        resolvedLessonType?: Awaited<ReturnType<LessonTypeResolver['resolve']>>,
     ): Promise<void> {
         const subject = await this.findOrCreateSubject(slot.subject);
-        const lessonType = await this.lessonTypeResolver.resolve(slot.lessonType);
+        const lessonType = resolvedLessonType
+            ?? await this.lessonTypeResolver.resolve(slot.lessonType);
         const room = slot.room?.trim()
             ? await this.roomResolver.resolve(slot.room)
             : null;
@@ -411,7 +420,7 @@ export class ScheduleAdminService {
         }
     }
 
-    private async loadActiveLessonSlots(excludeItemId?: number) {
+    private async loadActiveLessonSlots(excludeItemIds: number[] = []) {
         const query = this.itemsRepository
             .createQueryBuilder('item')
             .innerJoinAndSelect('item.schedule', 'schedule')
@@ -423,8 +432,8 @@ export class ScheduleAdminService {
             .leftJoinAndSelect('item.room', 'room')
             .where('item.isDisabled = false');
 
-        if (excludeItemId) {
-            query.andWhere('item.id != :excludeItemId', { excludeItemId });
+        if (excludeItemIds.length > 0) {
+            query.andWhere('item.id NOT IN (:...excludeItemIds)', { excludeItemIds });
         }
 
         const items = await query.getMany();
@@ -434,9 +443,9 @@ export class ScheduleAdminService {
 
     private async assertNoConflicts(
         candidate: ScheduleItem,
-        excludeItemId?: number,
+        excludeItemIds: number[] = [],
     ): Promise<void> {
-        const existingLessons = await this.loadActiveLessonSlots(excludeItemId);
+        const existingLessons = await this.loadActiveLessonSlots(excludeItemIds);
         const candidateSlot = mapItemToLessonSlot(candidate);
         const conflicts = validateScheduleConflicts([candidateSlot], existingLessons);
 
@@ -448,6 +457,36 @@ export class ScheduleAdminService {
             message: 'Невозможно сохранить: обнаружен конфликт в расписании',
             errors: conflicts.map((conflict) => conflict.message),
         });
+    }
+
+    private async findLinkedLectureItems(item: ScheduleItem): Promise<ScheduleItem[]> {
+        return this.linkedLessonService.findLinkedSharedLessonItems(item);
+    }
+
+    private buildUpdateSlotFields(
+        item: ScheduleItem,
+        dto: UpdateScheduleItemDto,
+    ) {
+        return {
+            subject: dto.subject?.trim() ?? item.subject.name,
+            lessonType: dto.lessonType?.trim() ?? item.lessonType.name,
+            teacherName: dto.teacherName !== undefined
+                ? dto.teacherName.trim()
+                : resolveTeacherName(item),
+            room: dto.room !== undefined
+                ? dto.room.trim()
+                : formatRoomLabel(item.room),
+            subgroup: dto.subgroup !== undefined
+                ? dto.subgroup
+                : (item.subgroup?.number ?? null),
+            dayOfWeek: dto.dayOfWeek ?? item.dayOfWeek,
+            startTime: dto.startTime ?? item.startTime,
+            endTime: dto.endTime ?? item.endTime,
+            weekStart: dto.weekStart ?? normalizeWeekStart(String(item.weekStart)),
+            comment: dto.comment !== undefined
+                ? (dto.comment?.trim() || null)
+                : undefined,
+        };
     }
 
     private parseRecommendationDate(weekStart: string, dayOfWeek: number): Date | null {
@@ -739,7 +778,11 @@ export class ScheduleAdminService {
         weekStart?: string,
     ): Promise<ScheduleTransferRecommendationDto[]> {
         const item = await this.loadItemWithRelations(id);
-        const sourceSlot = mapItemToLessonSlot(item);
+        const linkedItems = await this.findLinkedLectureItems(item);
+        const linkedItemIds = linkedItems.map((entry) => entry.id);
+        const linkedSlots = linkedItems.map((entry) => mapItemToLessonSlot(entry));
+        const sourceSlot = linkedSlots.find((slot) => slot.groupName === item.schedule.group?.name)
+            ?? mapItemToLessonSlot(item);
         const targetWeekStart = normalizeWeekStart(
             weekStart ? this.toDate(weekStart) : String(item.weekStart),
         );
@@ -748,7 +791,7 @@ export class ScheduleAdminService {
             return [];
         }
 
-        const existingLessons = await this.loadActiveLessonSlots(id);
+        const existingLessons = await this.loadActiveLessonSlots(linkedItemIds);
         const preholidayDayKeys = await this.loadPreholidayDayKeys(targetWeekStart);
         const recommendations: ScoredTransferRecommendation[] = [];
 
@@ -766,26 +809,34 @@ export class ScheduleAdminService {
                 dayOfWeek,
                 preholidayDayKeys,
             )) {
-                const candidate = this.buildCandidateSlot(
-                    sourceSlot,
+                const candidates = linkedSlots.map((linkedSlot) => this.buildCandidateSlot(
+                    linkedSlot,
                     targetWeekStart,
                     dayOfWeek,
                     slot.startTime,
                     slot.endTime,
-                );
+                ));
 
-                const isOriginalSlot = sourceSlot.weekStart === candidate.weekStart
+                const isOriginalSlot = candidates.some((candidate) =>
+                    sourceSlot.weekStart === candidate.weekStart
                     && sourceSlot.dayOfWeek === candidate.dayOfWeek
-                    && sourceSlot.startTime === candidate.startTime;
+                    && sourceSlot.startTime === candidate.startTime,
+                );
 
                 if (isOriginalSlot) {
                     continue;
                 }
 
-                const conflicts = validateScheduleConflicts([candidate], existingLessons);
-                if (conflicts.length > 0) {
+                const hasConflict = candidates.some((candidate) =>
+                    validateScheduleConflicts([candidate], existingLessons).length > 0,
+                );
+
+                if (hasConflict) {
                     continue;
                 }
+
+                const candidate = candidates.find((entry) => entry.groupName === sourceSlot.groupName)
+                    ?? candidates[0];
 
                 const { score, reasons } = this.scoreRecommendation(
                     candidate,
@@ -833,7 +884,70 @@ export class ScheduleAdminService {
             }));
     }
 
+    async getLinkedGroupNames(id: number): Promise<string[]> {
+        const item = await this.loadItemWithRelations(id);
+        const linkedItems = await this.linkedLessonService.findLinkedSharedLessonItems(item);
+
+        return linkedItems
+            .map((entry) => entry.schedule?.group?.name ?? '')
+            .filter(Boolean)
+            .sort((left, right) =>
+                left.localeCompare(right, 'ru', { sensitivity: 'base', numeric: true }),
+            );
+    }
+
     async createItem(dto: CreateScheduleItemDto): Promise<ScheduleDisplayLesson> {
+        const groupNames = parseGroupNames(dto.groupName);
+
+        if (groupNames.length === 0) {
+            throw new BadRequestException('Укажите группу');
+        }
+
+        const lessonType = await this.lessonTypeResolver.resolve(dto.lessonType);
+        const allowsMultipleGroups = lessonType.code === LessonTypeCode.LECTURE
+            || lessonType.code === LessonTypeCode.SPECIAL;
+
+        if (groupNames.length > 1 && !allowsMultipleGroups) {
+            throw new BadRequestException(
+                'Несколько групп можно указать только для лекций и занятий типа «Особое»',
+            );
+        }
+
+        if (lessonType.code === LessonTypeCode.LECTURE) {
+            try {
+                assertParallelGroupSet(groupNames);
+            } catch (error) {
+                throw new BadRequestException(
+                    error instanceof Error
+                        ? error.message
+                        : 'Группы для лекции должны быть параллельными',
+                );
+            }
+        }
+
+        let firstCreatedItem: ScheduleDisplayLesson | null = null;
+
+        for (const groupName of groupNames) {
+            const createdItem = await this.createItemForGroup(
+                {
+                    ...dto,
+                    groupName,
+                },
+                lessonType,
+            );
+
+            if (!firstCreatedItem) {
+                firstCreatedItem = createdItem;
+            }
+        }
+
+        return firstCreatedItem!;
+    }
+
+    private async createItemForGroup(
+        dto: CreateScheduleItemDto,
+        resolvedLessonType?: Awaited<ReturnType<LessonTypeResolver['resolve']>>,
+    ): Promise<ScheduleDisplayLesson> {
         const group = await this.findOrCreateGroup(dto.groupName);
         const schedule = await this.findScheduleForWeek(dto.groupName, dto.weekStart);
 
@@ -850,7 +964,7 @@ export class ScheduleAdminService {
             comment: dto.comment?.trim() || null,
         });
 
-        await this.applySlotFields(item, dto, group.id);
+        await this.applySlotFields(item, dto, group.id, resolvedLessonType);
         item.schedule = schedule;
         item.schedule.group = group;
 
@@ -863,7 +977,6 @@ export class ScheduleAdminService {
         await this.notificationsService.notifyScheduleItemChanged('created', savedWithRelations);
 
         return mapItemToDisplayLesson(savedWithRelations);
-
     }
 
     async updateItem(
@@ -871,7 +984,15 @@ export class ScheduleAdminService {
         dto: UpdateScheduleItemDto,
     ): Promise<ScheduleDisplayLesson> {
         const item = await this.loadItemWithRelations(id);
-        const previousItem = this.notificationsService.createScheduleItemSnapshot(item);
+        const linkedItems = await this.findLinkedLectureItems(item);
+        const linkedItemIds = linkedItems.map((entry) => entry.id);
+        const snapshots = new Map(
+            linkedItems.map((linkedItem) => [
+                linkedItem.id,
+                this.notificationsService.createScheduleItemSnapshot(linkedItem),
+            ]),
+        );
+
         const groupName = item.schedule.group?.name;
 
         if (!groupName) {
@@ -887,55 +1008,58 @@ export class ScheduleAdminService {
             throw new BadRequestException('Нельзя перенести пару на прошедшую неделю');
         }
 
-        await this.applySlotFields(item, {
-            subject: dto.subject?.trim() ?? item.subject.name,
-            lessonType: dto.lessonType?.trim() ?? item.lessonType.name,
-            teacherName: dto.teacherName !== undefined
-                ? dto.teacherName.trim()
-                : resolveTeacherName(item),
-            room: dto.room !== undefined
-                ? dto.room.trim()
-                : formatRoomLabel(item.room),
-            subgroup: dto.subgroup !== undefined
-                ? dto.subgroup
-                : (item.subgroup?.number ?? null),
-            dayOfWeek: dto.dayOfWeek ?? item.dayOfWeek,
-            startTime: dto.startTime ?? item.startTime,
-            endTime: dto.endTime ?? item.endTime,
-            weekStart: dto.weekStart ?? normalizeWeekStart(String(item.weekStart)),
-            comment: dto.comment !== undefined
-                ? (dto.comment?.trim() || null)
-                : undefined,
-        }, item.schedule.groupId!);
+        const slotFields = this.buildUpdateSlotFields(item, dto);
 
-        await this.assertNoConflicts(item, id);
+        for (const linkedItem of linkedItems) {
+            await this.applySlotFields(
+                linkedItem,
+                slotFields,
+                linkedItem.schedule.groupId!,
+            );
+        }
 
-        await this.itemsRepository.save(item);
+        for (const linkedItem of linkedItems) {
+            await this.assertNoConflicts(linkedItem, linkedItemIds);
+        }
 
-        const updatedWithRelations = await this.loadItemWithRelations(id);
+        for (const linkedItem of linkedItems) {
+            await this.itemsRepository.save(linkedItem);
+        }
 
         this.scheduleNotifier.notifyScheduleChanged('item-updated');
-        await this.notificationsService.notifyScheduleItemChanged(
-            'updated',
-            updatedWithRelations,
-            previousItem,
-        );
 
-        return mapItemToDisplayLesson(updatedWithRelations);
+        for (const linkedItem of linkedItems) {
+            const updatedWithRelations = await this.loadItemWithRelations(linkedItem.id);
+            const previousItem = snapshots.get(linkedItem.id);
+
+            if (previousItem) {
+                await this.notificationsService.notifyScheduleItemChanged(
+                    'updated',
+                    updatedWithRelations,
+                    previousItem,
+                );
+            }
+        }
+
+        return mapItemToDisplayLesson(await this.loadItemWithRelations(id));
     }
 
     async disableItem(id: number): Promise<void> {
         const item = await this.loadItemWithRelations(id);
-        if (!item) {
-            throw new NotFoundException('Занятие не найдено');
-        }
-        item.isDisabled = true;
-        await this.itemsRepository.save(item);
+        const linkedItems = await this.findLinkedLectureItems(item);
 
-        const disabledWithRelations = await this.loadItemWithRelations(id);
+        for (const linkedItem of linkedItems) {
+            linkedItem.isDisabled = true;
+            await this.itemsRepository.save(linkedItem);
+
+            const disabledWithRelations = await this.loadItemWithRelations(linkedItem.id);
+            await this.notificationsService.notifyScheduleItemChanged(
+                'disabled',
+                disabledWithRelations,
+            );
+        }
 
         this.scheduleNotifier.notifyScheduleChanged('item-disabled');
-        await this.notificationsService.notifyScheduleItemChanged('disabled', disabledWithRelations);
     }
 
     async deleteItem(id: number): Promise<void> {

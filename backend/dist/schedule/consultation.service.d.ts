@@ -3,6 +3,7 @@ import { DepartmentsService } from '../academic/departments.service';
 import { User } from '../users/entities/user.entity';
 import { CreateConsultationDto, UpdateConsultationDto } from './dto/consultation.dto';
 import { Consultation } from './entities/consultation.entity';
+import { TeacherResolver } from './resolver/teacher.resolver';
 import { ScheduleDisplayLesson } from './schedule-display.service';
 export interface DepartmentInfo {
     id: number;
@@ -18,8 +19,10 @@ export interface DepartmentConsultationsResponse {
 }
 export declare class ConsultationService {
     private readonly consultationsRepository;
+    private readonly usersRepository;
     private readonly departmentsService;
-    constructor(consultationsRepository: Repository<Consultation>, departmentsService: DepartmentsService);
+    private readonly teacherResolver;
+    constructor(consultationsRepository: Repository<Consultation>, usersRepository: Repository<User>, departmentsService: DepartmentsService, teacherResolver: TeacherResolver);
     formatTeacherName(user: User): string;
     private parseWeekStart;
     private formatWeekLabel;
@@ -28,6 +31,7 @@ export declare class ConsultationService {
     listDepartments(): Promise<DepartmentInfo[]>;
     getDepartmentConsultations(departmentId: number): Promise<DepartmentConsultationsResponse>;
     private assertTeacherInDepartment;
+    private resolveDepartmentTeacher;
     createConsultation(user: User, dto: CreateConsultationDto): Promise<ScheduleDisplayLesson>;
     updateConsultation(user: User, id: number, dto: UpdateConsultationDto): Promise<ScheduleDisplayLesson>;
     deleteConsultation(user: User, id: number): Promise<void>;

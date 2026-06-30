@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
@@ -75,6 +75,7 @@ const educationFormOptions = [
   { value: 'Очная', label: 'Очная' },
   { value: 'Заочная', label: 'Заочная' },
   { value: 'Очно-заочная', label: 'Очно-заочная' },
+  { value: 'Дистанционная', label: 'Дистанционная' },
 ]
 
 const courseOptions = [1, 2, 3, 4, 5, 6]
@@ -106,7 +107,7 @@ const markPhotoForRemoval = () => {
   removePhoto.value = true
 }
 
-const fillFormFromUser = (user: AdminUser) => {
+const fillFormFromUser = async (user: AdminUser) => {
   skipRoleReset.value = true
   removePhoto.value = false
   photoFile.value = null
@@ -129,11 +130,13 @@ const fillFormFromUser = (user: AdminUser) => {
     educationForm: user.educationForm || 'Очная',
     course: user.course || 1,
   }
+
+  await nextTick()
   skipRoleReset.value = false
 }
 
-watch(() => form.value.role, (newRole) => {
-  if (skipRoleReset.value) {
+watch(() => form.value.role, (newRole, oldRole) => {
+  if (skipRoleReset.value || newRole === oldRole) {
     return
   }
 
@@ -152,27 +155,47 @@ watch(() => form.value.role, (newRole) => {
   }
 })
 
-onMounted(async () => {
-  if (!authStore.isAuthenticated || authStore.currentUser?.role !== 'admin') {
-    await router.replace({ name: 'home' })
-    return
-  }
-
+const loadUser = async () => {
   if (!userId.value || Number.isNaN(userId.value)) {
     pageError.value = 'Некорректный идентификатор пользователя'
     isLoading.value = false
     return
   }
 
+  isLoading.value = true
+  pageError.value = ''
+
   try {
-    teacherDepartments.value = await fetchTeacherDepartments()
+    if (teacherDepartments.value.length === 0) {
+      teacherDepartments.value = await fetchTeacherDepartments()
+    }
+
+    const cachedUser = usersStore.users.find((entry) => entry.id === userId.value)
+    if (cachedUser) {
+      await fillFormFromUser(cachedUser)
+      isLoading.value = false
+    }
+
     const user = await usersStore.getUser(userId.value)
-    fillFormFromUser(user)
+    await fillFormFromUser(user)
   } catch (err: any) {
     pageError.value = err.response?.data?.message || 'Не удалось загрузить пользователя'
   } finally {
     isLoading.value = false
   }
+}
+
+watch(userId, () => {
+  void loadUser()
+})
+
+onMounted(async () => {
+  if (!authStore.isAuthenticated || authStore.currentUser?.role !== 'admin') {
+    await router.replace({ name: 'home' })
+    return
+  }
+
+  await loadUser()
 })
 
 const validate = (): boolean => {

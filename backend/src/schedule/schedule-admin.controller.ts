@@ -42,6 +42,11 @@ export class ScheduleAdminController {
         return this.scheduleAdminService.getTransferRecommendations(id, query.weekStart);
     }
 
+    @Get(':id/linked-groups')
+    getLinkedGroupNames(@Param('id', ParseIntPipe) id: number): Promise<string[]> {
+        return this.scheduleAdminService.getLinkedGroupNames(id);
+    }
+
     @Patch(':id')
     updateItem(
         @Param('id', ParseIntPipe) id: number,

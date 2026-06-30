@@ -26,6 +26,7 @@ let Consultation = class Consultation {
     endTime;
     weekStart;
     room;
+    comment;
     createdAt;
     updatedAt;
 };
@@ -80,6 +81,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
     __metadata("design:type", Object)
 ], Consultation.prototype, "room", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", Object)
+], Consultation.prototype, "comment", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

@@ -18,22 +18,26 @@ export interface DepartmentConsultationsResponse {
 export interface CreateConsultationPayload {
   departmentId: number
   subject: string
+  teacherName: string
   consultationType: 'Консультация' | 'Онлайн-консультация'
   dayOfWeek: number
   startTime: string
   endTime: string
   weekStart: string
   room?: string
+  comment?: string
 }
 
 export interface UpdateConsultationPayload {
   subject?: string
+  teacherName?: string
   consultationType?: 'Консультация' | 'Онлайн-консультация'
   dayOfWeek?: number
   startTime?: string
   endTime?: string
   weekStart?: string
   room?: string
+  comment?: string
 }
 
 export async function fetchConsultationDepartments(): Promise<DepartmentInfo[]> {

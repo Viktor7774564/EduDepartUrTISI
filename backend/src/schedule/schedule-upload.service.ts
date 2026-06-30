@@ -1,5 +1,6 @@
 import {
     BadRequestException,
+    ForbiddenException,
     Injectable,
     NotFoundException,
     OnModuleInit,
@@ -34,6 +35,18 @@ const ALLOWED_MIME_TYPES = new Set([
 ]);
 
 const ALLOWED_EXTENSIONS = new Set(['.xlsx', '.xls', '.csv']);
+
+function decodeUploadedFilename(name: string): string {
+    if (/[\u0400-\u04FF]/.test(name)) {
+        return name;
+    }
+
+    try {
+        return Buffer.from(name, 'latin1').toString('utf8');
+    } catch {
+        return name;
+    }
+}
 
 export interface ScheduleUploadResponse {
     id: number;
@@ -82,7 +95,7 @@ export class ScheduleUploadService implements OnModuleInit {
             throw new BadRequestException('Файл расписания обязателен');
         }
 
-        const extension = extname(file.originalname).toLowerCase();
+        const extension = extname(decodeUploadedFilename(file.originalname)).toLowerCase();
 
         if (!ALLOWED_EXTENSIONS.has(extension)) {
             throw new BadRequestException(
@@ -187,12 +200,14 @@ export class ScheduleUploadService implements OnModuleInit {
     }
 
     private async findPeriodUploads(
+        uploadedById: number,
         groupName: string,
         periodStart: string,
         periodEnd: string,
     ): Promise<ScheduleUpload[]> {
         return this.uploadsRepository.find({
             where: {
+                uploadedById,
                 groupName,
                 periodStart,
                 periodEnd,
@@ -237,7 +252,7 @@ export class ScheduleUploadService implements OnModuleInit {
         return {
             id: upload.id,
             scheduleType: upload.scheduleType,
-            originalFileName: upload.originalFileName,
+            originalFileName: decodeUploadedFilename(upload.originalFileName),
             fileUrl: upload.fileUrl,
             mimeType: upload.mimeType,
             fileSize: upload.fileSize,
@@ -328,8 +343,9 @@ export class ScheduleUploadService implements OnModuleInit {
             .map((item) => mapItemToLessonSlot(item));
     }
 
-    async listUploads(): Promise<ScheduleUploadResponse[]> {
+    async listUploads(uploadedById: number): Promise<ScheduleUploadResponse[]> {
         const uploads = await this.uploadsRepository.find({
+            where: { uploadedById },
             relations: ['uploadedBy'],
             order: { uploadedAt: 'DESC' },
         });
@@ -366,10 +382,11 @@ export class ScheduleUploadService implements OnModuleInit {
     ): Promise<ScheduleUploadResponse> {
         this.assertValidUpload(file);
 
+        const originalFileName = decodeUploadedFilename(file.originalname);
         const scheduleType = this.parseScheduleType(scheduleTypeRaw);
         const expectedGroupName = this.parseRequiredGroupName(expectedGroupNameRaw);
         const facultyName = this.parseFacultyName(facultyNameRaw);
-        const extension = extname(file.originalname).toLowerCase();
+        const extension = extname(originalFileName).toLowerCase();
 
         if (extension === '.csv') {
             throw new BadRequestException(
@@ -382,6 +399,7 @@ export class ScheduleUploadService implements OnModuleInit {
         this.assertPeriodDefined(parsed.periodStart, parsed.periodEnd);
 
         const obsoleteUploads = await this.findPeriodUploads(
+            uploadedById,
             parsed.groupName,
             parsed.periodStart!,
             parsed.periodEnd!,
@@ -427,7 +445,7 @@ export class ScheduleUploadService implements OnModuleInit {
 
         const upload = this.uploadsRepository.create({
             scheduleType,
-            originalFileName: file.originalname,
+            originalFileName,
             storedFileName,
             fileUrl,
             mimeType: file.mimetype || 'application/octet-stream',
@@ -468,11 +486,15 @@ export class ScheduleUploadService implements OnModuleInit {
         return this.toResponse(uploadWithUser);
     }
 
-    async deleteUpload(id: number): Promise<void> {
+    async deleteUpload(id: number, uploadedById: number): Promise<void> {
         const upload = await this.uploadsRepository.findOne({ where: { id } });
 
         if (!upload) {
             throw new NotFoundException('Файл не найден');
+        }
+
+        if (upload.uploadedById !== uploadedById) {
+            throw new ForbiddenException('Можно удалять только свои загрузки');
         }
 
         await this.deleteSchedulesByUploadIds([id]);

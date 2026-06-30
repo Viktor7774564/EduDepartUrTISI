@@ -17,6 +17,10 @@ export class CreateConsultationDto {
     subject!: string;
 
     @IsString()
+    @IsNotEmpty()
+    teacherName!: string;
+
+    @IsString()
     @IsIn(['Консультация', 'Онлайн-консультация'])
     consultationType!: string;
 
@@ -40,6 +44,10 @@ export class CreateConsultationDto {
     @IsOptional()
     @IsString()
     room?: string;
+
+    @IsOptional()
+    @IsString()
+    comment?: string;
 }
 
 export class UpdateConsultationDto {
@@ -47,6 +55,11 @@ export class UpdateConsultationDto {
     @IsString()
     @IsNotEmpty()
     subject?: string;
+
+    @IsOptional()
+    @IsString()
+    @IsNotEmpty()
+    teacherName?: string;
 
     @IsOptional()
     @IsString()
@@ -77,4 +90,8 @@ export class UpdateConsultationDto {
     @IsOptional()
     @IsString()
     room?: string;
+
+    @IsOptional()
+    @IsString()
+    comment?: string;
 }

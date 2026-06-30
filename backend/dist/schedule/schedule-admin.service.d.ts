@@ -8,6 +8,7 @@ import { Schedule } from './entities/schedule.entity';
 import { ScheduleItem } from './entities/schedule-item.entity';
 import { SchedulePreholidayDay } from './entities/schedule-preholiday-day.entity';
 import { ScheduleDisplayLesson } from './schedule-display.service';
+import { LinkedLessonService } from './linked-lesson.service';
 import { LessonTypeResolver } from './resolver/lesson-type.resolver';
 import { RoomResolver } from './resolver/room.resolver';
 import { TeacherResolver } from './resolver/teacher.resolver';
@@ -26,8 +27,9 @@ export declare class ScheduleAdminService {
     private readonly lessonTypeResolver;
     private readonly scheduleNotifier;
     private readonly notificationsService;
+    private readonly linkedLessonService;
     private static readonly IMPORT_DIRECTION_CODE;
-    constructor(itemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>, groupsRepository: Repository<Group>, directionsRepository: Repository<Direction>, subjectsRepository: Repository<Subject>, subgroupsRepository: Repository<Subgroup>, preholidayDaysRepository: Repository<SchedulePreholidayDay>, roomResolver: RoomResolver, teacherResolver: TeacherResolver, lessonTypeResolver: LessonTypeResolver, scheduleNotifier: ScheduleNotifierService, notificationsService: NotificationsService);
+    constructor(itemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>, groupsRepository: Repository<Group>, directionsRepository: Repository<Direction>, subjectsRepository: Repository<Subject>, subgroupsRepository: Repository<Subgroup>, preholidayDaysRepository: Repository<SchedulePreholidayDay>, roomResolver: RoomResolver, teacherResolver: TeacherResolver, lessonTypeResolver: LessonTypeResolver, scheduleNotifier: ScheduleNotifierService, notificationsService: NotificationsService, linkedLessonService: LinkedLessonService);
     private toDate;
     private normalizeTeacherLabel;
     private findOrCreateImportDirection;
@@ -39,6 +41,8 @@ export declare class ScheduleAdminService {
     private applySlotFields;
     private loadActiveLessonSlots;
     private assertNoConflicts;
+    private findLinkedLectureItems;
+    private buildUpdateSlotFields;
     private parseRecommendationDate;
     private isPublicHoliday;
     private isWeekInPast;
@@ -53,7 +57,9 @@ export declare class ScheduleAdminService {
     private scoreRecommendation;
     private buildCandidateSlot;
     getTransferRecommendations(id: number, weekStart?: string): Promise<ScheduleTransferRecommendationDto[]>;
+    getLinkedGroupNames(id: number): Promise<string[]>;
     createItem(dto: CreateScheduleItemDto): Promise<ScheduleDisplayLesson>;
+    private createItemForGroup;
     updateItem(id: number, dto: UpdateScheduleItemDto): Promise<ScheduleDisplayLesson>;
     disableItem(id: number): Promise<void>;
     deleteItem(id: number): Promise<void>;

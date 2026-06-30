@@ -39,6 +39,14 @@ export interface ScheduleTransferRecommendation {
   reasons: string[]
 }
 
+export async function fetchScheduleItemLinkedGroups(id: number): Promise<string[]> {
+  const response = await api.get<string[]>(
+    `/education-department/schedules/items/${id}/linked-groups`,
+  )
+
+  return response.data
+}
+
 export async function createScheduleItem(
   payload: CreateScheduleItemPayload,
 ): Promise<DisplayScheduleItem> {

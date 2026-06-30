@@ -35,6 +35,17 @@ const ALLOWED_MIME_TYPES = new Set([
     'application/csv',
 ]);
 const ALLOWED_EXTENSIONS = new Set(['.xlsx', '.xls', '.csv']);
+function decodeUploadedFilename(name) {
+    if (/[\u0400-\u04FF]/.test(name)) {
+        return name;
+    }
+    try {
+        return Buffer.from(name, 'latin1').toString('utf8');
+    }
+    catch {
+        return name;
+    }
+}
 let ScheduleUploadService = class ScheduleUploadService {
     uploadsRepository;
     itemsRepository;
@@ -54,7 +65,7 @@ let ScheduleUploadService = class ScheduleUploadService {
         if (!file) {
             throw new common_1.BadRequestException('Файл расписания обязателен');
         }
-        const extension = (0, node_path_1.extname)(file.originalname).toLowerCase();
+        const extension = (0, node_path_1.extname)(decodeUploadedFilename(file.originalname)).toLowerCase();
         if (!ALLOWED_EXTENSIONS.has(extension)) {
             throw new common_1.BadRequestException('Допустимы только файлы Excel (.xlsx, .xls) или CSV');
         }
@@ -131,9 +142,10 @@ let ScheduleUploadService = class ScheduleUploadService {
             });
         }
     }
-    async findPeriodUploads(groupName, periodStart, periodEnd) {
+    async findPeriodUploads(uploadedById, groupName, periodStart, periodEnd) {
         return this.uploadsRepository.find({
             where: {
+                uploadedById,
                 groupName,
                 periodStart,
                 periodEnd,
@@ -171,7 +183,7 @@ let ScheduleUploadService = class ScheduleUploadService {
         return {
             id: upload.id,
             scheduleType: upload.scheduleType,
-            originalFileName: upload.originalFileName,
+            originalFileName: decodeUploadedFilename(upload.originalFileName),
             fileUrl: upload.fileUrl,
             mimeType: upload.mimeType,
             fileSize: upload.fileSize,
@@ -228,8 +240,9 @@ let ScheduleUploadService = class ScheduleUploadService {
             .filter((item) => this.normalizeGroupName(item.schedule.group?.name ?? '') !== normalizedGroupName)
             .map((item) => (0, schedule_item_mapper_1.mapItemToLessonSlot)(item));
     }
-    async listUploads() {
+    async listUploads(uploadedById) {
         const uploads = await this.uploadsRepository.find({
+            where: { uploadedById },
             relations: ['uploadedBy'],
             order: { uploadedAt: 'DESC' },
         });
@@ -249,17 +262,18 @@ let ScheduleUploadService = class ScheduleUploadService {
     }
     async uploadSchedule(uploadedById, scheduleTypeRaw, expectedGroupNameRaw, facultyNameRaw, file) {
         this.assertValidUpload(file);
+        const originalFileName = decodeUploadedFilename(file.originalname);
         const scheduleType = this.parseScheduleType(scheduleTypeRaw);
         const expectedGroupName = this.parseRequiredGroupName(expectedGroupNameRaw);
         const facultyName = this.parseFacultyName(facultyNameRaw);
-        const extension = (0, node_path_1.extname)(file.originalname).toLowerCase();
+        const extension = (0, node_path_1.extname)(originalFileName).toLowerCase();
         if (extension === '.csv') {
             throw new common_1.BadRequestException('Парсер поддерживает только Excel (.xlsx, .xls). Загрузите файл в формате Excel.');
         }
         const parsed = this.parseUploadedWorkbook(file.buffer);
         this.assertGroupMatches(expectedGroupName, parsed.groupName);
         this.assertPeriodDefined(parsed.periodStart, parsed.periodEnd);
-        const obsoleteUploads = await this.findPeriodUploads(parsed.groupName, parsed.periodStart, parsed.periodEnd);
+        const obsoleteUploads = await this.findPeriodUploads(uploadedById, parsed.groupName, parsed.periodStart, parsed.periodEnd);
         const obsoleteUploadIds = obsoleteUploads.map((upload) => upload.id);
         const excludePeriod = {
             validFrom: this.toDate(parsed.periodStart),
@@ -286,7 +300,7 @@ let ScheduleUploadService = class ScheduleUploadService {
         await this.removeUploads(obsoleteUploads);
         const upload = this.uploadsRepository.create({
             scheduleType,
-            originalFileName: file.originalname,
+            originalFileName,
             storedFileName,
             fileUrl,
             mimeType: file.mimetype || 'application/octet-stream',
@@ -317,10 +331,13 @@ let ScheduleUploadService = class ScheduleUploadService {
         }
         return this.toResponse(uploadWithUser);
     }
-    async deleteUpload(id) {
+    async deleteUpload(id, uploadedById) {
         const upload = await this.uploadsRepository.findOne({ where: { id } });
         if (!upload) {
             throw new common_1.NotFoundException('Файл не найден');
+        }
+        if (upload.uploadedById !== uploadedById) {
+            throw new common_1.ForbiddenException('Можно удалять только свои загрузки');
         }
         await this.deleteSchedulesByUploadIds([id]);
         const filePath = (0, node_path_1.join)(this.schedulesDir, upload.storedFileName);

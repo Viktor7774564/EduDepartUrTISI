@@ -58,8 +58,14 @@ export function formatTime(value: string): string {
     return value.slice(0, 5);
 }
 
-export function mapItemToDisplayLesson(item: ScheduleItem): ScheduleDisplayLesson {
+export function mapItemToDisplayLesson(
+    item: ScheduleItem,
+    linkedGroups?: string[],
+): ScheduleDisplayLesson {
     const groupName = item.schedule?.group?.name ?? '';
+    const resolvedLinkedGroups = linkedGroups?.length
+        ? linkedGroups
+        : (groupName ? [groupName] : []);
 
     return {
         id: item.id,
@@ -71,6 +77,7 @@ export function mapItemToDisplayLesson(item: ScheduleItem): ScheduleDisplayLesso
         type: item.lessonType.name,
         room: formatRoomLabel(item.room),
         group: groupName,
+        linkedGroups: resolvedLinkedGroups,
         subgroup: item.subgroup?.number ?? null,
         isSameCellParallel: item.isSameCellParallel,
         comment: item.comment,

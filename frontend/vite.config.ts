@@ -40,7 +40,7 @@ export default defineConfig({
       '/notifications': backendWsProxy,
       '/schedules': backendWsProxy,
       '/academic': backendProxy,
-      '/education-department': backendProxy,
+      '/education-department/schedules': backendProxy,
       '/uploads': backendProxy,
       '/socket.io': backendWsProxy,
     },

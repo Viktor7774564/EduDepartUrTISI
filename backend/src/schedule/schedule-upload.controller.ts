@@ -34,8 +34,8 @@ export class ScheduleUploadController {
     ) {}
 
     @Get()
-    listUploads() {
-        return this.scheduleUploadService.listUploads();
+    listUploads(@Req() req: AuthenticatedRequest) {
+        return this.scheduleUploadService.listUploads(req.user.sub);
     }
 
     @Post('upload')
@@ -57,7 +57,10 @@ export class ScheduleUploadController {
     }
 
     @Delete(':id')
-    deleteUpload(@Param('id', ParseIntPipe) id: number) {
-        return this.scheduleUploadService.deleteUpload(id);
+    deleteUpload(
+        @Req() req: AuthenticatedRequest,
+        @Param('id', ParseIntPipe) id: number,
+    ) {
+        return this.scheduleUploadService.deleteUpload(id, req.user.sub);
     }
 }

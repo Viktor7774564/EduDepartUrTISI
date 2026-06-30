@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { Repository } from 'typeorm';
@@ -7,6 +7,7 @@ import { DepartmentsService } from '../academic/departments.service';
 import { User } from '../users/entities/user.entity';
 import { CreateConsultationDto, UpdateConsultationDto } from './dto/consultation.dto';
 import { Consultation } from './entities/consultation.entity';
+import { TeacherResolver } from './resolver/teacher.resolver';
 import { ScheduleDisplayLesson } from './schedule-display.service';
 import { normalizeWeekStart } from './parser/schedule-slot.utils';
 
@@ -39,7 +40,10 @@ export class ConsultationService {
     constructor(
         @InjectRepository(Consultation)
         private readonly consultationsRepository: Repository<Consultation>,
+        @InjectRepository(User)
+        private readonly usersRepository: Repository<User>,
         private readonly departmentsService: DepartmentsService,
+        private readonly teacherResolver: TeacherResolver,
     ) {}
 
     formatTeacherName(user: User): string {
@@ -88,9 +92,10 @@ export class ConsultationService {
             type: consultation.consultationType,
             room: consultation.room?.trim() ?? '',
             group: '',
+            linkedGroups: [],
             subgroup: null,
             isSameCellParallel: false,
-            comment: null,
+            comment: consultation.comment,
             weekStart: normalizeWeekStart(String(consultation.weekStart)),
         };
     }
@@ -149,13 +154,47 @@ export class ConsultationService {
         }
     }
 
+    private async resolveDepartmentTeacher(
+        departmentId: number,
+        teacherName: string,
+    ): Promise<User> {
+        const trimmedName = teacherName.trim();
+
+        if (!trimmedName) {
+            throw new BadRequestException('Укажите преподавателя');
+        }
+
+        const resolvedTeacher = await this.teacherResolver.resolve(trimmedName);
+
+        if (!resolvedTeacher) {
+            throw new BadRequestException('Преподаватель не найден');
+        }
+
+        const teacher = await this.usersRepository.findOne({
+            where: { id: resolvedTeacher.id },
+            relations: ['teacherProfile'],
+        });
+
+        if (!teacher?.teacherProfile?.departmentId) {
+            throw new BadRequestException('У выбранного пользователя нет профиля преподавателя');
+        }
+
+        if (teacher.teacherProfile.departmentId !== departmentId) {
+            throw new BadRequestException('Преподаватель не относится к выбранной кафедре');
+        }
+
+        return teacher;
+    }
+
     async createConsultation(user: User, dto: CreateConsultationDto): Promise<ScheduleDisplayLesson> {
         this.assertTeacherInDepartment(user, dto.departmentId);
         await this.departmentsService.getTeacherDepartmentById(dto.departmentId);
 
+        const teacher = await this.resolveDepartmentTeacher(dto.departmentId, dto.teacherName);
+
         const consultation = this.consultationsRepository.create({
             departmentId: dto.departmentId,
-            teacherId: user.id,
+            teacherId: teacher.id,
             subject: dto.subject.trim(),
             consultationType: dto.consultationType,
             dayOfWeek: dto.dayOfWeek,
@@ -163,6 +202,7 @@ export class ConsultationService {
             endTime: dto.endTime,
             weekStart: dto.weekStart,
             room: dto.room?.trim() || null,
+            comment: dto.comment?.trim() || null,
         });
 
         const saved = await this.consultationsRepository.save(consultation);
@@ -198,6 +238,14 @@ export class ConsultationService {
             consultation.subject = dto.subject.trim();
         }
 
+        if (dto.teacherName !== undefined) {
+            const teacher = await this.resolveDepartmentTeacher(
+                consultation.departmentId,
+                dto.teacherName,
+            );
+            consultation.teacherId = teacher.id;
+        }
+
         if (dto.consultationType !== undefined) {
             consultation.consultationType = dto.consultationType;
         }
@@ -222,9 +270,22 @@ export class ConsultationService {
             consultation.room = dto.room.trim() || null;
         }
 
+        if (dto.comment !== undefined) {
+            consultation.comment = dto.comment.trim() || null;
+        }
+
         const saved = await this.consultationsRepository.save(consultation);
 
-        return this.mapConsultation(saved);
+        const withTeacher = await this.consultationsRepository.findOne({
+            where: { id: saved.id },
+            relations: ['teacher'],
+        });
+
+        if (!withTeacher) {
+            throw new NotFoundException('Консультация не найдена');
+        }
+
+        return this.mapConsultation(withTeacher);
     }
 
     async deleteConsultation(user: User, id: number): Promise<void> {

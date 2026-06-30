@@ -202,19 +202,24 @@ export class NotificationsService {
         const recipientIds = new Set<number>();
         const currentItem = this.createScheduleItemSnapshot(item);
 
-        await this.addStudentRecipients(recipientIds, currentItem.groupId, currentItem.subgroupId);
+        await this.addStudentRecipients(
+            recipientIds,
+            currentItem.groupName,
+            currentItem.subgroupNumber,
+        );
 
         if (
             previousItem
             && (
-                previousItem.groupId !== currentItem.groupId
-                || previousItem.subgroupId !== currentItem.subgroupId
+                this.normalizeGroupName(previousItem.groupName)
+                    !== this.normalizeGroupName(currentItem.groupName)
+                || previousItem.subgroupNumber !== currentItem.subgroupNumber
             )
         ) {
             await this.addStudentRecipients(
                 recipientIds,
-                previousItem.groupId,
-                previousItem.subgroupId,
+                previousItem.groupName,
+                previousItem.subgroupNumber,
             );
         }
 
@@ -241,16 +246,16 @@ export class NotificationsService {
 
     private async addStudentRecipients(
         recipientIds: Set<number>,
-        groupId: number | null,
-        subgroupId: number | null,
+        groupName: string | null,
+        subgroupNumber: number | null,
     ): Promise<void> {
-        if (!groupId) {
+        if (!groupName?.trim()) {
             return;
         }
 
-        const students = await this.findStudentsByGroup(groupId, subgroupId);
-        const fallbackStudents = subgroupId && students.length === 0
-            ? await this.findStudentsByGroup(groupId, null)
+        const students = await this.findStudentsByGroupName(groupName, subgroupNumber);
+        const fallbackStudents = subgroupNumber && students.length === 0
+            ? await this.findStudentsByGroupName(groupName, null)
             : [];
 
         for (const student of [...students, ...fallbackStudents]) {
@@ -258,23 +263,31 @@ export class NotificationsService {
         }
     }
 
-    private findStudentsByGroup(
-        groupId: number,
-        subgroupId: number | null,
+    private findStudentsByGroupName(
+        groupName: string,
+        subgroupNumber: number | null,
     ): Promise<User[]> {
         const query = this.usersRepository
             .createQueryBuilder('user')
             .innerJoin('user.role', 'role')
             .innerJoin('user.studentProfile', 'studentProfile')
+            .innerJoin('studentProfile.group', 'group')
+            .leftJoin('studentProfile.subgroup', 'subgroup')
             .where('user.isActive = :isActive', { isActive: true })
             .andWhere('role.code = :roleCode', { roleCode: RoleCode.STUDENT })
-            .andWhere('studentProfile.groupId = :groupId', { groupId });
+            .andWhere('UPPER(TRIM(group.name)) = UPPER(:groupName)', {
+                groupName: groupName.trim(),
+            });
 
-        if (subgroupId) {
-            query.andWhere('studentProfile.subgroupId = :subgroupId', { subgroupId });
+        if (subgroupNumber) {
+            query.andWhere('subgroup.number = :subgroupNumber', { subgroupNumber });
         }
 
         return query.getMany();
+    }
+
+    private normalizeGroupName(groupName: string | null): string {
+        return groupName?.trim().toUpperCase() ?? '';
     }
 
     private getScheduleTitle(action: ScheduleNotificationAction): string {

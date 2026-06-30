@@ -54,8 +54,8 @@ const goBack = async () => {
   await router.push({ name: 'admin-panel' })
 }
 
-const editUser = async (id: number) => {
-  await router.push({ name: 'admin-user-edit', params: { id } })
+const editUser = async (user: AdminUser) => {
+  await router.push({ name: 'admin-user-edit', params: { id: String(user.id) } })
 }
 
 const deleteUser = async (user: AdminUser) => {
@@ -128,7 +128,7 @@ const deleteUser = async (user: AdminUser) => {
               <button
                 class="edit-btn"
                 type="button"
-                @click="editUser(user.id)"
+                @click="editUser(user)"
                 aria-label="Редактировать"
               >
                 <img :src="editIcon" alt="" aria-hidden="true" />

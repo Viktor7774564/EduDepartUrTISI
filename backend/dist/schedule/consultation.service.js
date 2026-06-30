@@ -17,7 +17,9 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const departments_service_1 = require("../academic/departments.service");
+const user_entity_1 = require("../users/entities/user.entity");
 const consultation_entity_1 = require("./entities/consultation.entity");
+const teacher_resolver_1 = require("./resolver/teacher.resolver");
 const schedule_slot_utils_1 = require("./parser/schedule-slot.utils");
 const DAY_LABELS = {
     1: 'ПН',
@@ -30,10 +32,14 @@ const DAY_LABELS = {
 };
 let ConsultationService = class ConsultationService {
     consultationsRepository;
+    usersRepository;
     departmentsService;
-    constructor(consultationsRepository, departmentsService) {
+    teacherResolver;
+    constructor(consultationsRepository, usersRepository, departmentsService, teacherResolver) {
         this.consultationsRepository = consultationsRepository;
+        this.usersRepository = usersRepository;
         this.departmentsService = departmentsService;
+        this.teacherResolver = teacherResolver;
     }
     formatTeacherName(user) {
         const nameInitial = user.name?.charAt(0) ?? '';
@@ -69,9 +75,10 @@ let ConsultationService = class ConsultationService {
             type: consultation.consultationType,
             room: consultation.room?.trim() ?? '',
             group: '',
+            linkedGroups: [],
             subgroup: null,
             isSameCellParallel: false,
-            comment: null,
+            comment: consultation.comment,
             weekStart: (0, schedule_slot_utils_1.normalizeWeekStart)(String(consultation.weekStart)),
         };
     }
@@ -116,12 +123,34 @@ let ConsultationService = class ConsultationService {
             throw new common_1.ForbiddenException('Можно управлять консультациями только своей кафедры');
         }
     }
+    async resolveDepartmentTeacher(departmentId, teacherName) {
+        const trimmedName = teacherName.trim();
+        if (!trimmedName) {
+            throw new common_1.BadRequestException('Укажите преподавателя');
+        }
+        const resolvedTeacher = await this.teacherResolver.resolve(trimmedName);
+        if (!resolvedTeacher) {
+            throw new common_1.BadRequestException('Преподаватель не найден');
+        }
+        const teacher = await this.usersRepository.findOne({
+            where: { id: resolvedTeacher.id },
+            relations: ['teacherProfile'],
+        });
+        if (!teacher?.teacherProfile?.departmentId) {
+            throw new common_1.BadRequestException('У выбранного пользователя нет профиля преподавателя');
+        }
+        if (teacher.teacherProfile.departmentId !== departmentId) {
+            throw new common_1.BadRequestException('Преподаватель не относится к выбранной кафедре');
+        }
+        return teacher;
+    }
     async createConsultation(user, dto) {
         this.assertTeacherInDepartment(user, dto.departmentId);
         await this.departmentsService.getTeacherDepartmentById(dto.departmentId);
+        const teacher = await this.resolveDepartmentTeacher(dto.departmentId, dto.teacherName);
         const consultation = this.consultationsRepository.create({
             departmentId: dto.departmentId,
-            teacherId: user.id,
+            teacherId: teacher.id,
             subject: dto.subject.trim(),
             consultationType: dto.consultationType,
             dayOfWeek: dto.dayOfWeek,
@@ -129,6 +158,7 @@ let ConsultationService = class ConsultationService {
             endTime: dto.endTime,
             weekStart: dto.weekStart,
             room: dto.room?.trim() || null,
+            comment: dto.comment?.trim() || null,
         });
         const saved = await this.consultationsRepository.save(consultation);
         const withTeacher = await this.consultationsRepository.findOne({
@@ -152,6 +182,10 @@ let ConsultationService = class ConsultationService {
         if (dto.subject !== undefined) {
             consultation.subject = dto.subject.trim();
         }
+        if (dto.teacherName !== undefined) {
+            const teacher = await this.resolveDepartmentTeacher(consultation.departmentId, dto.teacherName);
+            consultation.teacherId = teacher.id;
+        }
         if (dto.consultationType !== undefined) {
             consultation.consultationType = dto.consultationType;
         }
@@ -170,8 +204,18 @@ let ConsultationService = class ConsultationService {
         if (dto.room !== undefined) {
             consultation.room = dto.room.trim() || null;
         }
+        if (dto.comment !== undefined) {
+            consultation.comment = dto.comment.trim() || null;
+        }
         const saved = await this.consultationsRepository.save(consultation);
-        return this.mapConsultation(saved);
+        const withTeacher = await this.consultationsRepository.findOne({
+            where: { id: saved.id },
+            relations: ['teacher'],
+        });
+        if (!withTeacher) {
+            throw new common_1.NotFoundException('Консультация не найдена');
+        }
+        return this.mapConsultation(withTeacher);
     }
     async deleteConsultation(user, id) {
         const consultation = await this.consultationsRepository.findOne({
@@ -188,7 +232,10 @@ exports.ConsultationService = ConsultationService;
 exports.ConsultationService = ConsultationService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(consultation_entity_1.Consultation)),
+    __param(1, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        departments_service_1.DepartmentsService])
+        typeorm_2.Repository,
+        departments_service_1.DepartmentsService,
+        teacher_resolver_1.TeacherResolver])
 ], ConsultationService);
 //# sourceMappingURL=consultation.service.js.map

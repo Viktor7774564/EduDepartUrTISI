@@ -6,6 +6,7 @@ import {
   fetchGroupSchedule,
   fetchPreholidayDays,
   fetchRoomSchedule,
+  fetchScheduleTeachers,
   fetchTeacherSchedule,
 } from '@/api/schedule'
 import {
@@ -17,6 +18,7 @@ import {
 import {
   createScheduleItem,
   disableScheduleItem,
+  fetchScheduleItemLinkedGroups,
   fetchScheduleTransferRecommendations,
   getScheduleAdminErrorMessage,
   type ScheduleTransferRecommendation,
@@ -39,12 +41,17 @@ import {
   getLessonGridClass,
   getLessonTypeLabel,
   getWeekStartFromLabel,
+  isLectureLessonType,
+  isMultiGroupLessonType,
   isSubgroupApplicableLessonType,
   normalizeLessonTypeForForm,
+  parseGroupNames,
   parseRoomForForm,
+  resolveLessonGroups,
 } from './scheduleOptions'
 import type { Socket } from 'socket.io-client'
 import { connectScheduleSocket } from '@/api/scheduleSocket'
+import PageFrame from "@/components/PageFrame.vue";
 
 const route = useRoute()
 const router = useRouter()
@@ -189,6 +196,7 @@ const isLoadingSchedule = ref(false)
 const scheduleLoadError = ref<string | null>(null)
 const preholidayDayKeys = ref<string[]>([])
 const isSavingPreholidayDay = ref(false)
+const consultationTeachers = ref<string[]>([])
 
 const isMenuVisible = ref(false)
 const menuX = ref(0)
@@ -303,10 +311,24 @@ const loadSchedule = async () => {
   }
 }
 
+async function loadConsultationTeachers() {
+  if (scheduleType.value !== 'consults' || !firstValue.value) {
+    consultationTeachers.value = []
+    return
+  }
+
+  try {
+    consultationTeachers.value = await fetchScheduleTeachers(Number(firstValue.value))
+  } catch {
+    consultationTeachers.value = []
+  }
+}
+
 watch([scheduleType, firstValue, secondValue], () => {
   hasSyncedInitialWeek.value = false
   pendingWeekKeyToRestore.value = null
   void loadSchedule()
+  void loadConsultationTeachers()
 }, { immediate: true })
 
 const consultationAcademicWeeks = computed(() => buildConsultationAcademicWeeks())
@@ -689,8 +711,26 @@ const pageTitle = computed(() => {
   return 'Расписание'
 })
 
-const openModal = (lesson: CellLesson) => {
-  selectedLesson.value = lesson
+const openModal = async (lesson: CellLesson) => {
+  let groups = resolveLessonGroups(lesson)
+
+  if (
+    canManagePairs.value
+    && isMultiGroupLessonType(normalizeLessonTypeForForm(lesson.type))
+  ) {
+    try {
+      groups = await fetchScheduleItemLinkedGroups(lesson.id)
+    } catch {
+      // keep groups from loaded schedule
+    }
+  }
+
+  selectedLesson.value = {
+    ...lesson,
+    groups,
+    group: groups.join(', '),
+    linkedGroups: groups,
+  }
 }
 
 const closeModal = () => {
@@ -737,7 +777,7 @@ const buildEmptyEditForm = () => {
   }
 }
 
-const openEditModalForLesson = (lesson: CellLesson) => {
+const openEditModalForLesson = async (lesson: CellLesson) => {
   isCreatingLesson.value = false
   editingLesson.value = lesson
   emptyCellData.value = null
@@ -756,10 +796,23 @@ const openEditModalForLesson = (lesson: CellLesson) => {
     day: lesson.day,
   }
 
+  let groupNames = resolveLessonGroups(lesson)
+
+  if (
+    canManagePairs.value
+    && isMultiGroupLessonType(normalizeLessonTypeForForm(lesson.type))
+  ) {
+    try {
+      groupNames = await fetchScheduleItemLinkedGroups(lesson.id)
+    } catch {
+      // keep groups from loaded schedule
+    }
+  }
+
   editForm.value = {
     name: lesson.subject,
     type: normalizeLessonTypeForForm(lesson.type),
-    group: lesson.groups.join(', '),
+    group: groupNames.join(', '),
     teacher: lesson.teacher || resolveDefaultTeacherName(),
     building: roomFields.building,
     room: roomFields.room,
@@ -771,6 +824,14 @@ const openEditModalForLesson = (lesson: CellLesson) => {
         ? String(lesson.subgroup) as '1' | '2'
         : '',
     additional: lesson.comment ?? '',
+  }
+
+  if (isConsultationSchedule.value && editForm.value.teacher.trim()) {
+    const teacherName = editForm.value.teacher.trim()
+
+    if (!consultationTeachers.value.includes(teacherName)) {
+      consultationTeachers.value = [...consultationTeachers.value, teacherName]
+    }
   }
 
   isEditModalVisible.value = true
@@ -992,17 +1053,41 @@ const saveTransfer = async () => {
   }
 }
 
-const resolveScheduleGroupName = (): string => {
-  if (scheduleType.value === 'students') {
-    return secondValue.value
-  }
-
+const resolveScheduleGroupNames = (): string[] => {
   if (editForm.value.group.trim()) {
-    return editForm.value.group.split(',')[0]?.trim() ?? ''
+    const parsedGroups = parseGroupNames(editForm.value.group)
+
+    if (scheduleType.value === 'students') {
+      if (isMultiGroupLessonType(editForm.value.type)) {
+        return parsedGroups
+      }
+
+      return secondValue.value ? [secondValue.value] : []
+    }
+
+    return parsedGroups
   }
 
-  return editingLesson.value?.groups[0] ?? editingLesson.value?.group ?? ''
+  if (scheduleType.value === 'students') {
+    return secondValue.value ? [secondValue.value] : []
+  }
+
+  if (editingLesson.value?.groups.length) {
+    return [...editingLesson.value.groups]
+  }
+
+  const singleGroup = editingLesson.value?.group?.trim()
+
+  return singleGroup ? [singleGroup] : []
 }
+
+const groupFieldPlaceholder = computed(() => {
+  if (isMultiGroupLessonType(editForm.value.type)) {
+    return '381, 382'
+  }
+
+  return '381'
+})
 
 const resolveWeekStartForSave = (): string | null => {
   if (editSlotContext.value?.weekStart) {
@@ -1029,7 +1114,7 @@ const resolveWeekStartForSave = (): string | null => {
 
 const saveEdit = async () => {
   if (scheduleType.value !== 'consults') {
-    const groupName = resolveScheduleGroupName()
+    const groupNames = resolveScheduleGroupNames()
     const timeParts = editForm.value.time.split('-').map((part) => part.trim())
     const startTime = timeParts[0] ?? ''
     const endTime = timeParts[1] ?? ''
@@ -1042,7 +1127,7 @@ const saveEdit = async () => {
     ]
 
     if (
-        !groupName
+        groupNames.length === 0
         || !weekStart
         || !dayOfWeek
         || !startTime
@@ -1051,6 +1136,11 @@ const saveEdit = async () => {
         || !editForm.value.type.trim()
     ) {
       alert('Заполните все обязательные поля: название, тип, день, время, группа')
+      return
+    }
+
+    if (groupNames.length > 1 && !isMultiGroupLessonType(editForm.value.type)) {
+      alert('Несколько групп можно указать только для лекций и занятий типа «Особое»')
       return
     }
 
@@ -1082,7 +1172,7 @@ const saveEdit = async () => {
     try {
       if (isCreatingLesson.value) {
         await createScheduleItem({
-          groupName,
+          groupName: groupNames.join(', '),
           ...payload,
         })
       } else if (editingLesson.value) {
@@ -1092,6 +1182,22 @@ const saveEdit = async () => {
               ? Number(editForm.value.subgroup)
               : null,
         })
+
+        if (isMultiGroupLessonType(editForm.value.type)) {
+          const previousGroups = new Set(
+            editingLesson.value.groups.map((group) => group.trim().toUpperCase()),
+          )
+          const addedGroups = groupNames.filter(
+            (group) => !previousGroups.has(group.trim().toUpperCase()),
+          )
+
+          for (const groupName of addedGroups) {
+            await createScheduleItem({
+              groupName,
+              ...payload,
+            })
+          }
+        }
       }
 
       await refreshSchedulePreservingView()
@@ -1126,31 +1232,44 @@ const saveEdit = async () => {
     return
   }
 
+  if (!editForm.value.teacher.trim()) {
+    alert('Выберите преподавателя')
+    return
+  }
+
   const consultationType = editForm.value.type.includes('Онлайн')
     ? 'Онлайн-консультация'
     : 'Консультация'
+  const room = editForm.value.type.includes('Онлайн')
+    ? DISTANCE_ROOM_LABEL
+    : formatRoomForApi(editForm.value.building, editForm.value.room)
+  const comment = editForm.value.additional.trim() || undefined
 
   try {
     if (isCreatingLesson.value) {
       await createConsultation({
         departmentId,
         subject: editForm.value.name.trim(),
+        teacherName: editForm.value.teacher.trim(),
         consultationType,
         dayOfWeek,
         startTime,
         endTime,
         weekStart,
-        room: editForm.value.room.trim() || undefined,
+        room,
+        comment,
       })
     } else if (editingLesson.value) {
       await updateConsultation(editingLesson.value.id, {
         subject: editForm.value.name.trim(),
+        teacherName: editForm.value.teacher.trim(),
         consultationType,
         dayOfWeek,
         startTime,
         endTime,
         weekStart,
-        room: editForm.value.room.trim() || undefined,
+        room,
+        comment,
       })
     }
 
@@ -1260,10 +1379,18 @@ const transferLesson = () => {
 const cancelLesson = async () => {
   if (!contextLesson.value) return
 
+  const lesson = contextLesson.value
+  const linkedGroupsLabel = lesson.groups.length > 1
+    ? lesson.groups.join(', ')
+    : null
   const isConfirmed = window.confirm(
       scheduleType.value === 'consults'
-        ? `Удалить консультацию "${contextLesson.value.subject}"?`
-        : `Отменить пару "${contextLesson.value.subject}"?`,
+        ? `Удалить консультацию "${lesson.subject}"?`
+        : isLectureLessonType(lesson.type)
+          ? linkedGroupsLabel
+            ? `Отменить лекцию "${lesson.subject}" для групп ${linkedGroupsLabel}?`
+            : `Отменить лекцию "${lesson.subject}" для всех параллельных групп?`
+          : `Отменить пару "${lesson.subject}"?`,
   )
 
   if (!isConfirmed) {
@@ -1355,7 +1482,13 @@ const editModalTitle = computed(() => {
   return isCreatingLesson.value ? 'Добавить пару' : 'Редактирование занятия'
 })
 
-const isGroupFieldReadonly = computed(() => scheduleType.value === 'students')
+const isGroupFieldReadonly = computed(() => {
+  if (scheduleType.value !== 'students') {
+    return false
+  }
+
+  return !isMultiGroupLessonType(editForm.value.type)
+})
 const isTeacherFieldReadonly = computed(() => scheduleType.value === 'teachers')
 const isRoomFieldsReadonly = computed(() => scheduleType.value === 'auditories')
 const showSubgroupField = computed(() =>
@@ -1367,6 +1500,34 @@ watch(
   (type) => {
     if (!isSubgroupApplicableLessonType(type)) {
       editForm.value.subgroup = ''
+    }
+
+    if (isEditModalVisible.value && scheduleType.value === 'students') {
+      if (isMultiGroupLessonType(type)) {
+        if (!editForm.value.group.trim()) {
+          editForm.value.group = secondValue.value
+        }
+      } else {
+        editForm.value.group = secondValue.value
+      }
+    }
+
+    if (!isEditModalVisible.value || !isConsultationSchedule.value) {
+      return
+    }
+
+    if (type.toLowerCase().includes('онлайн')) {
+      editForm.value.building = DISTANCE_BUILDING
+      editForm.value.room = DISTANCE_ROOM_LABEL
+      return
+    }
+
+    if (editForm.value.building === DISTANCE_BUILDING) {
+      editForm.value.building = ''
+    }
+
+    if (editForm.value.room === DISTANCE_ROOM_LABEL) {
+      editForm.value.room = ''
     }
   },
 )
@@ -1392,7 +1553,7 @@ watch(
 watch(
   () => editForm.value.building,
   (building) => {
-    if (!isEditModalVisible.value || isConsultationSchedule.value || isRoomFieldsReadonly.value) {
+    if (!isEditModalVisible.value || isRoomFieldsReadonly.value || isOnlineConsultationType.value) {
       return
     }
 
@@ -1484,7 +1645,7 @@ const mapCellLessons = (lessons: DisplayScheduleItem[]): CellLesson[] => {
   if (scheduleType.value !== 'teachers') {
     return sortCellLessons(lessons.map((lesson) => ({
       ...lesson,
-      groups: [lesson.group],
+      groups: resolveLessonGroups(lesson),
     })))
   }
 
@@ -1504,17 +1665,21 @@ const mapCellLessons = (lessons: DisplayScheduleItem[]): CellLesson[] => {
     const existingLesson = groupedLessons.get(key)
 
     if (existingLesson) {
-      if (!existingLesson.groups.includes(lesson.group)) {
-        existingLesson.groups.push(lesson.group)
-        existingLesson.group = existingLesson.groups.join(', ')
-      }
+      const mergedGroups = [...new Set([
+        ...existingLesson.groups,
+        ...resolveLessonGroups(lesson),
+      ])]
+
+      existingLesson.groups = mergedGroups
+      existingLesson.group = mergedGroups.join(', ')
+      existingLesson.linkedGroups = mergedGroups
 
       return
     }
 
     groupedLessons.set(key, {
       ...lesson,
-      groups: [lesson.group],
+      groups: resolveLessonGroups(lesson),
     })
   })
 
@@ -1624,6 +1789,14 @@ const isParallelSlot = (day: string, slot: TimeSlot) => {
 }
 
 const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
+
+const isOnlineConsultationType = computed(() =>
+  isConsultationSchedule.value && editForm.value.type.toLowerCase().includes('онлайн'),
+)
+
+const consultationBuildingOptions = computed(() =>
+  BUILDING_OPTIONS.filter((building) => building !== DISTANCE_BUILDING),
+)
 
 // Проверка, может ли текущий пользователь редактировать
 const canEdit = computed(() => {
@@ -1965,7 +2138,7 @@ onUnmounted(() => {
 
             <div class="modal-info">
               <p v-if="!isConsultationSchedule">
-                <strong>Группа:</strong>
+                <strong>{{ selectedLesson.groups.length > 1 ? 'Группы:' : 'Группа:' }}</strong>
                 {{ selectedLesson.groups.join(', ') }}
               </p>
 
@@ -1988,6 +2161,20 @@ onUnmounted(() => {
                 <strong>Время:</strong>
                 {{ selectedLesson.startTime }} - {{ selectedLesson.endTime }}
               </p>
+              <p v-if="selectedLesson.comment">
+                <strong>{{ isConsultationSchedule ? 'Ссылка / комментарий:' : 'Комментарий:' }}</strong>
+                <a
+                  v-if="isConsultationSchedule && /^https?:\/\//i.test(selectedLesson.comment)"
+                  :href="selectedLesson.comment"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ selectedLesson.comment }}
+                </a>
+                <template v-else>
+                  {{ selectedLesson.comment }}
+                </template>
+              </p>
             </div>
           </div>
         </div>
@@ -2007,6 +2194,15 @@ onUnmounted(() => {
                 Сейчас: {{ transferringLesson.day }},
                 {{ transferringLesson.startTime }} - {{ transferringLesson.endTime }}
               </span>
+              <p
+                  v-if="isLectureLessonType(transferringLesson.type)"
+                  class="form-hint"
+              >
+                Лекция будет перенесена во всех параллельных группах
+                <template v-if="transferringLesson.groups.length > 1">
+                  ({{ transferringLesson.groups.join(', ') }})
+                </template>.
+              </p>
             </div>
 
             <div class="edit-form">
@@ -2199,9 +2395,41 @@ onUnmounted(() => {
                     v-model="editForm.group"
                     type="text"
                     class="form-input"
-                    placeholder="381"
+                    :placeholder="groupFieldPlaceholder"
                     :readonly="isGroupFieldReadonly"
                 />
+                <p
+                    v-if="isGroupFieldReadonly && scheduleType === 'students'"
+                    class="form-hint"
+                >
+                  Для нескольких групп выберите тип «Лекция» или «Особое».
+                </p>
+                <p
+                    v-else-if="isMultiGroupLessonType(editForm.type)"
+                    class="form-hint"
+                >
+                  Можно указать несколько групп через запятую. Для лекций группы должны быть параллельными.
+                </p>
+              </div>
+
+              <div v-if="isConsultationSchedule" class="form-group">
+                <label for="edit-teacher-consult" class="form-label">
+                  Преподаватель <span class="required">*</span>
+                </label>
+                <select
+                    id="edit-teacher-consult"
+                    v-model="editForm.teacher"
+                    class="form-select"
+                >
+                  <option value="" disabled>Выберите преподавателя</option>
+                  <option
+                      v-for="teacher in consultationTeachers"
+                      :key="teacher"
+                      :value="teacher"
+                  >
+                    {{ teacher }}
+                  </option>
+                </select>
               </div>
 
               <div v-if="!isConsultationSchedule" class="form-group">
@@ -2239,7 +2467,18 @@ onUnmounted(() => {
                 </select>
               </div>
 
-              <div v-if="!isConsultationSchedule" class="form-row">
+              <div v-if="isOnlineConsultationType" class="form-group">
+                <label for="edit-room-online" class="form-label">Аудитория</label>
+                <input
+                    id="edit-room-online"
+                    :value="DISTANCE_ROOM_LABEL"
+                    type="text"
+                    class="form-input"
+                    readonly
+                />
+              </div>
+
+              <div v-else class="form-row">
                 <div class="form-group">
                   <label for="edit-building" class="form-label">Корпус</label>
                   <select
@@ -2249,7 +2488,11 @@ onUnmounted(() => {
                       :disabled="isRoomFieldsReadonly"
                   >
                     <option value="">Не выбран</option>
-                    <option v-for="building in BUILDING_OPTIONS" :key="building" :value="building">
+                    <option
+                      v-for="building in (isConsultationSchedule ? consultationBuildingOptions : BUILDING_OPTIONS)"
+                      :key="building"
+                      :value="building"
+                    >
                       {{ building }}
                     </option>
                   </select>
@@ -2278,13 +2521,15 @@ onUnmounted(() => {
               </div>
 
               <div class="form-group">
-                <label for="edit-additional" class="form-label">Комментарий</label>
+                <label for="edit-additional" class="form-label">
+                  {{ isConsultationSchedule ? 'Ссылка / комментарий' : 'Комментарий' }}
+                </label>
                 <input
                     id="edit-additional"
                     v-model="editForm.additional"
                     type="text"
                     class="form-input"
-                    placeholder="Выберите"
+                    :placeholder="isConsultationSchedule ? 'https://meet.example.com/...' : 'Дополнительная информация'"
                 />
               </div>
             </div>

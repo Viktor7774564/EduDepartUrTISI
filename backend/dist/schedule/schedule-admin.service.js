@@ -26,7 +26,10 @@ const schedule_item_entity_1 = require("./entities/schedule-item.entity");
 const schedule_preholiday_day_entity_1 = require("./entities/schedule-preholiday-day.entity");
 const schedule_item_mapper_1 = require("./schedule-item.mapper");
 const schedule_slot_utils_1 = require("./parser/schedule-slot.utils");
+const group_parallel_utils_1 = require("./parser/group-parallel.utils");
 const schedule_conflict_validator_1 = require("./parser/schedule-conflict.validator");
+const lesson_type_entity_1 = require("./entities/lesson-type.entity");
+const linked_lesson_service_1 = require("./linked-lesson.service");
 const lesson_type_resolver_1 = require("./resolver/lesson-type.resolver");
 const room_resolver_1 = require("./resolver/room.resolver");
 const teacher_resolver_1 = require("./resolver/teacher.resolver");
@@ -103,8 +106,9 @@ let ScheduleAdminService = class ScheduleAdminService {
     lessonTypeResolver;
     scheduleNotifier;
     notificationsService;
+    linkedLessonService;
     static IMPORT_DIRECTION_CODE = 'SCHEDULE_IMPORT';
-    constructor(itemsRepository, schedulesRepository, groupsRepository, directionsRepository, subjectsRepository, subgroupsRepository, preholidayDaysRepository, roomResolver, teacherResolver, lessonTypeResolver, scheduleNotifier, notificationsService) {
+    constructor(itemsRepository, schedulesRepository, groupsRepository, directionsRepository, subjectsRepository, subgroupsRepository, preholidayDaysRepository, roomResolver, teacherResolver, lessonTypeResolver, scheduleNotifier, notificationsService, linkedLessonService) {
         this.itemsRepository = itemsRepository;
         this.schedulesRepository = schedulesRepository;
         this.groupsRepository = groupsRepository;
@@ -117,6 +121,7 @@ let ScheduleAdminService = class ScheduleAdminService {
         this.lessonTypeResolver = lessonTypeResolver;
         this.scheduleNotifier = scheduleNotifier;
         this.notificationsService = notificationsService;
+        this.linkedLessonService = linkedLessonService;
     }
     toDate(value) {
         const trimmed = value.trim();
@@ -274,9 +279,10 @@ let ScheduleAdminService = class ScheduleAdminService {
         }
         return item;
     }
-    async applySlotFields(item, slot, groupId) {
+    async applySlotFields(item, slot, groupId, resolvedLessonType) {
         const subject = await this.findOrCreateSubject(slot.subject);
-        const lessonType = await this.lessonTypeResolver.resolve(slot.lessonType);
+        const lessonType = resolvedLessonType
+            ?? await this.lessonTypeResolver.resolve(slot.lessonType);
         const room = slot.room?.trim()
             ? await this.roomResolver.resolve(slot.room)
             : null;
@@ -312,7 +318,7 @@ let ScheduleAdminService = class ScheduleAdminService {
             item.comment = slot.comment;
         }
     }
-    async loadActiveLessonSlots(excludeItemId) {
+    async loadActiveLessonSlots(excludeItemIds = []) {
         const query = this.itemsRepository
             .createQueryBuilder('item')
             .innerJoinAndSelect('item.schedule', 'schedule')
@@ -323,14 +329,14 @@ let ScheduleAdminService = class ScheduleAdminService {
             .leftJoinAndSelect('item.teacher', 'teacher')
             .leftJoinAndSelect('item.room', 'room')
             .where('item.isDisabled = false');
-        if (excludeItemId) {
-            query.andWhere('item.id != :excludeItemId', { excludeItemId });
+        if (excludeItemIds.length > 0) {
+            query.andWhere('item.id NOT IN (:...excludeItemIds)', { excludeItemIds });
         }
         const items = await query.getMany();
         return items.map((entry) => (0, schedule_item_mapper_1.mapItemToLessonSlot)(entry));
     }
-    async assertNoConflicts(candidate, excludeItemId) {
-        const existingLessons = await this.loadActiveLessonSlots(excludeItemId);
+    async assertNoConflicts(candidate, excludeItemIds = []) {
+        const existingLessons = await this.loadActiveLessonSlots(excludeItemIds);
         const candidateSlot = (0, schedule_item_mapper_1.mapItemToLessonSlot)(candidate);
         const conflicts = (0, schedule_conflict_validator_1.validateScheduleConflicts)([candidateSlot], existingLessons);
         if (conflicts.length === 0) {
@@ -340,6 +346,31 @@ let ScheduleAdminService = class ScheduleAdminService {
             message: 'Невозможно сохранить: обнаружен конфликт в расписании',
             errors: conflicts.map((conflict) => conflict.message),
         });
+    }
+    async findLinkedLectureItems(item) {
+        return this.linkedLessonService.findLinkedSharedLessonItems(item);
+    }
+    buildUpdateSlotFields(item, dto) {
+        return {
+            subject: dto.subject?.trim() ?? item.subject.name,
+            lessonType: dto.lessonType?.trim() ?? item.lessonType.name,
+            teacherName: dto.teacherName !== undefined
+                ? dto.teacherName.trim()
+                : (0, schedule_item_mapper_1.resolveTeacherName)(item),
+            room: dto.room !== undefined
+                ? dto.room.trim()
+                : (0, schedule_item_mapper_1.formatRoomLabel)(item.room),
+            subgroup: dto.subgroup !== undefined
+                ? dto.subgroup
+                : (item.subgroup?.number ?? null),
+            dayOfWeek: dto.dayOfWeek ?? item.dayOfWeek,
+            startTime: dto.startTime ?? item.startTime,
+            endTime: dto.endTime ?? item.endTime,
+            weekStart: dto.weekStart ?? (0, schedule_slot_utils_1.normalizeWeekStart)(String(item.weekStart)),
+            comment: dto.comment !== undefined
+                ? (dto.comment?.trim() || null)
+                : undefined,
+        };
     }
     parseRecommendationDate(weekStart, dayOfWeek) {
         const normalizedWeekStart = (0, schedule_slot_utils_1.normalizeWeekStart)(weekStart);
@@ -551,12 +582,16 @@ let ScheduleAdminService = class ScheduleAdminService {
     }
     async getTransferRecommendations(id, weekStart) {
         const item = await this.loadItemWithRelations(id);
-        const sourceSlot = (0, schedule_item_mapper_1.mapItemToLessonSlot)(item);
+        const linkedItems = await this.findLinkedLectureItems(item);
+        const linkedItemIds = linkedItems.map((entry) => entry.id);
+        const linkedSlots = linkedItems.map((entry) => (0, schedule_item_mapper_1.mapItemToLessonSlot)(entry));
+        const sourceSlot = linkedSlots.find((slot) => slot.groupName === item.schedule.group?.name)
+            ?? (0, schedule_item_mapper_1.mapItemToLessonSlot)(item);
         const targetWeekStart = (0, schedule_slot_utils_1.normalizeWeekStart)(weekStart ? this.toDate(weekStart) : String(item.weekStart));
         if (this.isWeekInPast(targetWeekStart)) {
             return [];
         }
-        const existingLessons = await this.loadActiveLessonSlots(id);
+        const existingLessons = await this.loadActiveLessonSlots(linkedItemIds);
         const preholidayDayKeys = await this.loadPreholidayDayKeys(targetWeekStart);
         const recommendations = [];
         for (const [dayOfWeekValue, dayLabel] of Object.entries(DAY_LABELS)) {
@@ -567,17 +602,19 @@ let ScheduleAdminService = class ScheduleAdminService {
                 continue;
             }
             for (const slot of this.getRecommendationSlots(targetWeekStart, dayOfWeek, preholidayDayKeys)) {
-                const candidate = this.buildCandidateSlot(sourceSlot, targetWeekStart, dayOfWeek, slot.startTime, slot.endTime);
-                const isOriginalSlot = sourceSlot.weekStart === candidate.weekStart
+                const candidates = linkedSlots.map((linkedSlot) => this.buildCandidateSlot(linkedSlot, targetWeekStart, dayOfWeek, slot.startTime, slot.endTime));
+                const isOriginalSlot = candidates.some((candidate) => sourceSlot.weekStart === candidate.weekStart
                     && sourceSlot.dayOfWeek === candidate.dayOfWeek
-                    && sourceSlot.startTime === candidate.startTime;
+                    && sourceSlot.startTime === candidate.startTime);
                 if (isOriginalSlot) {
                     continue;
                 }
-                const conflicts = (0, schedule_conflict_validator_1.validateScheduleConflicts)([candidate], existingLessons);
-                if (conflicts.length > 0) {
+                const hasConflict = candidates.some((candidate) => (0, schedule_conflict_validator_1.validateScheduleConflicts)([candidate], existingLessons).length > 0);
+                if (hasConflict) {
                     continue;
                 }
+                const candidate = candidates.find((entry) => entry.groupName === sourceSlot.groupName)
+                    ?? candidates[0];
                 const { score, reasons } = this.scoreRecommendation(candidate, sourceSlot, existingLessons);
                 const recommendationReasons = isPreholidayDay
                     ? [...reasons, 'предпраздничный день (короткие пары)']
@@ -615,7 +652,48 @@ let ScheduleAdminService = class ScheduleAdminService {
             reasons: recommendation.reasons,
         }));
     }
+    async getLinkedGroupNames(id) {
+        const item = await this.loadItemWithRelations(id);
+        const linkedItems = await this.linkedLessonService.findLinkedSharedLessonItems(item);
+        return linkedItems
+            .map((entry) => entry.schedule?.group?.name ?? '')
+            .filter(Boolean)
+            .sort((left, right) => left.localeCompare(right, 'ru', { sensitivity: 'base', numeric: true }));
+    }
     async createItem(dto) {
+        const groupNames = (0, group_parallel_utils_1.parseGroupNames)(dto.groupName);
+        if (groupNames.length === 0) {
+            throw new common_1.BadRequestException('Укажите группу');
+        }
+        const lessonType = await this.lessonTypeResolver.resolve(dto.lessonType);
+        const allowsMultipleGroups = lessonType.code === lesson_type_entity_1.LessonTypeCode.LECTURE
+            || lessonType.code === lesson_type_entity_1.LessonTypeCode.SPECIAL;
+        if (groupNames.length > 1 && !allowsMultipleGroups) {
+            throw new common_1.BadRequestException('Несколько групп можно указать только для лекций и занятий типа «Особое»');
+        }
+        if (lessonType.code === lesson_type_entity_1.LessonTypeCode.LECTURE) {
+            try {
+                (0, group_parallel_utils_1.assertParallelGroupSet)(groupNames);
+            }
+            catch (error) {
+                throw new common_1.BadRequestException(error instanceof Error
+                    ? error.message
+                    : 'Группы для лекции должны быть параллельными');
+            }
+        }
+        let firstCreatedItem = null;
+        for (const groupName of groupNames) {
+            const createdItem = await this.createItemForGroup({
+                ...dto,
+                groupName,
+            }, lessonType);
+            if (!firstCreatedItem) {
+                firstCreatedItem = createdItem;
+            }
+        }
+        return firstCreatedItem;
+    }
+    async createItemForGroup(dto, resolvedLessonType) {
         const group = await this.findOrCreateGroup(dto.groupName);
         const schedule = await this.findScheduleForWeek(dto.groupName, dto.weekStart);
         const item = this.itemsRepository.create({
@@ -630,7 +708,7 @@ let ScheduleAdminService = class ScheduleAdminService {
             weekType: null,
             comment: dto.comment?.trim() || null,
         });
-        await this.applySlotFields(item, dto, group.id);
+        await this.applySlotFields(item, dto, group.id, resolvedLessonType);
         item.schedule = schedule;
         item.schedule.group = group;
         await this.assertNoConflicts(item);
@@ -642,7 +720,12 @@ let ScheduleAdminService = class ScheduleAdminService {
     }
     async updateItem(id, dto) {
         const item = await this.loadItemWithRelations(id);
-        const previousItem = this.notificationsService.createScheduleItemSnapshot(item);
+        const linkedItems = await this.findLinkedLectureItems(item);
+        const linkedItemIds = linkedItems.map((entry) => entry.id);
+        const snapshots = new Map(linkedItems.map((linkedItem) => [
+            linkedItem.id,
+            this.notificationsService.createScheduleItemSnapshot(linkedItem),
+        ]));
         const groupName = item.schedule.group?.name;
         if (!groupName) {
             throw new common_1.BadRequestException('У занятия не указана группа');
@@ -654,43 +737,36 @@ let ScheduleAdminService = class ScheduleAdminService {
         if (this.isWeekInPast(nextWeekStart) && nextWeekStart !== currentWeekStart) {
             throw new common_1.BadRequestException('Нельзя перенести пару на прошедшую неделю');
         }
-        await this.applySlotFields(item, {
-            subject: dto.subject?.trim() ?? item.subject.name,
-            lessonType: dto.lessonType?.trim() ?? item.lessonType.name,
-            teacherName: dto.teacherName !== undefined
-                ? dto.teacherName.trim()
-                : (0, schedule_item_mapper_1.resolveTeacherName)(item),
-            room: dto.room !== undefined
-                ? dto.room.trim()
-                : (0, schedule_item_mapper_1.formatRoomLabel)(item.room),
-            subgroup: dto.subgroup !== undefined
-                ? dto.subgroup
-                : (item.subgroup?.number ?? null),
-            dayOfWeek: dto.dayOfWeek ?? item.dayOfWeek,
-            startTime: dto.startTime ?? item.startTime,
-            endTime: dto.endTime ?? item.endTime,
-            weekStart: dto.weekStart ?? (0, schedule_slot_utils_1.normalizeWeekStart)(String(item.weekStart)),
-            comment: dto.comment !== undefined
-                ? (dto.comment?.trim() || null)
-                : undefined,
-        }, item.schedule.groupId);
-        await this.assertNoConflicts(item, id);
-        await this.itemsRepository.save(item);
-        const updatedWithRelations = await this.loadItemWithRelations(id);
+        const slotFields = this.buildUpdateSlotFields(item, dto);
+        for (const linkedItem of linkedItems) {
+            await this.applySlotFields(linkedItem, slotFields, linkedItem.schedule.groupId);
+        }
+        for (const linkedItem of linkedItems) {
+            await this.assertNoConflicts(linkedItem, linkedItemIds);
+        }
+        for (const linkedItem of linkedItems) {
+            await this.itemsRepository.save(linkedItem);
+        }
         this.scheduleNotifier.notifyScheduleChanged('item-updated');
-        await this.notificationsService.notifyScheduleItemChanged('updated', updatedWithRelations, previousItem);
-        return (0, schedule_item_mapper_1.mapItemToDisplayLesson)(updatedWithRelations);
+        for (const linkedItem of linkedItems) {
+            const updatedWithRelations = await this.loadItemWithRelations(linkedItem.id);
+            const previousItem = snapshots.get(linkedItem.id);
+            if (previousItem) {
+                await this.notificationsService.notifyScheduleItemChanged('updated', updatedWithRelations, previousItem);
+            }
+        }
+        return (0, schedule_item_mapper_1.mapItemToDisplayLesson)(await this.loadItemWithRelations(id));
     }
     async disableItem(id) {
         const item = await this.loadItemWithRelations(id);
-        if (!item) {
-            throw new common_1.NotFoundException('Занятие не найдено');
+        const linkedItems = await this.findLinkedLectureItems(item);
+        for (const linkedItem of linkedItems) {
+            linkedItem.isDisabled = true;
+            await this.itemsRepository.save(linkedItem);
+            const disabledWithRelations = await this.loadItemWithRelations(linkedItem.id);
+            await this.notificationsService.notifyScheduleItemChanged('disabled', disabledWithRelations);
         }
-        item.isDisabled = true;
-        await this.itemsRepository.save(item);
-        const disabledWithRelations = await this.loadItemWithRelations(id);
         this.scheduleNotifier.notifyScheduleChanged('item-disabled');
-        await this.notificationsService.notifyScheduleItemChanged('disabled', disabledWithRelations);
     }
     async deleteItem(id) {
         const item = await this.loadItemWithRelations(id);
@@ -720,6 +796,7 @@ exports.ScheduleAdminService = ScheduleAdminService = ScheduleAdminService_1 = _
         teacher_resolver_1.TeacherResolver,
         lesson_type_resolver_1.LessonTypeResolver,
         schedule_notifier_service_1.ScheduleNotifierService,
-        notifications_service_1.NotificationsService])
+        notifications_service_1.NotificationsService,
+        linked_lesson_service_1.LinkedLessonService])
 ], ScheduleAdminService);
 //# sourceMappingURL=schedule-admin.service.js.map

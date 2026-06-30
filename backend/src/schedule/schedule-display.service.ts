@@ -22,6 +22,7 @@ import {
     pickPreferredRoomLabel,
 } from './parser/schedule-slot.utils';
 import { resolveSchedulePeriodMeta } from './parser/schedule-period.utils';
+import { LinkedLessonService } from './linked-lesson.service';
 const DISTANCE_BUILDING = 'Дистанционное';
 const DISTANCE_ROOM_LABEL = 'дист. форм. об.';
 
@@ -51,6 +52,7 @@ export interface ScheduleDisplayLesson {
     type: string;
     room: string;
     group: string;
+    linkedGroups: string[];
     subgroup: number | null;
     isSameCellParallel: boolean;
     comment: string | null;
@@ -93,6 +95,7 @@ export class ScheduleDisplayService {
         private readonly schedulesRepository: Repository<Schedule>,
         @InjectRepository(User)
         private readonly usersRepository: Repository<User>,
+        private readonly linkedLessonService: LinkedLessonService,
     ) {}
 
     private normalizeText(value: string): string {
@@ -131,9 +134,12 @@ export class ScheduleDisplayService {
         return `${pad(start.getDate())}.${pad(start.getMonth() + 1)} - ${pad(end.getDate())}.${pad(end.getMonth() + 1)}`;
     }
 
-    private buildWeeksFromItems(items: ScheduleItem[]): Record<string, ScheduleDisplayLesson[]> {
+    private async buildWeeksFromItems(
+        items: ScheduleItem[],
+    ): Promise<Record<string, ScheduleDisplayLesson[]>> {
         const weeks = new Map<string, ScheduleDisplayLesson[]>();
         const weekOrder: string[] = [];
+        const linkedGroupsMap = await this.linkedLessonService.buildLinkedGroupsMap(items);
 
         for (const item of items) {
             const weekLabel = this.formatWeekLabel(String(item.weekStart));
@@ -143,7 +149,9 @@ export class ScheduleDisplayService {
                 weekOrder.push(weekLabel);
             }
 
-            weeks.get(weekLabel)?.push(mapItemToDisplayLesson(item));
+            weeks.get(weekLabel)?.push(
+                mapItemToDisplayLesson(item, linkedGroupsMap.get(item.id)),
+            );
         }
 
         const orderedWeeks: Record<string, ScheduleDisplayLesson[]> = {};
@@ -258,7 +266,7 @@ export class ScheduleDisplayService {
 
         return {
             groupName: items[0]?.schedule?.group?.name ?? groupName.trim(),
-            weeks: this.buildWeeksFromItems(items),
+            weeks: await this.buildWeeksFromItems(items),
             ...resolveSchedulePeriodMeta(items),
         };
     }
@@ -349,7 +357,7 @@ export class ScheduleDisplayService {
 
         return {
             teacherName: resolvedTeacherName,
-            weeks: this.buildWeeksFromItems(matchedItems),
+            weeks: await this.buildWeeksFromItems(matchedItems),
             ...resolveSchedulePeriodMeta(matchedItems),
         };
     }
@@ -459,7 +467,7 @@ export class ScheduleDisplayService {
             room: matchedItems[0]
                 ? formatRoomLabel(matchedItems[0].room)
                 : roomName.trim(),
-            weeks: this.buildWeeksFromItems(matchedItems),
+            weeks: await this.buildWeeksFromItems(matchedItems),
             ...resolveSchedulePeriodMeta(matchedItems),
         };
     }

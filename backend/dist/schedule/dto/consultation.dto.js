@@ -14,12 +14,14 @@ const class_validator_1 = require("class-validator");
 class CreateConsultationDto {
     departmentId;
     subject;
+    teacherName;
     consultationType;
     dayOfWeek;
     startTime;
     endTime;
     weekStart;
     room;
+    comment;
 }
 exports.CreateConsultationDto = CreateConsultationDto;
 __decorate([
@@ -31,6 +33,11 @@ __decorate([
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], CreateConsultationDto.prototype, "subject", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], CreateConsultationDto.prototype, "teacherName", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsIn)(['Консультация', 'Онлайн-консультация']),
@@ -62,14 +69,21 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateConsultationDto.prototype, "room", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateConsultationDto.prototype, "comment", void 0);
 class UpdateConsultationDto {
     subject;
+    teacherName;
     consultationType;
     dayOfWeek;
     startTime;
     endTime;
     weekStart;
     room;
+    comment;
 }
 exports.UpdateConsultationDto = UpdateConsultationDto;
 __decorate([
@@ -78,6 +92,12 @@ __decorate([
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], UpdateConsultationDto.prototype, "subject", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], UpdateConsultationDto.prototype, "teacherName", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
@@ -114,4 +134,9 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateConsultationDto.prototype, "room", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateConsultationDto.prototype, "comment", void 0);
 //# sourceMappingURL=consultation.dto.js.map

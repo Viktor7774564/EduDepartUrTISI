@@ -154,11 +154,12 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
     async resolveRecipients(item, previousItem) {
         const recipientIds = new Set();
         const currentItem = this.createScheduleItemSnapshot(item);
-        await this.addStudentRecipients(recipientIds, currentItem.groupId, currentItem.subgroupId);
+        await this.addStudentRecipients(recipientIds, currentItem.groupName, currentItem.subgroupNumber);
         if (previousItem
-            && (previousItem.groupId !== currentItem.groupId
-                || previousItem.subgroupId !== currentItem.subgroupId)) {
-            await this.addStudentRecipients(recipientIds, previousItem.groupId, previousItem.subgroupId);
+            && (this.normalizeGroupName(previousItem.groupName)
+                !== this.normalizeGroupName(currentItem.groupName)
+                || previousItem.subgroupNumber !== currentItem.subgroupNumber)) {
+            await this.addStudentRecipients(recipientIds, previousItem.groupName, previousItem.subgroupNumber);
         }
         if (currentItem.teacherId) {
             recipientIds.add(currentItem.teacherId);
@@ -177,30 +178,37 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             relations: ['role'],
         });
     }
-    async addStudentRecipients(recipientIds, groupId, subgroupId) {
-        if (!groupId) {
+    async addStudentRecipients(recipientIds, groupName, subgroupNumber) {
+        if (!groupName?.trim()) {
             return;
         }
-        const students = await this.findStudentsByGroup(groupId, subgroupId);
-        const fallbackStudents = subgroupId && students.length === 0
-            ? await this.findStudentsByGroup(groupId, null)
+        const students = await this.findStudentsByGroupName(groupName, subgroupNumber);
+        const fallbackStudents = subgroupNumber && students.length === 0
+            ? await this.findStudentsByGroupName(groupName, null)
             : [];
         for (const student of [...students, ...fallbackStudents]) {
             recipientIds.add(student.id);
         }
     }
-    findStudentsByGroup(groupId, subgroupId) {
+    findStudentsByGroupName(groupName, subgroupNumber) {
         const query = this.usersRepository
             .createQueryBuilder('user')
             .innerJoin('user.role', 'role')
             .innerJoin('user.studentProfile', 'studentProfile')
+            .innerJoin('studentProfile.group', 'group')
+            .leftJoin('studentProfile.subgroup', 'subgroup')
             .where('user.isActive = :isActive', { isActive: true })
             .andWhere('role.code = :roleCode', { roleCode: role_entity_1.RoleCode.STUDENT })
-            .andWhere('studentProfile.groupId = :groupId', { groupId });
-        if (subgroupId) {
-            query.andWhere('studentProfile.subgroupId = :subgroupId', { subgroupId });
+            .andWhere('UPPER(TRIM(group.name)) = UPPER(:groupName)', {
+            groupName: groupName.trim(),
+        });
+        if (subgroupNumber) {
+            query.andWhere('subgroup.number = :subgroupNumber', { subgroupNumber });
         }
         return query.getMany();
+    }
+    normalizeGroupName(groupName) {
+        return groupName?.trim().toUpperCase() ?? '';
     }
     getScheduleTitle(action) {
         switch (action) {

@@ -29,6 +29,9 @@ let ScheduleAdminController = class ScheduleAdminController {
     getTransferRecommendations(id, query) {
         return this.scheduleAdminService.getTransferRecommendations(id, query.weekStart);
     }
+    getLinkedGroupNames(id) {
+        return this.scheduleAdminService.getLinkedGroupNames(id);
+    }
     updateItem(id, dto) {
         return this.scheduleAdminService.updateItem(id, dto);
     }
@@ -55,6 +58,13 @@ __decorate([
     __metadata("design:paramtypes", [Number, schedule_item_dto_1.ScheduleTransferRecommendationQueryDto]),
     __metadata("design:returntype", Promise)
 ], ScheduleAdminController.prototype, "getTransferRecommendations", null);
+__decorate([
+    (0, common_1.Get)(':id/linked-groups'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], ScheduleAdminController.prototype, "getLinkedGroupNames", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),

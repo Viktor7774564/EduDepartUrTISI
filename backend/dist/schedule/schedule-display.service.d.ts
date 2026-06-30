@@ -2,6 +2,7 @@ import { Repository } from 'typeorm';
 import { ScheduleItem } from './entities/schedule-item.entity';
 import { Schedule } from './entities/schedule.entity';
 import { User } from '../users/entities/user.entity';
+import { LinkedLessonService } from './linked-lesson.service';
 export interface ScheduleGroupInfo {
     groupName: string;
     facultyName: string | null;
@@ -16,6 +17,7 @@ export interface ScheduleDisplayLesson {
     type: string;
     room: string;
     group: string;
+    linkedGroups: string[];
     subgroup: number | null;
     isSameCellParallel: boolean;
     comment: string | null;
@@ -49,7 +51,8 @@ export declare class ScheduleDisplayService {
     private readonly itemsRepository;
     private readonly schedulesRepository;
     private readonly usersRepository;
-    constructor(itemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>, usersRepository: Repository<User>);
+    private readonly linkedLessonService;
+    constructor(itemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>, usersRepository: Repository<User>, linkedLessonService: LinkedLessonService);
     private normalizeText;
     private parseDateValue;
     private formatWeekLabel;

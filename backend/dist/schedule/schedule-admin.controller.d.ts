@@ -6,6 +6,7 @@ export declare class ScheduleAdminController {
     constructor(scheduleAdminService: ScheduleAdminService);
     createItem(dto: CreateScheduleItemDto): Promise<ScheduleDisplayLesson>;
     getTransferRecommendations(id: number, query: ScheduleTransferRecommendationQueryDto): Promise<ScheduleTransferRecommendationDto[]>;
+    getLinkedGroupNames(id: number): Promise<string[]>;
     updateItem(id: number, dto: UpdateScheduleItemDto): Promise<ScheduleDisplayLesson>;
     disableItem(id: number): Promise<void>;
     deleteItem(id: number): Promise<void>;

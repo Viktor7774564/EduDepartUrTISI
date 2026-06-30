@@ -43,6 +43,7 @@ const room_resolver_1 = require("./resolver/room.resolver");
 const teacher_resolver_1 = require("./resolver/teacher.resolver");
 const schedule_gateway_1 = require("./schedule.gateway");
 const schedule_notifier_service_1 = require("./schedule-notifier.service");
+const linked_lesson_service_1 = require("./linked-lesson.service");
 const notifications_module_1 = require("../notifications/notifications.module");
 let ScheduleModule = class ScheduleModule {
 };
@@ -85,6 +86,7 @@ exports.ScheduleModule = ScheduleModule = __decorate([
             schedule_admin_service_1.ScheduleAdminService,
             schedule_display_service_1.ScheduleDisplayService,
             consultation_service_1.ConsultationService,
+            linked_lesson_service_1.LinkedLessonService,
             room_resolver_1.RoomResolver,
             teacher_resolver_1.TeacherResolver,
             lesson_type_resolver_1.LessonTypeResolver,

@@ -21,6 +21,45 @@ export function areParallelGroups(first: string, second: string): boolean {
     return firstKey !== null && firstKey === secondKey && first !== second;
 }
 
+export function parseGroupNames(raw: string): string[] {
+    const seen = new Set<string>();
+    const groupNames: string[] = [];
+
+    for (const part of raw.split(/[,;]/)) {
+        const trimmed = part.trim();
+
+        if (!trimmed) {
+            continue;
+        }
+
+        const normalized = trimmed.toUpperCase();
+
+        if (seen.has(normalized)) {
+            continue;
+        }
+
+        seen.add(normalized);
+        groupNames.push(trimmed);
+    }
+
+    return groupNames;
+}
+
+export function assertParallelGroupSet(groupNames: string[]): void {
+    if (groupNames.length <= 1) {
+        return;
+    }
+
+    const parallelKeys = groupNames.map((groupName) => getParallelKey(groupName));
+    const firstKey = parallelKeys[0];
+
+    if (!firstKey || parallelKeys.some((key) => key !== firstKey)) {
+        throw new Error(
+            'Группы для лекции должны быть параллельными (например, ИС-21 и ИС-22 или 381 и 382)',
+        );
+    }
+}
+
 export function extractGroupNameFromTitle(title: string): string | null {
     const normalized = title.trim().replace(/\s+/g, ' ');
     const markedNamedGroup = normalized.match(

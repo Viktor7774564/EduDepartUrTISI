@@ -13,6 +13,7 @@ export declare class Consultation {
     endTime: string;
     weekStart: string;
     room: string | null;
+    comment: string | null;
     createdAt: Date;
     updatedAt: Date;
 }

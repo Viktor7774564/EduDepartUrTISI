@@ -9,8 +9,8 @@ interface AuthenticatedRequest extends Request {
 export declare class ScheduleUploadController {
     private readonly scheduleUploadService;
     constructor(scheduleUploadService: ScheduleUploadService);
-    listUploads(): Promise<import("./schedule-upload.service").ScheduleUploadResponse[]>;
+    listUploads(req: AuthenticatedRequest): Promise<import("./schedule-upload.service").ScheduleUploadResponse[]>;
     uploadSchedule(req: AuthenticatedRequest, file: Express.Multer.File | undefined): Promise<import("./schedule-upload.service").ScheduleUploadResponse>;
-    deleteUpload(id: number): Promise<void>;
+    deleteUpload(req: AuthenticatedRequest, id: number): Promise<void>;
 }
 export {};

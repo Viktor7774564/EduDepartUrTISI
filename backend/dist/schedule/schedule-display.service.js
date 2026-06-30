@@ -24,6 +24,7 @@ const schedule_item_mapper_1 = require("./schedule-item.mapper");
 const roman_room_utils_1 = require("./parser/roman-room.utils");
 const schedule_slot_utils_1 = require("./parser/schedule-slot.utils");
 const schedule_period_utils_1 = require("./parser/schedule-period.utils");
+const linked_lesson_service_1 = require("./linked-lesson.service");
 const DISTANCE_BUILDING = 'Дистанционное';
 const DISTANCE_ROOM_LABEL = 'дист. форм. об.';
 const ITEM_RELATIONS = [
@@ -40,10 +41,12 @@ let ScheduleDisplayService = class ScheduleDisplayService {
     itemsRepository;
     schedulesRepository;
     usersRepository;
-    constructor(itemsRepository, schedulesRepository, usersRepository) {
+    linkedLessonService;
+    constructor(itemsRepository, schedulesRepository, usersRepository, linkedLessonService) {
         this.itemsRepository = itemsRepository;
         this.schedulesRepository = schedulesRepository;
         this.usersRepository = usersRepository;
+        this.linkedLessonService = linkedLessonService;
     }
     normalizeText(value) {
         return value.trim().toUpperCase();
@@ -69,16 +72,17 @@ let ScheduleDisplayService = class ScheduleDisplayService {
         const pad = (part) => String(part).padStart(2, '0');
         return `${pad(start.getDate())}.${pad(start.getMonth() + 1)} - ${pad(end.getDate())}.${pad(end.getMonth() + 1)}`;
     }
-    buildWeeksFromItems(items) {
+    async buildWeeksFromItems(items) {
         const weeks = new Map();
         const weekOrder = [];
+        const linkedGroupsMap = await this.linkedLessonService.buildLinkedGroupsMap(items);
         for (const item of items) {
             const weekLabel = this.formatWeekLabel(String(item.weekStart));
             if (!weeks.has(weekLabel)) {
                 weeks.set(weekLabel, []);
                 weekOrder.push(weekLabel);
             }
-            weeks.get(weekLabel)?.push((0, schedule_item_mapper_1.mapItemToDisplayLesson)(item));
+            weeks.get(weekLabel)?.push((0, schedule_item_mapper_1.mapItemToDisplayLesson)(item, linkedGroupsMap.get(item.id)));
         }
         const orderedWeeks = {};
         for (const weekLabel of weekOrder) {
@@ -168,7 +172,7 @@ let ScheduleDisplayService = class ScheduleDisplayService {
             .getMany();
         return {
             groupName: items[0]?.schedule?.group?.name ?? groupName.trim(),
-            weeks: this.buildWeeksFromItems(items),
+            weeks: await this.buildWeeksFromItems(items),
             ...(0, schedule_period_utils_1.resolveSchedulePeriodMeta)(items),
         };
     }
@@ -230,7 +234,7 @@ let ScheduleDisplayService = class ScheduleDisplayService {
             : teacherName.trim();
         return {
             teacherName: resolvedTeacherName,
-            weeks: this.buildWeeksFromItems(matchedItems),
+            weeks: await this.buildWeeksFromItems(matchedItems),
             ...(0, schedule_period_utils_1.resolveSchedulePeriodMeta)(matchedItems),
         };
     }
@@ -307,7 +311,7 @@ let ScheduleDisplayService = class ScheduleDisplayService {
             room: matchedItems[0]
                 ? (0, schedule_item_mapper_1.formatRoomLabel)(matchedItems[0].room)
                 : roomName.trim(),
-            weeks: this.buildWeeksFromItems(matchedItems),
+            weeks: await this.buildWeeksFromItems(matchedItems),
             ...(0, schedule_period_utils_1.resolveSchedulePeriodMeta)(matchedItems),
         };
     }
@@ -320,6 +324,7 @@ exports.ScheduleDisplayService = ScheduleDisplayService = __decorate([
     __param(2, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        linked_lesson_service_1.LinkedLessonService])
 ], ScheduleDisplayService);
 //# sourceMappingURL=schedule-display.service.js.map

@@ -7,5 +7,5 @@ export declare function formatTeacherName(user: User): string;
 export declare function formatRoomLabel(room: Room | null): string;
 export declare function resolveTeacherName(item: ScheduleItem): string;
 export declare function formatTime(value: string): string;
-export declare function mapItemToDisplayLesson(item: ScheduleItem): ScheduleDisplayLesson;
+export declare function mapItemToDisplayLesson(item: ScheduleItem, linkedGroups?: string[]): ScheduleDisplayLesson;
 export declare function mapItemToLessonSlot(item: ScheduleItem): ScheduleLessonSlot;

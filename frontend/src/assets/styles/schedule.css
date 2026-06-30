@@ -318,7 +318,7 @@
 }
 
 .schedule-page .consult-online {
-  @apply bg-[#b39dc7] text-white;
+  @apply bg-[#30b3b3] text-white;
 }
 
 .schedule-page .box.consultation {
@@ -326,7 +326,7 @@
 }
 
 .schedule-page .box.consult-online {
-  @apply bg-[#b39dc7];
+  @apply bg-[#30b3b3];
 }
 
 .schedule-page .empty-state {
@@ -443,7 +443,7 @@
 }
 
 .schedule-page .type-badge.consult-online {
-  @apply bg-[rgba(179,157,199,0.22)] border-2 border-[#b39dc7] text-[#7c6794];
+  @apply bg-[rgba(48,179,179,0.16)] border-2 border-[#30b3b3] text-[#1a7575];
 }
 
 .schedule-page .modal-info p {

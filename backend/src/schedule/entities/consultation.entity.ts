@@ -51,6 +51,9 @@ export class Consultation {
     @Column({ type: 'varchar', nullable: true })
     room!: string | null;
 
+    @Column({ type: 'text', nullable: true })
+    comment!: string | null;
+
     @CreateDateColumn()
     createdAt!: Date;
 

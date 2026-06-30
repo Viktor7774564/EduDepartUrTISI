@@ -37,7 +37,8 @@ export declare class NotificationsService {
     createScheduleItemSnapshot(item: ScheduleItem): ScheduleItemNotificationSnapshot;
     private resolveRecipients;
     private addStudentRecipients;
-    private findStudentsByGroup;
+    private findStudentsByGroupName;
+    private normalizeGroupName;
     private getScheduleTitle;
     private buildPreholidayMessage;
     private buildScheduleMessage;

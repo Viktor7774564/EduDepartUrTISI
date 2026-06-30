@@ -39,6 +39,7 @@ import { RoomResolver } from './resolver/room.resolver';
 import { TeacherResolver } from './resolver/teacher.resolver';
 import { ScheduleGateway } from './schedule.gateway';
 import { ScheduleNotifierService } from './schedule-notifier.service';
+import { LinkedLessonService } from './linked-lesson.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 
@@ -79,6 +80,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
         ScheduleAdminService,
         ScheduleDisplayService,
         ConsultationService,
+        LinkedLessonService,
         RoomResolver,
         TeacherResolver,
         LessonTypeResolver,

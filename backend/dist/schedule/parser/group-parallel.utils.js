@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getParallelKey = getParallelKey;
 exports.areParallelGroups = areParallelGroups;
+exports.parseGroupNames = parseGroupNames;
+exports.assertParallelGroupSet = assertParallelGroupSet;
 exports.extractGroupNameFromTitle = extractGroupNameFromTitle;
 function getParallelKey(groupName) {
     const normalized = groupName.trim().toUpperCase();
@@ -19,6 +21,33 @@ function areParallelGroups(first, second) {
     const firstKey = getParallelKey(first);
     const secondKey = getParallelKey(second);
     return firstKey !== null && firstKey === secondKey && first !== second;
+}
+function parseGroupNames(raw) {
+    const seen = new Set();
+    const groupNames = [];
+    for (const part of raw.split(/[,;]/)) {
+        const trimmed = part.trim();
+        if (!trimmed) {
+            continue;
+        }
+        const normalized = trimmed.toUpperCase();
+        if (seen.has(normalized)) {
+            continue;
+        }
+        seen.add(normalized);
+        groupNames.push(trimmed);
+    }
+    return groupNames;
+}
+function assertParallelGroupSet(groupNames) {
+    if (groupNames.length <= 1) {
+        return;
+    }
+    const parallelKeys = groupNames.map((groupName) => getParallelKey(groupName));
+    const firstKey = parallelKeys[0];
+    if (!firstKey || parallelKeys.some((key) => key !== firstKey)) {
+        throw new Error('Группы для лекции должны быть параллельными (например, ИС-21 и ИС-22 или 381 и 382)');
+    }
 }
 function extractGroupNameFromTitle(title) {
     const normalized = title.trim().replace(/\s+/g, ' ');
