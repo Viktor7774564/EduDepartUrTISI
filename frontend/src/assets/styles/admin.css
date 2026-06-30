@@ -281,6 +281,10 @@
     @apply text-[20px];
   }
 
+  .schedule-upload-page .card-title {
+    @apply text-[20px];
+  }
+
   .admin-edit-page .form-section {
     @apply p-[20px];
   }
@@ -308,6 +312,11 @@
     gap: 12px;
     font-size: 13px;
     padding: 14px 16px;
+  }
+
+  .schedule-upload-page .uploads-table .table-header,
+  .schedule-upload-page .uploads-table .table-row {
+    grid-template-columns: 1fr;
   }
 
   .admin-edit-page .col-login {
@@ -350,6 +359,12 @@
     gap: 16px;
   }
 
+  .schedule-upload-page .card-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
   .admin-edit-page .back-btn {
     @apply self-start w-[38px] h-[38px];
   }
@@ -373,6 +388,15 @@
     gap: 10px;
     font-size: 13px;
     padding: 12px 14px;
+  }
+
+  .schedule-upload-page .uploads-table .table-header,
+  .schedule-upload-page .uploads-table .table-row {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-upload-page .col-role {
+    display: block;
   }
 
   .admin-edit-page .col-role,

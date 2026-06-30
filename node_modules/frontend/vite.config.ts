@@ -16,6 +16,37 @@ const backendWsProxy: ProxyOptions = {
   ws: true,
 }
 
+function shouldServeNotificationsPage(req: { method?: string; headers: { accept?: string }; url?: string }): boolean {
+  if (req.method !== 'GET') {
+    return false
+  }
+
+  const url = req.url ?? ''
+
+  if (
+    url.startsWith('/notifications/push')
+    || url.startsWith('/notifications/read-all')
+    || /\/notifications\/\d+\/read(?:\?|$)/.test(url)
+  ) {
+    return false
+  }
+
+  const accept = req.headers.accept ?? ''
+
+  return accept.includes('text/html')
+}
+
+const notificationsProxy: ProxyOptions = {
+  ...backendWsProxy,
+  bypass(req) {
+    if (shouldServeNotificationsPage(req)) {
+      return '/index.html'
+    }
+
+    return undefined
+  },
+}
+
 export default defineConfig({
   plugins: [
     vue(),
@@ -37,7 +68,7 @@ export default defineConfig({
     proxy: {
       '/auth': backendProxy,
       '/admin': backendWsProxy,
-      '/notifications': backendWsProxy,
+      '/notifications': notificationsProxy,
       '/schedules': backendWsProxy,
       '/academic': backendProxy,
       '/education-department/schedules': backendProxy,

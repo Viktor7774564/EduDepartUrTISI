@@ -28,7 +28,7 @@
 
 .profile-actions,
 .header-auth {
-  @apply justify-self-end flex items-center gap-[12px];
+  @apply justify-self-end flex items-center gap-[14px];
 }
 
 .profile-btn {
@@ -40,7 +40,7 @@
 }
 
 .profile-icon {
-  @apply w-[32px] h-[32px] rounded-full object-cover;
+  @apply w-[32px] h-[32px] rounded-full object-cover shrink-0;
 }
 
 .caret {
@@ -125,7 +125,7 @@
 }
 
 .notifications-icon-link {
-  @apply relative inline-flex items-center justify-center w-[42px] h-[42px] rounded-[12px] no-underline;
+  @apply relative inline-flex items-center justify-center w-[46px] h-[46px] rounded-[12px] no-underline shrink-0;
 }
 
 .notifications-icon-link:hover {
@@ -133,11 +133,11 @@
 }
 
 .notifications-icon-link img {
-  @apply w-[28px] h-[28px];
+  @apply w-[32px] h-[32px];
 }
 
 .notifications-badge {
-  @apply absolute top-[2px] right-[2px] min-w-[18px] h-[18px] rounded-full px-[5px] bg-[#ef4444] text-white text-[11px] leading-[18px] text-center;
+  @apply absolute top-[1px] right-[1px] min-w-[20px] h-[20px] rounded-full px-[5px] bg-[#ef4444] text-white text-[11px] leading-[20px] text-center;
 }
 
 @media (min-width: 1024px) {
@@ -199,6 +199,7 @@
       'brand auth'
       'menu menu';
     padding: 14px 18px;
+    align-items: center;
   }
 
   .brand {
@@ -225,16 +226,14 @@
 @media (max-width: 640px) {
   .topbar {
     grid-template-columns: auto 1fr;
-    grid-template-areas:
-      'brand auth'
-      'menu menu';
-    gap: 10px;
-    padding: 10px 12px;
-    min-height: auto;
+    grid-template-areas: 'brand auth';
+    gap: 12px;
+    padding: 12px 14px;
+    min-height: 64px;
   }
 
   .brand img {
-    @apply h-[44px];
+    @apply h-[48px];
   }
 
   .menu,
@@ -251,41 +250,48 @@
     align-items: center;
     justify-content: center;
     min-width: 92px;
-    height: 36px;
-    font-size: 13px;
+    height: 40px;
+    font-size: 14px;
   }
 
   .profile-actions {
-    @apply justify-self-end gap-[6px];
+    @apply justify-self-end items-center gap-[10px] min-w-0 max-w-full;
   }
 
   .notifications-icon-link {
-    @apply w-[32px] h-[32px] rounded-[10px];
+    @apply w-[44px] h-[44px] rounded-[12px];
   }
 
   .notifications-icon-link img {
-    @apply w-[21px] h-[21px];
+    @apply w-[30px] h-[30px];
   }
 
   .notifications-badge {
-    @apply top-[-2px] right-[-2px] min-w-[16px] h-[16px] px-[4px] text-[10px] leading-[16px];
+    @apply top-0 right-0 min-w-[18px] h-[18px] px-[4px] text-[10px] leading-[18px];
+  }
+
+  .profile-wrapper {
+    @apply min-w-0 max-w-full;
   }
 
   .profile-btn {
-    @apply gap-[6px] px-[6px] py-[4px] text-[13px];
+    @apply gap-[6px] px-[6px] py-[4px] text-[13px] min-h-[44px] min-w-0 max-w-full;
   }
 
-  .profile-name,
+  .profile-name {
+    @apply block truncate max-w-[min(120px,28vw)] text-[13px];
+  }
+
   .profile-role {
     @apply hidden;
   }
 
   .profile-icon {
-    @apply w-[20px] h-[20px];
+    @apply w-[30px] h-[30px];
   }
 
   .caret {
-    @apply w-[10px] h-[7px];
+    @apply w-[11px] h-[8px];
   }
 
   .bottombar {

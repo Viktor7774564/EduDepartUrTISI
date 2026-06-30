@@ -378,8 +378,8 @@ const toggleUploadWarnings = (id: number) => {
             </div>
 
             <div v-for="upload in uploads" :key="upload.id" class="table-row">
-              <span class="col-faculty">{{ upload.facultyName ?? '—' }}</span>
-              <span class="col-name">
+              <span class="col-faculty" data-label="Факультет">{{ upload.facultyName ?? '—' }}</span>
+              <span class="col-name" data-label="Группа / файл">
                 <strong v-if="upload.groupName">{{ upload.groupName }}</strong>
                 <span v-if="upload.periodStart && upload.periodEnd" class="upload-period">
                   Период: {{ upload.periodStart }} — {{ upload.periodEnd }}
@@ -412,9 +412,9 @@ const toggleUploadWarnings = (id: number) => {
                   </ul>
                 </span>
               </span>
-              <span class="col-created">{{ formatDate(upload.uploadedAt) }}</span>
-              <span class="col-role">{{ upload.lessonsCount }}</span>
-              <span class="col-actions">
+              <span class="col-created" data-label="Дата">{{ formatDate(upload.uploadedAt) }}</span>
+              <span class="col-role" data-label="Занятий">{{ upload.lessonsCount }}</span>
+              <span class="col-actions" data-label="Действия">
                 <button
                   class="close-btn"
                   type="button"
@@ -543,11 +543,141 @@ const toggleUploadWarnings = (id: number) => {
   white-space: nowrap;
 }
 
-@media (max-width: 900px) {
-  .uploads-table .table-header,
-  .uploads-table .table-row {
+@media (max-width: 768px) {
+  .schedule-upload-page.admin-edit-page {
+    padding: 16px 10px;
+    align-items: stretch;
+  }
+
+  .schedule-upload-page .admin-card {
+    padding: 18px 14px;
+    border-radius: 12px;
+  }
+
+  .schedule-upload-page .card-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .schedule-upload-page .card-title {
+    position: static;
+    transform: none;
+    width: auto;
+    flex: 1;
+    text-align: left;
+    font-size: 20px;
+    line-height: 1.25;
+    pointer-events: auto;
+  }
+
+  .schedule-upload-page .card-subtitle {
+    margin: 0 0 18px;
+    text-align: left;
+    font-size: 14px;
+    line-height: 1.45;
+    padding-bottom: 14px;
+  }
+
+  .schedule-upload-page .form-section {
+    padding: 16px 12px;
+  }
+
+  .schedule-upload-page .section-title {
+    font-size: 16px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+  }
+
+  .schedule-upload-page .form-row {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .schedule-upload-page .form-actions {
+    flex-direction: column;
+    padding-top: 16px;
+  }
+
+  .schedule-upload-page .form-actions .btn {
+    width: 100%;
+  }
+
+  .schedule-upload-page .submit-message {
+    font-size: 13px;
+    line-height: 1.45;
+    word-break: break-word;
+  }
+
+  .schedule-upload-page .file-name-hint {
+    font-size: 12px;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .schedule-upload-page .uploads-table .table-header {
+    display: none;
+  }
+
+  .schedule-upload-page .uploads-table .table-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 14px 12px;
+    align-items: stretch;
+  }
+
+  .schedule-upload-page .uploads-table .table-row > [class^='col-'] {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .schedule-upload-page .uploads-table .table-row > [class^='col-']::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #5f6975;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .schedule-upload-page .col-actions {
+    justify-content: flex-start;
+    padding-top: 4px;
+  }
+
+  .schedule-upload-page .close-btn {
+    width: auto !important;
+    height: auto !important;
+    min-height: 38px;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+  }
+
+  .schedule-upload-page .file-link {
+    word-break: break-word;
+  }
+}
+
+@media (max-width: 480px) {
+  .schedule-upload-page.admin-edit-page {
+    padding: 12px 8px;
+  }
+
+  .schedule-upload-page .admin-card {
+    padding: 14px 12px;
+  }
+
+  .schedule-upload-page .card-title {
+    font-size: 18px;
+  }
+
+  .schedule-upload-page .card-subtitle {
+    font-size: 13px;
   }
 }
 </style>

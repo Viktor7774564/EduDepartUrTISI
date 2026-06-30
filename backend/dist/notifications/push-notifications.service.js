@@ -87,8 +87,8 @@ let PushNotificationsService = PushNotificationsService_1 = class PushNotificati
             body: notification.message,
             data: {
                 notificationId: notification.id,
-                url: '/notifications',
                 ...(notification.payload ?? {}),
+                url: `/notifications?id=${notification.id}`,
             },
         });
         await Promise.all(subscriptions.map((subscription) => this.sendToSubscription(subscription, payload)));

@@ -1,14 +1,61 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
+import { useAuthStore, type AuthUser } from '@/stores/auth'
 import PageFrame from '@/components/PageFrame.vue'
 import { getPhotoUrl } from '@/config/api'
+import { getGroupFaculty } from '@/views/schedule/scheduleOptions'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const user = computed(() => authStore.currentUser)
 const role = computed(() => user.value?.role)
 const userPhoto = computed(() => getPhotoUrl(user.value?.photoUrl))
+
+function formatTeacherDisplayName(currentUser: AuthUser): string {
+  const nameInitial = currentUser.name?.charAt(0) ?? ''
+  const patronymicInitial = currentUser.patronymic?.charAt(0) ?? ''
+
+  return `${currentUser.surname} ${nameInitial}.${patronymicInitial}.`.trim()
+}
+
+async function goToMySchedule() {
+  const currentUser = user.value
+  if (!currentUser) {
+    return
+  }
+
+  if (currentUser.role === 'student') {
+    const group = currentUser.group?.trim()
+
+    if (!group) {
+      await router.push({ name: 'schedule-selection', params: { type: 'students' } })
+      return
+    }
+
+    await router.push({
+      name: 'schedule-view',
+      params: { type: 'students' },
+      query: {
+        first: getGroupFaculty(group),
+        second: group,
+      },
+    })
+    return
+  }
+
+  if (currentUser.role === 'teacher') {
+    await router.push({
+      name: 'schedule-view',
+      params: { type: 'teachers' },
+      query: {
+        first: currentUser.departmentId ? String(currentUser.departmentId) : '',
+        second: formatTeacherDisplayName(currentUser),
+      },
+    })
+  }
+}
 
 const profileFields = computed(() => {
   if (!user.value) return []
@@ -47,7 +94,7 @@ const buttons = computed(() => {
       return [
         {
           text: 'Перейти к моему расписанию',
-          action: () => {},
+          action: goToMySchedule,
         },
       ]
 
@@ -55,7 +102,7 @@ const buttons = computed(() => {
       return [
         {
           text: 'Перейти к моему расписанию',
-          action: () => {},
+          action: goToMySchedule,
         },
         {
           text: 'Составить отчёт',

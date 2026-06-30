@@ -108,10 +108,28 @@ const handleTokenRefreshed = () => {
   syncNotificationsConnection()
 }
 
+const handleServiceWorkerMessage = (event: MessageEvent) => {
+  if (event.data?.type !== 'notification-click') {
+    return
+  }
+
+  const notificationId = event.data.notificationId
+  const query = notificationId ? { id: String(notificationId) } : {}
+
+  void router.push({
+    name: 'notifications',
+    query,
+  })
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('visibilitychange', handleVisibilityChange)
   window.addEventListener('auth:token-refreshed', handleTokenRefreshed)
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)
+  }
 
   syncNotificationsConnection()
 
@@ -128,6 +146,11 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   window.removeEventListener('auth:token-refreshed', handleTokenRefreshed)
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage)
+  }
+
   notificationsStore.disconnectLiveUpdates()
   if (sessionCheckTimer !== null) {
     window.clearInterval(sessionCheckTimer)
