@@ -36,7 +36,7 @@ const isVisible = ref(false)
       @click="isVisible = !isVisible"
     >
       <img
-        :src="isVisible ? hideIcon : showIcon"
+        :src="isVisible ? showIcon : hideIcon"
         alt=""
         aria-hidden="true"
       />
