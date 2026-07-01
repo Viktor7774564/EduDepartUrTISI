@@ -76,7 +76,7 @@
 }
 
 .page-frame {
-  @apply relative min-h-[calc(100vh-180px)] bg-[#efefef] overflow-hidden;
+  @apply relative min-h-[calc(100vh-180px)] bg-[#efefef] overflow-x-hidden overflow-y-visible;
 }
 
 .frame-content {

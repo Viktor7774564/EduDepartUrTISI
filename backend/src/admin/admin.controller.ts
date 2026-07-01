@@ -1,30 +1,4 @@
-import {
-
-    Body,
-
-    Controller,
-
-    Delete,
-
-    Get,
-
-    Param,
-
-    ParseIntPipe,
-
-    Patch,
-
-    Post,
-
-    Req,
-
-    UploadedFile,
-
-    UseGuards,
-
-    UseInterceptors,
-
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Req, UploadedFile, UseGuards, UseInterceptors, } from '@nestjs/common';
 
 import { FileInterceptor } from '@nestjs/platform-express';
 
@@ -41,6 +15,7 @@ import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { AdminGuard } from './guards/admin.guard';
 
 import { AdminService } from './admin.service';
+import { AdminAcademicService } from './admin-academic.service';
 
 import {
 
@@ -51,6 +26,12 @@ import {
     parseUpdateUserBody,
 
 } from './dto/multipart.parser';
+
+import { SetDepartmentHeadDto } from './dto/set-department-head.dto';
+import { CreateDirectionDto } from './dto/create-direction.dto';
+import { CreateGroupDto } from './dto/create-group.dto';
+import { CreateTeacherDepartmentDto } from './dto/create-teacher-department.dto';
+import { CreateStaffDepartmentDto } from './dto/create-staff-department.dto';
 
 
 
@@ -77,6 +58,8 @@ export class AdminController {
     constructor(
 
         private readonly adminService: AdminService,
+
+        private readonly adminAcademicService: AdminAcademicService,
 
     ) {}
 
@@ -193,6 +176,120 @@ export class AdminController {
     revokeSession(@Param('id', ParseIntPipe) id: number) {
 
         return this.adminService.revokeSession(id);
+
+    }
+
+
+
+    @Get('academic/overview')
+
+    getAcademicOverview() {
+
+        return this.adminAcademicService.getOverview();
+
+    }
+
+
+
+    @Post('academic/directions')
+
+    createAcademicDirection(@Body() dto: CreateDirectionDto) {
+
+        return this.adminAcademicService.createDirection(dto);
+
+    }
+
+
+
+    @Post('academic/directions/:directionId/groups')
+
+    createAcademicGroup(
+
+        @Param('directionId', ParseIntPipe) directionId: number,
+
+        @Body() dto: CreateGroupDto,
+
+    ) {
+
+        return this.adminAcademicService.createGroup(directionId, dto);
+
+    }
+
+
+
+    @Post('academic/departments/teacher')
+
+    createTeacherDepartment(@Body() dto: CreateTeacherDepartmentDto) {
+
+        return this.adminAcademicService.createTeacherDepartment(dto);
+
+    }
+
+
+
+    @Post('academic/departments/staff')
+
+    createStaffDepartment(@Body() dto: CreateStaffDepartmentDto) {
+
+        return this.adminAcademicService.createStaffDepartment(dto);
+
+    }
+
+
+
+    @Patch('academic/departments/:id/head')
+
+    setDepartmentHead(
+
+        @Param('id', ParseIntPipe) id: number,
+
+        @Body() dto: SetDepartmentHeadDto,
+
+    ) {
+
+        return this.adminAcademicService.setDepartmentHead(
+
+            id,
+
+            dto.headUserId ?? null,
+
+        );
+
+    }
+
+
+
+    @Delete('academic/groups/:id')
+
+    deleteAcademicGroup(@Param('id', ParseIntPipe) id: number) {
+
+        return this.adminAcademicService.deleteGroup(id);
+
+    }
+
+
+
+    @Delete('academic/directions/:id')
+
+    deleteAcademicDirection(@Param('id', ParseIntPipe) id: number) {
+
+        return this.adminAcademicService.deleteDirection(id);
+
+    }
+
+
+
+    @Post('academic/directions/:sourceId/merge-into/:targetId')
+
+    mergeAcademicDirections(
+
+        @Param('sourceId', ParseIntPipe) sourceId: number,
+
+        @Param('targetId', ParseIntPipe) targetId: number,
+
+    ) {
+
+        return this.adminAcademicService.mergeDirections(sourceId, targetId);
 
     }
 

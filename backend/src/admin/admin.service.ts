@@ -21,6 +21,11 @@ import { DepartmentsService } from '../academic/departments.service';
 import { Department } from '../academic/entities/department.entity';
 import { Direction } from '../academic/entities/direction.entity';
 import { EducationForm, Group } from '../academic/entities/group.entity';
+import {
+    buildDirectionDisplayName,
+    buildDirectionStorageCode,
+    validateDirectionInput,
+} from '../academic/direction.utils';
 import { AdminSessionResponse } from '../sessions/sessions.types';
 import { SessionsService } from '../sessions/sessions.service';
 import { SessionsNotifierService } from '../sessions/sessions-notifier.service';
@@ -191,6 +196,12 @@ export class AdminService {
 
         await this.usersService.update(id, updateData);
 
+        const willBeActive = updateData.isActive;
+
+        if (user.isActive && !willBeActive) {
+            await this.revokeUserSessions(id);
+        }
+
         if (user.role.code !== dto.role) {
             await this.removeAllProfiles(id);
             await this.createProfile(id, dto);
@@ -356,6 +367,15 @@ export class AdminService {
         return { success: true };
     }
 
+    private async revokeUserSessions(userId: number): Promise<void> {
+        await this.sessionsNotifier.notifyUserSessionsRemoved(userId);
+
+        await this.refreshTokenRepository.update(
+            { userId, isActive: true },
+            { isActive: false },
+        );
+    }
+
     private validateProfileFields(dto: {
         role: RoleCode;
         group?: string;
@@ -370,6 +390,12 @@ export class AdminService {
                 throw new BadRequestException(
                     'Для студента нужны группа, направление и курс',
                 );
+            }
+
+            const directionValidation = validateDirectionInput(dto.direction);
+
+            if (!directionValidation.valid) {
+                throw new BadRequestException(directionValidation.message);
             }
         }
 
@@ -431,7 +457,6 @@ export class AdminService {
         const group = await this.findOrCreateGroup(
             dto.group!.trim(),
             direction.id,
-            dto.course!,
             educationForm,
         );
 
@@ -498,7 +523,6 @@ export class AdminService {
                 const group = await this.findOrCreateGroup(
                     dto.group!.trim(),
                     direction.id,
-                    dto.course!,
                     educationForm,
                 );
 
@@ -579,34 +603,46 @@ export class AdminService {
     }
 
     private async findOrCreateDirection(name: string): Promise<Direction> {
-        const existing = await this.directionRepository.findOne({
-            where: { name },
-        });
+        const trimmed = name.trim();
+        const validation = validateDirectionInput(trimmed);
 
-        if (existing) {
-            return existing;
+        if (!validation.valid) {
+            throw new BadRequestException(validation.message);
         }
 
-        const code = name
-            .toLowerCase()
-            .replace(/[^a-zа-я0-9]+/gi, '_')
-            .replace(/^_+|_+$/g, '')
-            .slice(0, 50) || `direction_${Date.now()}`;
+        const displayName = buildDirectionDisplayName(trimmed);
+        const storageCode = buildDirectionStorageCode(trimmed);
 
-        return this.directionRepository.save({ name, code });
+        const existingByCode = await this.directionRepository.findOne({
+            where: { code: storageCode },
+        });
+
+        if (existingByCode) {
+            if (existingByCode.name !== displayName) {
+                existingByCode.name = displayName;
+                await this.directionRepository.save(existingByCode);
+            }
+
+            return existingByCode;
+        }
+
+        return this.directionRepository.save({
+            name: displayName,
+            code: storageCode,
+        });
     }
+
+    private static readonly GROUP_LEGACY_COURSE = 1;
 
     private async findOrCreateGroup(
         name: string,
         directionId: number,
-        course: number,
         educationForm: EducationForm,
     ): Promise<Group> {
         const existing = await this.groupRepository.findOne({
             where: {
                 name,
                 directionId,
-                course,
                 educationForm,
             },
         });
@@ -618,7 +654,7 @@ export class AdminService {
         return this.groupRepository.save({
             name,
             directionId,
-            course,
+            course: AdminService.GROUP_LEGACY_COURSE,
             educationForm,
         });
     }

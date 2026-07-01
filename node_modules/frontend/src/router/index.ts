@@ -68,6 +68,11 @@ const router = createRouter({
           name: 'admin-sessions',
           component: () => import('../views/AdminSessions.vue'),
         },
+        {
+          path: 'academic-structure',
+          name: 'admin-academic-structure',
+          component: () => import('../views/AdminAcademicStructure.vue'),
+        },
       ]
     },
 

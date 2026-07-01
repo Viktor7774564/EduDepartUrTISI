@@ -94,12 +94,18 @@ let AuthService = class AuthService {
         if (!isPasswordValid) {
             throw new common_1.UnauthorizedException('Неверный login или пароль');
         }
+        if (!user.isActive) {
+            throw new common_1.ForbiddenException('Учётная запись деактивирована');
+        }
         return this.generateTokens(user);
     }
     async getCurrentUser(userId) {
         const user = await this.usersService.findByIdWithDetails(userId);
         if (!user) {
             throw new common_1.UnauthorizedException();
+        }
+        if (!user.isActive) {
+            throw new common_1.ForbiddenException('Учётная запись деактивирована');
         }
         return (0, auth_user_mapper_1.mapUserToAuthResponse)(user);
     }
@@ -120,6 +126,9 @@ let AuthService = class AuthService {
         const user = await this.usersService.findByIdWithDetails(userId);
         if (!user) {
             throw new common_1.UnauthorizedException();
+        }
+        if (!user.isActive) {
+            throw new common_1.ForbiddenException('Учётная запись деактивирована');
         }
         await this.refreshTokenRepository.update({
             userId,
@@ -142,6 +151,9 @@ let AuthService = class AuthService {
         };
     }
     async generateTokens(user) {
+        if (!user.isActive) {
+            throw new common_1.ForbiddenException('Учётная запись деактивирована');
+        }
         await this.cleanupOldSessions(user.id);
         const payload = {
             sub: user.id,

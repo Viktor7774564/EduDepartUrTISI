@@ -76,7 +76,6 @@ const educationFormOptions = [
   { value: 'Очная', label: 'Очная' },
   { value: 'Заочная', label: 'Заочная' },
   { value: 'Очно-заочная', label: 'Очно-заочная' },
-  { value: 'Дистанционная', label: 'Дистанционная' },
 ]
 
 const courseOptions = [1, 2, 3, 4, 5, 6]
@@ -443,7 +442,15 @@ const goBack = () => router.push({ name: 'admin-edit-user' })
               <div class="form-row">
                 <div class="form-group full-width">
                   <label for="direction" class="form-label">Направление подготовки <span class="required">*</span></label>
-                  <input id="direction" v-model="form.direction" type="text" class="form-input" :class="{ error: errors.direction }" :disabled="isSubmitting" />
+                  <input
+                    id="direction"
+                    v-model="form.direction"
+                    type="text"
+                    class="form-input"
+                    :class="{ error: errors.direction }"
+                    placeholder="09.03.01 Информатика и вычислительная техника"
+                    :disabled="isSubmitting"
+                  />
                   <span v-if="errors.direction" class="error-message">{{ errors.direction }}</span>
                 </div>
               </div>

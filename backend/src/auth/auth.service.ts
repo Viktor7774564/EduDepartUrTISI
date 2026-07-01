@@ -2,6 +2,7 @@ import {
     Injectable,
     UnauthorizedException,
     ConflictException,
+    ForbiddenException,
 } from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
@@ -89,6 +90,12 @@ export class AuthService {
             );
         }
 
+        if (!user.isActive) {
+            throw new ForbiddenException(
+                'Учётная запись деактивирована',
+            );
+        }
+
         return this.generateTokens(user);
     }
 
@@ -100,6 +107,12 @@ export class AuthService {
 
         if (!user) {
             throw new UnauthorizedException();
+        }
+
+        if (!user.isActive) {
+            throw new ForbiddenException(
+                'Учётная запись деактивирована',
+            );
         }
 
         return mapUserToAuthResponse(user);
@@ -139,6 +152,12 @@ export class AuthService {
             throw new UnauthorizedException();
         }
 
+        if (!user.isActive) {
+            throw new ForbiddenException(
+                'Учётная запись деактивирована',
+            );
+        }
+
         await this.refreshTokenRepository.update(
             {
                 userId,
@@ -173,6 +192,12 @@ export class AuthService {
     }
 
     private async generateTokens(user: User) {
+        if (!user.isActive) {
+            throw new ForbiddenException(
+                'Учётная запись деактивирована',
+            );
+        }
+
         await this.cleanupOldSessions(user.id);
 
         const payload = {

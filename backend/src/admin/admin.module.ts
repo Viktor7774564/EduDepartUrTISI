@@ -9,6 +9,7 @@ import { UploadsModule } from '../uploads/uploads.module';
 
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { AdminAcademicService } from './admin-academic.service';
 import { AdminGuard } from './guards/admin.guard';
 import { RolesSeedService } from './roles-seed.service';
 
@@ -22,6 +23,11 @@ import { Role } from '../users/entities/role.entity';
 import { StudentProfile } from '../users/entities/student-profile.entity';
 import { TeacherProfile } from '../users/entities/teacher-profile.entity';
 import { StaffProfile } from '../users/entities/staff-profile.entity';
+import { User } from '../users/entities/user.entity';
+import { Department } from '../academic/entities/department.entity';
+import { Direction } from '../academic/entities/direction.entity';
+import { Group } from '../academic/entities/group.entity';
+import { Subgroup } from '../academic/entities/subgroup.entity';
 
 @Module({
     imports: [
@@ -33,9 +39,15 @@ import { StaffProfile } from '../users/entities/staff-profile.entity';
         TypeOrmModule.forFeature([
             RefreshToken,
             Role,
+            User,
             StudentProfile,
             TeacherProfile,
             StaffProfile,
+            Department,
+            Direction,
+            Group,
+            Subgroup,
+            Schedule,
             Consultation,
             ScheduleItem,
             Schedule,
@@ -44,6 +56,6 @@ import { StaffProfile } from '../users/entities/staff-profile.entity';
         ]),
     ],
     controllers: [AdminController],
-    providers: [AdminService, AdminGuard, RolesSeedService],
+    providers: [AdminService, AdminAcademicService, AdminGuard, RolesSeedService],
 })
 export class AdminModule {}

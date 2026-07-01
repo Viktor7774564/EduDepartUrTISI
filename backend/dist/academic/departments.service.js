@@ -35,25 +35,23 @@ let DepartmentsService = class DepartmentsService {
         };
     }
     async listTeacherDepartments() {
-        const shortNames = teacher_departments_constants_1.TEACHER_DEPARTMENTS.map((item) => item.shortName);
         const departments = await this.departmentRepository.find({
-            where: { shortName: (0, typeorm_2.In)(shortNames) },
+            where: {
+                shortName: (0, typeorm_2.Not)((0, typeorm_2.IsNull)()),
+            },
+            order: {
+                shortName: 'ASC',
+            },
         });
-        const order = new Map(teacher_departments_constants_1.TEACHER_DEPARTMENTS.map((item, index) => [item.shortName, index]));
         return departments
-            .sort((left, right) => (order.get(left.shortName ?? '') ?? 0)
-            - (order.get(right.shortName ?? '') ?? 0))
+            .filter((department) => department.shortName?.trim())
             .map((department) => this.mapDepartment(department));
     }
     async resolveTeacherDepartmentId(departmentId) {
         const department = await this.departmentRepository.findOne({
             where: { id: departmentId },
         });
-        if (!department?.shortName) {
-            throw new common_1.BadRequestException('Выберите кафедру из списка');
-        }
-        const isTeacherDepartment = teacher_departments_constants_1.TEACHER_DEPARTMENTS.some((item) => item.shortName === department.shortName);
-        if (!isTeacherDepartment) {
+        if (!department?.shortName?.trim()) {
             throw new common_1.BadRequestException('Выберите кафедру из списка');
         }
         return department;

@@ -11,6 +11,7 @@ const isChildRouteActive = computed(() => {
       || route.name === 'admin-user-edit'
       || route.name === 'admin-add-user'
       || route.name === 'admin-sessions'
+      || route.name === 'admin-academic-structure'
 })
 
 const goToAddUser = () => {
@@ -23,6 +24,10 @@ const goToEditUser = () => {
 
 const goToSessions = () => {
   router.push({ name: 'admin-sessions' })
+}
+
+const goToAcademicStructure = () => {
+  router.push({ name: 'admin-academic-structure' })
 }
 </script>
 
@@ -41,6 +46,9 @@ const goToSessions = () => {
           </button>
           <button class="admin-btn" @click="goToSessions">
             Активные сессии
+          </button>
+          <button class="admin-btn" @click="goToAcademicStructure">
+            Структура
           </button>
         </div>
       </div>

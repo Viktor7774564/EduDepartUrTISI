@@ -1,12 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 
 import { Department } from './entities/department.entity';
-import {
-    TEACHER_DEPARTMENTS,
-    formatTeacherDepartmentLabel,
-} from './teacher-departments.constants';
+import { formatTeacherDepartmentLabel } from './teacher-departments.constants';
 
 export interface TeacherDepartmentInfo {
     id: number;
@@ -35,19 +32,17 @@ export class DepartmentsService {
     }
 
     async listTeacherDepartments(): Promise<TeacherDepartmentInfo[]> {
-        const shortNames = TEACHER_DEPARTMENTS.map((item) => item.shortName);
         const departments = await this.departmentRepository.find({
-            where: { shortName: In(shortNames) },
+            where: {
+                shortName: Not(IsNull()),
+            },
+            order: {
+                shortName: 'ASC',
+            },
         });
 
-        const order = new Map(
-            TEACHER_DEPARTMENTS.map((item, index) => [item.shortName, index]),
-        );
-
         return departments
-            .sort((left, right) =>
-                (order.get(left.shortName ?? '') ?? 0)
-                - (order.get(right.shortName ?? '') ?? 0))
+            .filter((department) => department.shortName?.trim())
             .map((department) => this.mapDepartment(department));
     }
 
@@ -56,15 +51,7 @@ export class DepartmentsService {
             where: { id: departmentId },
         });
 
-        if (!department?.shortName) {
-            throw new BadRequestException('Выберите кафедру из списка');
-        }
-
-        const isTeacherDepartment = TEACHER_DEPARTMENTS.some(
-            (item) => item.shortName === department.shortName,
-        );
-
-        if (!isTeacherDepartment) {
+        if (!department?.shortName?.trim()) {
             throw new BadRequestException('Выберите кафедру из списка');
         }
 

@@ -10,14 +10,29 @@ import type { UserRole } from '@/stores/auth'
 
 
 const searchQuery = ref('')
+const roleFilter = ref<UserRole | ''>('')
+const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
 
 const filteredUsers = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
-  if (!query) {
-    return usersStore.users
-  }
 
   return usersStore.users.filter((user) => {
+    if (roleFilter.value && user.role !== roleFilter.value) {
+      return false
+    }
+
+    if (statusFilter.value === 'active' && !user.isActive) {
+      return false
+    }
+
+    if (statusFilter.value === 'inactive' && user.isActive) {
+      return false
+    }
+
+    if (!query) {
+      return true
+    }
+
     const fullName = getFullName(user).toLowerCase()
     return (
         fullName.includes(query)
@@ -126,12 +141,28 @@ const deleteUser = async (user: AdminUser) => {
         </p>
 
         <template v-else>
-          <input
-            v-model="searchQuery"
-            class="users-search"
-            type="search"
-            placeholder="Поиск по ФИО или логину"
-          >
+          <div class="users-filters">
+            <input
+              v-model="searchQuery"
+              class="users-search"
+              type="search"
+              placeholder="Поиск по ФИО или логину"
+            >
+
+            <select v-model="roleFilter" class="users-filter-select">
+              <option value="">Все роли</option>
+              <option value="admin">Администратор</option>
+              <option value="student">Студент</option>
+              <option value="teacher">Преподаватель</option>
+              <option value="employee">Сотрудник</option>
+            </select>
+
+            <select v-model="statusFilter" class="users-filter-select">
+              <option value="all">Все статусы</option>
+              <option value="active">Активные</option>
+              <option value="inactive">Неактивные</option>
+            </select>
+          </div>
 
           <p v-if="filteredUsers.length === 0" class="card-subtitle">
             По вашему запросу ничего не найдено

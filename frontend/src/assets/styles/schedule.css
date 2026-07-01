@@ -1,5 +1,5 @@
 .selection-page {
-  @apply relative min-h-[calc(100vh-157px)] py-[32px] px-[24px] pb-[56px] overflow-hidden;
+  @apply relative min-h-[calc(100vh-157px)] py-[32px] px-[24px] pb-[56px] overflow-x-hidden overflow-y-visible;
 }
 
 .selection-page .triangle-side {
@@ -78,7 +78,23 @@
 }
 
 .selection-page .picker-panel {
-  @apply absolute top-[calc(100%-1px)] left-0 right-0 z-[10] max-h-[300px] overflow-y-auto pt-[6px] pb-[10px] border-2 border-[#2d90d2] border-t-0 rounded-b-[14px] bg-white shadow-[0_12px_28px_rgba(18,38,63,0.12)];
+  @apply absolute top-[calc(100%-1px)] left-0 right-0 z-[1100] max-h-[220px] overflow-y-auto pt-[6px] pb-[10px] border-2 border-[#2d90d2] border-t-0 rounded-b-[14px] bg-white shadow-[0_12px_28px_rgba(18,38,63,0.12)];
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #59b4ef #eef2f6;
+}
+
+.selection-page .picker-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.selection-page .picker-panel::-webkit-scrollbar-track {
+  background: #eef2f6;
+}
+
+.selection-page .picker-panel::-webkit-scrollbar-thumb {
+  background: #59b4ef;
+  border-radius: 999px;
 }
 
 .selection-page .picker-option {
@@ -735,7 +751,7 @@
   }
 
   .selection-page .picker-panel {
-    @apply max-h-[260px];
+    @apply max-h-[200px];
   }
 
   .selection-page .picker-option {

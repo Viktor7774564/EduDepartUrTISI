@@ -13,10 +13,13 @@ exports.Department = void 0;
 const typeorm_1 = require("typeorm");
 const teacher_profile_entity_1 = require("../../users/entities/teacher-profile.entity");
 const staff_profile_entity_1 = require("../../users/entities/staff-profile.entity");
+const user_entity_1 = require("../../users/entities/user.entity");
 let Department = class Department {
     id;
     name;
     shortName;
+    headUserId;
+    headUser;
     teacherProfiles;
     staffProfiles;
 };
@@ -33,6 +36,15 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
     __metadata("design:type", Object)
 ], Department.prototype, "shortName", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'int', nullable: true }),
+    __metadata("design:type", Object)
+], Department.prototype, "headUserId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { nullable: true, onDelete: 'SET NULL' }),
+    (0, typeorm_1.JoinColumn)({ name: 'headUserId' }),
+    __metadata("design:type", Object)
+], Department.prototype, "headUser", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => teacher_profile_entity_1.TeacherProfile, (profile) => profile.department),
     __metadata("design:type", Array)

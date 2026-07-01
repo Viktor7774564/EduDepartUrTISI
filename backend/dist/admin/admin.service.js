@@ -44,6 +44,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var AdminService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminService = void 0;
 const common_1 = require("@nestjs/common");
@@ -61,6 +62,7 @@ const departments_service_1 = require("../academic/departments.service");
 const department_entity_1 = require("../academic/entities/department.entity");
 const direction_entity_1 = require("../academic/entities/direction.entity");
 const group_entity_1 = require("../academic/entities/group.entity");
+const direction_utils_1 = require("../academic/direction.utils");
 const sessions_service_1 = require("../sessions/sessions.service");
 const sessions_notifier_service_1 = require("../sessions/sessions-notifier.service");
 const avatar_service_1 = require("../uploads/avatar.service");
@@ -70,6 +72,7 @@ const schedule_entity_1 = require("../schedule/entities/schedule.entity");
 const schedule_item_entity_1 = require("../schedule/entities/schedule-item.entity");
 const schedule_upload_entity_1 = require("../schedule/entities/schedule-upload.entity");
 let AdminService = class AdminService {
+    static { AdminService_1 = this; }
     usersService;
     sessionsService;
     sessionsNotifier;
@@ -166,6 +169,10 @@ let AdminService = class AdminService {
             updateData.photoUrl = null;
         }
         await this.usersService.update(id, updateData);
+        const willBeActive = updateData.isActive;
+        if (user.isActive && !willBeActive) {
+            await this.revokeUserSessions(id);
+        }
         if (user.role.code !== dto.role) {
             await this.removeAllProfiles(id);
             await this.createProfile(id, dto);
@@ -270,10 +277,18 @@ let AdminService = class AdminService {
         this.sessionsNotifier.notifySessionRemoved(id);
         return { success: true };
     }
+    async revokeUserSessions(userId) {
+        await this.sessionsNotifier.notifyUserSessionsRemoved(userId);
+        await this.refreshTokenRepository.update({ userId, isActive: true }, { isActive: false });
+    }
     validateProfileFields(dto) {
         if (dto.role === role_entity_1.RoleCode.STUDENT) {
             if (!dto.group?.trim() || !dto.direction?.trim() || !dto.course) {
                 throw new common_1.BadRequestException('Для студента нужны группа, направление и курс');
+            }
+            const directionValidation = (0, direction_utils_1.validateDirectionInput)(dto.direction);
+            if (!directionValidation.valid) {
+                throw new common_1.BadRequestException(directionValidation.message);
             }
         }
         if (dto.role === role_entity_1.RoleCode.TEACHER) {
@@ -309,7 +324,7 @@ let AdminService = class AdminService {
     async createStudentProfile(userId, dto) {
         const direction = await this.findOrCreateDirection(dto.direction.trim());
         const educationForm = this.mapEducationForm(dto.educationForm);
-        const group = await this.findOrCreateGroup(dto.group.trim(), direction.id, dto.course, educationForm);
+        const group = await this.findOrCreateGroup(dto.group.trim(), direction.id, educationForm);
         await this.studentProfileRepository.save({
             userId,
             groupId: group.id,
@@ -348,7 +363,7 @@ let AdminService = class AdminService {
                 }
                 const direction = await this.findOrCreateDirection(dto.direction.trim());
                 const educationForm = this.mapEducationForm(dto.educationForm);
-                const group = await this.findOrCreateGroup(dto.group.trim(), direction.id, dto.course, educationForm);
+                const group = await this.findOrCreateGroup(dto.group.trim(), direction.id, educationForm);
                 await this.studentProfileRepository.update(profile.id, {
                     groupId: group.id,
                     course: dto.course,
@@ -409,25 +424,34 @@ let AdminService = class AdminService {
         });
     }
     async findOrCreateDirection(name) {
-        const existing = await this.directionRepository.findOne({
-            where: { name },
-        });
-        if (existing) {
-            return existing;
+        const trimmed = name.trim();
+        const validation = (0, direction_utils_1.validateDirectionInput)(trimmed);
+        if (!validation.valid) {
+            throw new common_1.BadRequestException(validation.message);
         }
-        const code = name
-            .toLowerCase()
-            .replace(/[^a-zа-я0-9]+/gi, '_')
-            .replace(/^_+|_+$/g, '')
-            .slice(0, 50) || `direction_${Date.now()}`;
-        return this.directionRepository.save({ name, code });
+        const displayName = (0, direction_utils_1.buildDirectionDisplayName)(trimmed);
+        const storageCode = (0, direction_utils_1.buildDirectionStorageCode)(trimmed);
+        const existingByCode = await this.directionRepository.findOne({
+            where: { code: storageCode },
+        });
+        if (existingByCode) {
+            if (existingByCode.name !== displayName) {
+                existingByCode.name = displayName;
+                await this.directionRepository.save(existingByCode);
+            }
+            return existingByCode;
+        }
+        return this.directionRepository.save({
+            name: displayName,
+            code: storageCode,
+        });
     }
-    async findOrCreateGroup(name, directionId, course, educationForm) {
+    static GROUP_LEGACY_COURSE = 1;
+    async findOrCreateGroup(name, directionId, educationForm) {
         const existing = await this.groupRepository.findOne({
             where: {
                 name,
                 directionId,
-                course,
                 educationForm,
             },
         });
@@ -437,7 +461,7 @@ let AdminService = class AdminService {
         return this.groupRepository.save({
             name,
             directionId,
-            course,
+            course: AdminService_1.GROUP_LEGACY_COURSE,
             educationForm,
         });
     }
@@ -461,7 +485,7 @@ let AdminService = class AdminService {
     }
 };
 exports.AdminService = AdminService;
-exports.AdminService = AdminService = __decorate([
+exports.AdminService = AdminService = AdminService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(5, (0, typeorm_1.InjectRepository)(role_entity_1.Role)),
     __param(6, (0, typeorm_1.InjectRepository)(refresh_token_entity_1.RefreshToken)),

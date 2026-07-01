@@ -32,6 +32,22 @@ const isSecondOpen = ref(false)
 const isFacultyGroupOpen = ref(false)
 const isLoadingOptions = ref(false)
 
+const toggleFirstPicker = () => {
+  isFirstOpen.value = !isFirstOpen.value
+  isSecondOpen.value = false
+}
+
+const toggleSecondPicker = () => {
+  isSecondOpen.value = !isSecondOpen.value
+  isFirstOpen.value = false
+}
+
+const closeAllPickers = () => {
+  isFirstOpen.value = false
+  isSecondOpen.value = false
+  isFacultyGroupOpen.value = false
+}
+
 const studentFacultyOptions = [
   { label: 'СПО', value: 'СПО' },
   { label: 'ФИИиУ', value: 'ФИИиУ' },
@@ -111,9 +127,7 @@ const goBackHome = async () => {
 const closeDropdownsOnOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement
   if (!target.closest('.custom-picker')) {
-    isFirstOpen.value = false
-    isSecondOpen.value = false
-    isFacultyGroupOpen.value = false
+    closeAllPickers()
   }
 }
 
@@ -310,7 +324,7 @@ onBeforeUnmount(() => {
                   class="picker-trigger"
                   :class="{ open: isFirstOpen }"
                   type="button"
-                  @click.stop="isFirstOpen = !isFirstOpen; isSecondOpen = false"
+                  @click.stop="toggleFirstPicker"
                 >
                   <span>{{ firstChoice || 'Выберите' }}</span>
                   <span class="picker-arrow" :class="{ open: isFirstOpen }"></span>
@@ -360,7 +374,7 @@ onBeforeUnmount(() => {
                   class="picker-trigger"
                   :class="{ open: isFirstOpen }"
                   type="button"
-                  @click.stop="isFirstOpen = !isFirstOpen"
+                  @click.stop="toggleFirstPicker"
                 >
                   <span>{{
                     departments.find((item) => String(item.id) === firstChoice)?.shortName
@@ -370,18 +384,18 @@ onBeforeUnmount(() => {
                 </button>
 
                 <div v-if="isFirstOpen" class="picker-panel" @click.stop>
-                  <p v-if="departments.length === 0" class="picker-empty">
-                    Кафедры появятся после добавления преподавателей
-                  </p>
-                  <button
-                    v-for="department in departments"
-                    :key="department.id"
-                    class="picker-option"
-                    type="button"
-                    @click="selectFirst(String(department.id))"
-                  >
-                    {{ department.shortName }}
-                  </button>
+                    <p v-if="departments.length === 0" class="picker-empty">
+                      Кафедры появятся после добавления преподавателей
+                    </p>
+                    <button
+                      v-for="department in departments"
+                      :key="department.id"
+                      class="picker-option"
+                      type="button"
+                      @click="selectFirst(String(department.id))"
+                    >
+                      {{ department.shortName }}
+                    </button>
                 </div>
               </div>
             </template>
@@ -392,7 +406,7 @@ onBeforeUnmount(() => {
                   class="picker-trigger"
                   :class="{ open: isFirstOpen }"
                   type="button"
-                  @click.stop="isFirstOpen = !isFirstOpen; isSecondOpen = false"
+                  @click.stop="toggleFirstPicker"
                 >
                   <span>{{
                     departments.find((item) => String(item.id) === firstChoice)?.shortName
@@ -402,25 +416,25 @@ onBeforeUnmount(() => {
                 </button>
 
                 <div v-if="isFirstOpen" class="picker-panel" @click.stop>
-                  <button
-                    class="picker-option"
-                    type="button"
-                    @click="selectFirst('')"
-                  >
-                    Все кафедры
-                  </button>
-                  <p v-if="departments.length === 0" class="picker-empty">
-                    Кафедры появятся после добавления преподавателей
-                  </p>
-                  <button
-                    v-for="department in departments"
-                    :key="department.id"
-                    class="picker-option"
-                    type="button"
-                    @click="selectFirst(String(department.id))"
-                  >
-                    {{ department.shortName }}
-                  </button>
+                    <button
+                      class="picker-option"
+                      type="button"
+                      @click="selectFirst('')"
+                    >
+                      Все кафедры
+                    </button>
+                    <p v-if="departments.length === 0" class="picker-empty">
+                      Кафедры появятся после добавления преподавателей
+                    </p>
+                    <button
+                      v-for="department in departments"
+                      :key="department.id"
+                      class="picker-option"
+                      type="button"
+                      @click="selectFirst(String(department.id))"
+                    >
+                      {{ department.shortName }}
+                    </button>
                 </div>
               </div>
             </template>
@@ -431,25 +445,25 @@ onBeforeUnmount(() => {
                   class="picker-trigger"
                   :class="{ open: isFirstOpen }"
                   type="button"
-                  @click.stop="isFirstOpen = !isFirstOpen; isSecondOpen = false"
+                  @click.stop="toggleFirstPicker"
                 >
                   <span>{{ firstChoice || (isLoadingOptions ? 'Загрузка...' : 'Выберите') }}</span>
                   <span class="picker-arrow" :class="{ open: isFirstOpen }"></span>
                 </button>
 
                 <div v-if="isFirstOpen" class="picker-panel" @click.stop>
-                  <p v-if="buildings.length === 0" class="picker-empty">
-                    Корпуса появятся после загрузки расписаний групп
-                  </p>
-                  <button
-                    v-for="building in buildings"
-                    :key="building"
-                    class="picker-option"
-                    type="button"
-                    @click="selectFirst(building)"
-                  >
-                    {{ building }}
-                  </button>
+                    <p v-if="buildings.length === 0" class="picker-empty">
+                      Корпуса появятся после загрузки расписаний групп
+                    </p>
+                    <button
+                      v-for="building in buildings"
+                      :key="building"
+                      class="picker-option"
+                      type="button"
+                      @click="selectFirst(building)"
+                    >
+                      {{ building }}
+                    </button>
                 </div>
               </div>
             </template>
@@ -466,7 +480,7 @@ onBeforeUnmount(() => {
                   :class="{ open: isSecondOpen }"
                   type="button"
                   :disabled="isStudents && !firstChoice"
-                  @click.stop="isSecondOpen = !isSecondOpen; isFirstOpen = false"
+                  @click.stop="toggleSecondPicker"
               >
                 <span>{{
                   secondChoice

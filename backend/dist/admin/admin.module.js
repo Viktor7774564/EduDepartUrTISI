@@ -16,6 +16,7 @@ const sessions_module_1 = require("../sessions/sessions.module");
 const uploads_module_1 = require("../uploads/uploads.module");
 const admin_controller_1 = require("./admin.controller");
 const admin_service_1 = require("./admin.service");
+const admin_academic_service_1 = require("./admin-academic.service");
 const admin_guard_1 = require("./guards/admin.guard");
 const roles_seed_service_1 = require("./roles-seed.service");
 const refresh_token_entity_1 = require("../auth/entities/refresh-token.entity");
@@ -28,6 +29,11 @@ const role_entity_1 = require("../users/entities/role.entity");
 const student_profile_entity_1 = require("../users/entities/student-profile.entity");
 const teacher_profile_entity_1 = require("../users/entities/teacher-profile.entity");
 const staff_profile_entity_1 = require("../users/entities/staff-profile.entity");
+const user_entity_1 = require("../users/entities/user.entity");
+const department_entity_1 = require("../academic/entities/department.entity");
+const direction_entity_1 = require("../academic/entities/direction.entity");
+const group_entity_1 = require("../academic/entities/group.entity");
+const subgroup_entity_1 = require("../academic/entities/subgroup.entity");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
@@ -42,9 +48,15 @@ exports.AdminModule = AdminModule = __decorate([
             typeorm_1.TypeOrmModule.forFeature([
                 refresh_token_entity_1.RefreshToken,
                 role_entity_1.Role,
+                user_entity_1.User,
                 student_profile_entity_1.StudentProfile,
                 teacher_profile_entity_1.TeacherProfile,
                 staff_profile_entity_1.StaffProfile,
+                department_entity_1.Department,
+                direction_entity_1.Direction,
+                group_entity_1.Group,
+                subgroup_entity_1.Subgroup,
+                schedule_entity_1.Schedule,
                 consultation_entity_1.Consultation,
                 schedule_item_entity_1.ScheduleItem,
                 schedule_entity_1.Schedule,
@@ -53,7 +65,7 @@ exports.AdminModule = AdminModule = __decorate([
             ]),
         ],
         controllers: [admin_controller_1.AdminController],
-        providers: [admin_service_1.AdminService, admin_guard_1.AdminGuard, roles_seed_service_1.RolesSeedService],
+        providers: [admin_service_1.AdminService, admin_academic_service_1.AdminAcademicService, admin_guard_1.AdminGuard, roles_seed_service_1.RolesSeedService],
     })
 ], AdminModule);
 //# sourceMappingURL=admin.module.js.map

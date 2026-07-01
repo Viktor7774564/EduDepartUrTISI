@@ -58,6 +58,7 @@ export declare class AdminService {
     revokeSession(id: number): Promise<{
         success: true;
     }>;
+    private revokeUserSessions;
     private validateProfileFields;
     private createProfile;
     private createStudentProfile;
@@ -67,6 +68,7 @@ export declare class AdminService {
     private removeAllProfiles;
     private findOrCreateDepartment;
     private findOrCreateDirection;
+    private static readonly GROUP_LEGACY_COURSE;
     private findOrCreateGroup;
     private mapEducationForm;
     private formatFullName;
