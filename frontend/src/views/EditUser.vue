@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
 import { fetchTeacherDepartments, type TeacherDepartmentInfo } from '@/api/departments'
+import { getErrorRoute } from '@/config/errorPages'
 import PageFrame from '@/components/PageFrame.vue'
 import PasswordInput from '@/components/PasswordInput.vue'
 import type { AdminUser } from '@/api/admin'
@@ -157,8 +159,7 @@ watch(() => form.value.role, (newRole, oldRole) => {
 
 const loadUser = async () => {
   if (!userId.value || Number.isNaN(userId.value)) {
-    pageError.value = 'Некорректный идентификатор пользователя'
-    isLoading.value = false
+    await router.replace(getErrorRoute('404', 'Некорректный идентификатор пользователя'))
     return
   }
 
@@ -178,8 +179,22 @@ const loadUser = async () => {
 
     const user = await usersStore.getUser(userId.value)
     await fillFormFromUser(user)
-  } catch (err: any) {
-    pageError.value = err.response?.data?.message || 'Не удалось загрузить пользователя'
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 404) {
+        await router.replace(getErrorRoute('404', 'Пользователь не найден'))
+        return
+      }
+
+      if (error.response?.status === 403) {
+        await router.replace(getErrorRoute('403'))
+        return
+      }
+    }
+
+    pageError.value = axios.isAxiosError(error)
+      ? String(error.response?.data?.message ?? 'Не удалось загрузить пользователя')
+      : 'Не удалось загрузить пользователя'
   } finally {
     isLoading.value = false
   }
@@ -191,7 +206,7 @@ watch(userId, () => {
 
 onMounted(async () => {
   if (!authStore.isAuthenticated || authStore.currentUser?.role !== 'admin') {
-    await router.replace({ name: 'home' })
+    await router.replace(getErrorRoute('403'))
     return
   }
 

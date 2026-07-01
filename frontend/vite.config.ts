@@ -37,10 +37,45 @@ function shouldServeNotificationsPage(req: { method?: string; headers: { accept?
   return accept.includes('text/html')
 }
 
+function shouldServeAdminPage(req: { method?: string; headers: { accept?: string }; url?: string }): boolean {
+  if (req.method !== 'GET') {
+    return false
+  }
+
+  const url = req.url ?? ''
+  const accept = req.headers.accept ?? ''
+
+  if (!accept.includes('text/html')) {
+    return false
+  }
+
+  if (url.startsWith('/admin/users') || url.startsWith('/admin/academic/')) {
+    return false
+  }
+
+  return url === '/admin'
+    || url.startsWith('/admin?')
+    || url.startsWith('/admin/edit-user')
+    || url.startsWith('/admin/add-user')
+    || url.startsWith('/admin/sessions')
+    || url.startsWith('/admin/academic-structure')
+}
+
 const notificationsProxy: ProxyOptions = {
   ...backendWsProxy,
   bypass(req) {
     if (shouldServeNotificationsPage(req)) {
+      return '/index.html'
+    }
+
+    return undefined
+  },
+}
+
+const adminProxy: ProxyOptions = {
+  ...backendWsProxy,
+  bypass(req) {
+    if (shouldServeAdminPage(req)) {
       return '/index.html'
     }
 
@@ -68,7 +103,7 @@ export default defineConfig({
     ],
     proxy: {
       '/auth': backendProxy,
-      '/admin': backendWsProxy,
+      '/admin': adminProxy,
       '/notifications': notificationsProxy,
       '/schedules': backendWsProxy,
       '/academic': backendProxy,

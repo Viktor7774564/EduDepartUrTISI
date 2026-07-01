@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import { hasScheduleManageAccess } from '@/utils/educationDepartmentAccess'
+import { getErrorRoute } from '@/config/errorPages'
 
 const AUTH_STORAGE_KEY = 'edu-depart-auth-user'
 const protectedScheduleTypes = new Set(['teachers', 'auditories', 'consults'])
@@ -32,6 +33,11 @@ const router = createRouter({
       path: '/profile',
       name: 'profile',
       component: () => import('../views/ProfileView.vue'),
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('../views/SettingsView.vue'),
     },
     {
       path: '/education-department/schedule-upload',
@@ -77,9 +83,19 @@ const router = createRouter({
     },
 
     {
+      path: '/error/:code',
+      name: 'error',
+      component: () => import('../views/ErrorView.vue'),
+      props: true,
+    },
+
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
-      component: () => import('../views/NotFoundView.vue'),
+      redirect: (to) => ({
+        ...getErrorRoute('404'),
+        query: to.fullPath !== '/' ? { from: to.fullPath } : undefined,
+      }),
     },
   ],
 })
@@ -110,7 +126,7 @@ router.beforeEach((to) => {
       const user = JSON.parse(storedUser)
 
       if (user.role !== 'admin') {
-        return { name: 'home' }
+        return getErrorRoute('403')
       }
     } catch {
       return {
@@ -134,7 +150,7 @@ router.beforeEach((to) => {
       const user = JSON.parse(storedUser)
 
       if (!hasScheduleManageAccess(user)) {
-        return { name: 'home' }
+        return getErrorRoute('403', 'У вас нет доступа к загрузке расписания')
       }
     } catch {
       return {

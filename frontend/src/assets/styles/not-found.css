@@ -1,14 +1,21 @@
+.error-page-main,
 .not-found-main {
   @apply min-h-[calc(100vh-180px)] flex items-center justify-center gap-[38px] p-[24px];
 }
 
+.error-page-main img,
 .not-found-main img {
   width: min(560px, 20vw);
   height: auto;
 }
 
+.error-page-main h1,
 .not-found-main h1 {
-  @apply m-0 mb-[22px] text-[clamp(36px,3.1vw,36px)];
+  @apply m-0 mb-[14px] text-[clamp(36px,3.1vw,36px)];
+}
+
+.error-page-description {
+  @apply m-0 mb-[22px] text-[clamp(16px,1.2vw,18px)] text-[#4a4a4a] max-w-[420px];
 }
 
 .back-btn {
@@ -16,16 +23,24 @@
 }
 
 @media (max-width: 980px) {
+  .error-page-main,
   .not-found-main {
     flex-direction: column;
     text-align: center;
   }
 
+  .error-page-main img,
   .not-found-main img {
     width: min(460px, 90vw);
   }
 
+  .error-page-main h1,
   .not-found-main h1 {
-    margin-bottom: 20px;
+    margin-bottom: 12px;
+  }
+
+  .error-page-description {
+    margin-left: auto;
+    margin-right: auto;
   }
 }

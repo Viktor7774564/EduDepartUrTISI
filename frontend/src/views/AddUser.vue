@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
 import { fetchTeacherDepartments, type TeacherDepartmentInfo } from '@/api/departments'
+import { getErrorRoute } from '@/config/errorPages'
 import PageFrame from '@/components/PageFrame.vue'
 import PasswordInput from '@/components/PasswordInput.vue'
 import type { UserRole } from '@/stores/auth'
@@ -17,7 +18,7 @@ const teacherDepartments = ref<TeacherDepartmentInfo[]>([])
 
 onMounted(async () => {
   if (!authStore.isAuthenticated || authStore.currentUser?.role !== 'admin') {
-    await router.replace({ name: 'home' })
+    await router.replace(getErrorRoute('403'))
     return
   }
 

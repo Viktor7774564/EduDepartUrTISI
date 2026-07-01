@@ -69,6 +69,12 @@ const goToScheduleUpload = async () => {
   await router.push({ name: 'schedule-upload' })
 }
 
+const goToSettings = async () => {
+  isProfileOpen.value = false
+
+  await router.push({ name: 'settings' })
+}
+
 const isProfileOpen = ref(false)
 let connectedNotificationsToken: string | null = null
 
@@ -243,6 +249,14 @@ const handleVisibilityChange = async () => {
                 @click="goToScheduleUpload"
               >
                 Загрузка расписания
+              </button>
+
+              <button
+                  class="dropdown-item"
+                  type="button"
+                  @click="goToSettings"
+              >
+                Настройки
               </button>
 
               <button

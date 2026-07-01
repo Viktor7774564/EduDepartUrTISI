@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAdminSessionsStore } from '@/stores/adminSessions'
+import { getErrorRoute } from '@/config/errorPages'
 import PageFrame from '@/components/PageFrame.vue'
 import type { UserRole } from '@/stores/auth'
 
@@ -30,7 +31,7 @@ const filteredSessions = computed(() => {
 
 onMounted(async () => {
   if (!authStore.isAuthenticated || authStore.currentUser?.role !== 'admin') {
-    await router.replace({ name: 'home' })
+    await router.replace(getErrorRoute('403'))
     return
   }
 

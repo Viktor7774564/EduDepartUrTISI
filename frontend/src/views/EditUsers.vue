@@ -5,6 +5,7 @@ import PageFrame from '@/components/PageFrame.vue'
 import editIcon from '@/assets/edit.svg'
 import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
+import { getErrorRoute } from '@/config/errorPages'
 import type { AdminUser } from '@/api/admin'
 import type { UserRole } from '@/stores/auth'
 
@@ -53,7 +54,7 @@ const pageError = ref('')
 
 onMounted(async () => {
   if (!authStore.isAuthenticated || authStore.currentUser?.role !== 'admin') {
-    await router.replace({ name: 'home' })
+    await router.replace(getErrorRoute('403'))
     return
   }
 

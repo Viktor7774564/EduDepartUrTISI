@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageFrame from '@/components/PageFrame.vue'
 import { useAuthStore } from '@/stores/auth'
+import { getErrorRoute } from '@/config/errorPages'
 import {
   createAcademicDirection,
   createAcademicGroup,
@@ -63,7 +64,7 @@ const tabs: { id: TabId; label: string }[] = [
 
 onMounted(async () => {
   if (!authStore.isAuthenticated || authStore.currentUser?.role !== 'admin') {
-    await router.replace({ name: 'home' })
+    await router.replace(getErrorRoute('403'))
     return
   }
 

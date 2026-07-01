@@ -1,5 +1,5 @@
 .home-main {
-  @apply max-w-[1850px] mx-auto pt-[88px] px-[36px] pb-[120px];
+  @apply max-w-[1850px] mx-auto pt-[clamp(32px,6vh,88px)] px-[36px] pb-[clamp(24px,4vh,48px)];
 }
 
 .home-main h1 {

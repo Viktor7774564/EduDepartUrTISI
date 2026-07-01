@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import PageFrame from '@/components/PageFrame.vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasScheduleManageAccess } from '@/utils/educationDepartmentAccess'
+import { getErrorRoute } from '@/config/errorPages'
 import {
   deleteScheduleUpload,
   fetchScheduleUploads,
@@ -37,7 +38,7 @@ const deletingId = ref<number | null>(null)
 
 onMounted(async () => {
   if (!authStore.isAuthenticated || !hasScheduleManageAccess(authStore.currentUser)) {
-    await router.replace({ name: 'home' })
+    await router.replace(getErrorRoute('403', 'У вас нет доступа к загрузке расписания'))
     return
   }
 

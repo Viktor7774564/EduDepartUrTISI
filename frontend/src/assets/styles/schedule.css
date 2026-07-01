@@ -1,5 +1,7 @@
 .selection-page {
-  @apply relative min-h-[calc(100vh-157px)] py-[32px] px-[24px] pb-[56px] overflow-x-hidden overflow-y-visible;
+  @apply relative min-h-full py-[32px] px-[24px] pb-[56px];
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 .selection-page .triangle-side {
@@ -10,7 +12,7 @@
 }
 
 .selection-page .hero-card {
-  @apply relative z-[1] max-w-[520px] pt-[56px] pr-0 pb-[56px] pl-[18px];
+  @apply relative z-[3] max-w-[520px] pt-[56px] pr-0 pb-[56px] pl-[18px] overflow-visible;
 }
 
 .selection-page .back-home-btn {
@@ -34,15 +36,23 @@
 }
 
 .selection-page .form-grid {
-  @apply grid gap-[28px] max-w-[420px];
+  @apply grid gap-[28px] max-w-[420px] overflow-visible;
 }
 
 .selection-page .field {
-  @apply grid gap-[12px];
+  @apply grid gap-[12px] overflow-visible;
 }
 
 .selection-page .custom-picker {
-  @apply relative;
+  @apply relative z-[10];
+}
+
+.selection-page .custom-picker:has(.picker-trigger.open) {
+  @apply z-[30];
+}
+
+.selection-page .field:has(.picker-trigger.open) {
+  @apply relative z-[40];
 }
 
 .selection-page .custom-picker.disabled {
@@ -78,7 +88,7 @@
 }
 
 .selection-page .picker-panel {
-  @apply absolute top-[calc(100%-1px)] left-0 right-0 z-[1100] max-h-[220px] overflow-y-auto pt-[6px] pb-[10px] border-2 border-[#2d90d2] border-t-0 rounded-b-[14px] bg-white shadow-[0_12px_28px_rgba(18,38,63,0.12)];
+  @apply absolute top-[calc(100%-1px)] left-0 right-0 z-[1200] max-h-[220px] overflow-y-auto pt-[6px] pb-[10px] border-2 border-[#2d90d2] border-t-0 rounded-b-[14px] bg-white shadow-[0_12px_28px_rgba(18,38,63,0.12)];
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: #59b4ef #eef2f6;
@@ -719,11 +729,11 @@
   }
 
   .selection-page {
-    @apply px-[14px] py-[18px] pb-[28px];
+    @apply px-[14px] py-[18px] pb-[36px];
   }
 
   .selection-page .hero-card {
-    @apply max-w-full p-0;
+    @apply max-w-full p-0 overflow-visible;
   }
 
   .selection-page .back-home-btn {
@@ -739,11 +749,11 @@
   }
 
   .selection-page .form-grid {
-    @apply max-w-full gap-[18px];
+    @apply max-w-full gap-[18px] overflow-visible;
   }
 
   .selection-page .field {
-    @apply gap-[8px];
+    @apply gap-[8px] overflow-visible;
   }
 
   .selection-page .picker-trigger {
@@ -751,7 +761,8 @@
   }
 
   .selection-page .picker-panel {
-    @apply max-h-[200px];
+    max-height: min(240px, 45dvh);
+    -webkit-overflow-scrolling: touch;
   }
 
   .selection-page .picker-option {

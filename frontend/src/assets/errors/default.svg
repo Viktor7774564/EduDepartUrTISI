@@ -1,0 +1,6 @@
+<svg width="560" height="420" viewBox="0 0 560 420" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M280 70L470 330H90L280 70Z" fill="#ECECEC" stroke="#4EA3D7" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M280 150V250" stroke="#4EA3D7" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="280" cy="285" r="12" fill="#4EA3D7"/>
+  <text x="280" y="360" text-anchor="middle" fill="#4EA3D7" font-size="48" font-family="Arial, sans-serif" font-weight="700">!</text>
+</svg>

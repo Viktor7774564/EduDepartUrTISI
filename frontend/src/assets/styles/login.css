@@ -1,5 +1,5 @@
 .content {
-  @apply flex-1 grid grid-cols-2 min-h-[100dvh] bg-[linear-gradient(180deg,#f7fbfe_0%,#eef4f9_100%)];
+  @apply flex-1 grid grid-cols-2 min-h-0 bg-[linear-gradient(180deg,#f7fbfe_0%,#eef4f9_100%)];
 }
 
 .content .login-card {

@@ -60,9 +60,16 @@
   font-weight: normal;
 }
 
+html {
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
+  overflow-x: hidden;
   font-family:
     'Segoe UI',
     Tahoma,
@@ -79,4 +86,5 @@ body {
 #app {
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
 }

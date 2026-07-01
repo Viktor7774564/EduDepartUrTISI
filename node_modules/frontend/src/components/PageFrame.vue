@@ -59,8 +59,8 @@ function generateValidPosition(existing: any[]) {
 
   while (tries < 50) {
     const pos = {
-      top: `${randomBetween(5, 90)}%`,
-      left: `${randomBetween(5, 90)}%`,
+      top: `${randomBetween(12, 82)}%`,
+      left: `${randomBetween(12, 82)}%`,
     }
 
     const point = toPoint(pos.top, pos.left)
@@ -78,8 +78,8 @@ function generateValidPosition(existing: any[]) {
   }
 
   return {
-    top: `${randomBetween(5, 90)}%`,
-    left: `${randomBetween(5, 90)}%`,
+    top: `${randomBetween(12, 82)}%`,
+    left: `${randomBetween(12, 82)}%`,
   }
 }
 

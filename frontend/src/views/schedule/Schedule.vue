@@ -915,6 +915,14 @@ const openEditModalForLesson = async (lesson: CellLesson) => {
     }
   }
 
+  if (
+    isConsultationSchedule.value
+    && isConsultationDistanceBuilding(editForm.value.building)
+    && !editForm.value.type.toLowerCase().includes('онлайн')
+  ) {
+    editForm.value.type = 'Онлайн-консультация'
+  }
+
   isEditModalVisible.value = true
 }
 
@@ -1634,7 +1642,18 @@ watch(
 watch(
   () => editForm.value.building,
   (building) => {
-    if (!isEditModalVisible.value || isRoomFieldsReadonly.value || isOnlineConsultationType.value) {
+    if (!isEditModalVisible.value || isRoomFieldsReadonly.value) {
+      return
+    }
+
+    if (isConsultationSchedule.value && isConsultationDistanceBuilding(building)) {
+      editForm.value.type = 'Онлайн-консультация'
+      editForm.value.building = CONSULTATION_DISTANCE_BUILDING
+      editForm.value.room = DISTANCE_ROOM_LABEL
+      return
+    }
+
+    if (isOnlineConsultationType.value) {
       return
     }
 
