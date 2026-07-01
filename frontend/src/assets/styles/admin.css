@@ -89,6 +89,30 @@
   @apply py-[10px] px-[14px] border border-[#d7e0e9] rounded-[8px] text-[14px] bg-white transition-all duration-[200ms];
 }
 
+.admin-edit-page .password-field {
+  @apply relative;
+}
+
+.admin-edit-page .password-field .password-field__input {
+  @apply w-full pr-[44px];
+}
+
+.admin-edit-page .password-field__toggle {
+  @apply absolute right-[10px] top-1/2 -translate-y-1/2 w-[28px] h-[28px] border-0 bg-transparent cursor-pointer flex items-center justify-center p-0;
+}
+
+.admin-edit-page .password-field__toggle:disabled {
+  @apply cursor-not-allowed opacity-60;
+}
+
+.admin-edit-page .password-field__toggle img {
+  @apply w-[20px] h-[20px] opacity-60 transition-opacity duration-[200ms];
+}
+
+.admin-edit-page .password-field__toggle:hover:not(:disabled) img {
+  @apply opacity-100;
+}
+
 .admin-edit-page .form-input:hover,
 .admin-edit-page .form-select:hover {
   @apply border-[#4ea3d7];
@@ -343,6 +367,18 @@
   .admin-edit-page .close-btn {
     @apply text-[18px];
   }
+}
+
+.admin-edit-page .col-name {
+  @apply font-medium whitespace-normal;
+}
+
+.admin-edit-page .users-search {
+  @apply w-full py-[10px] px-[14px] mb-[24px] border border-[#d7e0e9] rounded-[8px] text-[14px] bg-white;
+}
+
+.admin-edit-page .users-search:focus {
+  @apply outline-none border-[#4ea3d7] shadow-[0_0_0_3px_rgba(78,163,215,0.1)];
 }
 
 @media (max-width: 480px) {

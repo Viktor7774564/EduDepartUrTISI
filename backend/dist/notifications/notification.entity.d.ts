@@ -1,6 +1,7 @@
 import { User } from '../users/entities/user.entity';
 export declare enum NotificationType {
-    SCHEDULE = "schedule"
+    SCHEDULE = "schedule",
+    CONSULTATION = "consultation"
 }
 export declare class Notification {
     id: number;

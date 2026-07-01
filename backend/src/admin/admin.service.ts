@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 
 import * as bcrypt from 'bcrypt';
 
@@ -27,6 +27,11 @@ import { SessionsNotifierService } from '../sessions/sessions-notifier.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AvatarService } from '../uploads/avatar.service';
+import { ConsultationNotificationPreference } from '../notifications/consultation-notification-preference.entity';
+import { Consultation } from '../schedule/entities/consultation.entity';
+import { Schedule } from '../schedule/entities/schedule.entity';
+import { ScheduleItem } from '../schedule/entities/schedule-item.entity';
+import { ScheduleUpload } from '../schedule/entities/schedule-upload.entity';
 
 export type { AdminSessionResponse };
 
@@ -66,6 +71,21 @@ export class AdminService {
 
         @InjectRepository(Group)
         private readonly groupRepository: Repository<Group>,
+
+        @InjectRepository(Consultation)
+        private readonly consultationsRepository: Repository<Consultation>,
+
+        @InjectRepository(ScheduleItem)
+        private readonly scheduleItemsRepository: Repository<ScheduleItem>,
+
+        @InjectRepository(Schedule)
+        private readonly schedulesRepository: Repository<Schedule>,
+
+        @InjectRepository(ScheduleUpload)
+        private readonly scheduleUploadsRepository: Repository<ScheduleUpload>,
+
+        @InjectRepository(ConsultationNotificationPreference)
+        private readonly consultationPreferencesRepository: Repository<ConsultationNotificationPreference>,
     ) {}
 
     async listUsers(): Promise<AdminUserResponse[]> {
@@ -252,10 +272,65 @@ export class AdminService {
         }
 
         const user = await this.usersService.findByIdWithDetails(id);
+        await this.cleanupUserReferences(id);
         await this.avatarService.deleteAvatar(id, user.photoUrl);
-        await this.usersService.remove(id);
+
+        try {
+            await this.usersService.remove(id);
+        } catch (error) {
+            this.rethrowUserDeleteError(error);
+        }
 
         return { success: true };
+    }
+
+    private async cleanupUserReferences(userId: number): Promise<void> {
+        const uploadsCount = await this.scheduleUploadsRepository.count({
+            where: { uploadedById: userId },
+        });
+
+        if (uploadsCount > 0) {
+            throw new BadRequestException(
+                'Нельзя удалить пользователя: у него есть загруженные файлы расписания',
+            );
+        }
+
+        await this.consultationsRepository.delete({ teacherId: userId });
+        await this.scheduleItemsRepository.update(
+            { teacherId: userId },
+            { teacherId: null },
+        );
+        await this.schedulesRepository.update(
+            { teacherId: userId },
+            { teacherId: null },
+        );
+
+        const preferences = await this.consultationPreferencesRepository
+            .createQueryBuilder('preference')
+            .where('preference.teacherIds @> :teacherIds::jsonb', {
+                teacherIds: JSON.stringify([userId]),
+            })
+            .getMany();
+
+        for (const preference of preferences) {
+            preference.teacherIds = preference.teacherIds.filter(
+                (teacherId) => teacherId !== userId,
+            );
+            await this.consultationPreferencesRepository.save(preference);
+        }
+    }
+
+    private rethrowUserDeleteError(error: unknown): never {
+        if (
+            error instanceof QueryFailedError
+            && (error.driverError as { code?: string }).code === '23503'
+        ) {
+            throw new BadRequestException(
+                'Нельзя удалить пользователя: на него есть ссылки в других данных системы',
+            );
+        }
+
+        throw error;
     }
 
     async listActiveSessions(): Promise<AdminSessionResponse[]> {

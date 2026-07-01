@@ -265,6 +265,32 @@ export const BUILDING_OPTIONS = [
   DISTANCE_BUILDING,
 ] as const
 
+export const CONSULTATION_DISTANCE_BUILDING = 'Дистант' as const
+
+export const CONSULTATION_BUILDING_OPTIONS = [
+  'УК1',
+  'УК3',
+  'УК5',
+  SPORTS_HALL_BUILDING,
+  CONSULTATION_DISTANCE_BUILDING,
+] as const
+
+export function isConsultationDistanceBuilding(building: string): boolean {
+  return building === CONSULTATION_DISTANCE_BUILDING || building === DISTANCE_BUILDING
+}
+
+export function normalizeConsultationBuilding(building: string): string {
+  if (isConsultationDistanceBuilding(building)) {
+    return CONSULTATION_DISTANCE_BUILDING
+  }
+
+  if (building === 'УК4') {
+    return 'УК3'
+  }
+
+  return building
+}
+
 export function isDistanceRoomLabel(room: string): boolean {
   return /дист/i.test(room.trim())
 }
@@ -278,11 +304,11 @@ export function isSportsHallRoomLabel(room: string): boolean {
 }
 
 export function isAutoFilledRoomBuilding(building: string): boolean {
-  return building === DISTANCE_BUILDING || building === SPORTS_HALL_BUILDING
+  return isConsultationDistanceBuilding(building) || building === SPORTS_HALL_BUILDING
 }
 
 export function getAutoFilledRoomLabel(building: string): string | null {
-  if (building === DISTANCE_BUILDING) {
+  if (isConsultationDistanceBuilding(building)) {
     return DISTANCE_ROOM_LABEL
   }
 
@@ -438,7 +464,10 @@ export function getLessonTypeLabel(type: string, isConsultation = false): string
   return normalizeLessonTypeForForm(type)
 }
 
-export function parseRoomForForm(room: string): { building: string; room: string } {
+export function parseRoomForForm(
+  room: string,
+  forConsultation = false,
+): { building: string; room: string } {
   const normalized = room.trim()
 
   if (!normalized) {
@@ -446,7 +475,10 @@ export function parseRoomForForm(room: string): { building: string; room: string
   }
 
   if (isDistanceRoomLabel(normalized)) {
-    return { building: DISTANCE_BUILDING, room: DISTANCE_ROOM_LABEL }
+    return {
+      building: forConsultation ? CONSULTATION_DISTANCE_BUILDING : DISTANCE_BUILDING,
+      room: DISTANCE_ROOM_LABEL,
+    }
   }
 
   if (isSportsHallRoomLabel(normalized)) {
@@ -459,12 +491,16 @@ export function parseRoomForForm(room: string): { building: string; room: string
     return { building: '', room: normalized }
   }
 
+  const normalizedBuilding = forConsultation
+    ? normalizeConsultationBuilding(building)
+    : building
+
   const roomNumber = normalized
     .replace(new RegExp(building.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), '')
     .trim()
 
   return {
-    building,
+    building: normalizedBuilding,
     room: roomNumber || normalized,
   }
 }
@@ -473,7 +509,7 @@ export function formatRoomForApi(building: string, room: string): string | undef
   const roomNumber = room.trim()
   const buildingCode = building.trim()
 
-  if (buildingCode === DISTANCE_BUILDING || isDistanceRoomLabel(roomNumber)) {
+  if (isConsultationDistanceBuilding(buildingCode) || isDistanceRoomLabel(roomNumber)) {
     return DISTANCE_ROOM_LABEL
   }
 

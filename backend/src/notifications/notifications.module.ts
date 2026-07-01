@@ -4,6 +4,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
 import { User } from '../users/entities/user.entity';
+import { ConsultationNotificationPreference } from './consultation-notification-preference.entity';
+import { ConsultationNotificationPreferencesService } from './consultation-notification-preferences.service';
+import { ConsultationNotificationsService } from './consultation-notifications.service';
 import { Notification } from './notification.entity';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsCleanupService } from './notifications-cleanup.service';
@@ -21,6 +24,7 @@ import { PushSubscriptionsService } from './push-subscriptions.service';
             Notification,
             User,
             PushSubscription,
+            ConsultationNotificationPreference,
         ]),
     ],
     controllers: [NotificationsController],
@@ -30,7 +34,9 @@ import { PushSubscriptionsService } from './push-subscriptions.service';
         NotificationsCleanupService,
         PushSubscriptionsService,
         PushNotificationsService,
+        ConsultationNotificationPreferencesService,
+        ConsultationNotificationsService,
     ],
-    exports: [NotificationsService],
+    exports: [NotificationsService, ConsultationNotificationsService],
 })
 export class NotificationsModule {}

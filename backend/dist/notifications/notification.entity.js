@@ -15,6 +15,7 @@ const user_entity_1 = require("../users/entities/user.entity");
 var NotificationType;
 (function (NotificationType) {
     NotificationType["SCHEDULE"] = "schedule";
+    NotificationType["CONSULTATION"] = "consultation";
 })(NotificationType || (exports.NotificationType = NotificationType = {}));
 let Notification = class Notification {
     id;

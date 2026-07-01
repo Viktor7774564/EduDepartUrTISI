@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageFrame from '@/components/PageFrame.vue'
 import editIcon from '@/assets/edit.svg'
@@ -7,6 +7,27 @@ import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
 import type { AdminUser } from '@/api/admin'
 import type { UserRole } from '@/stores/auth'
+
+
+const searchQuery = ref('')
+
+const filteredUsers = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) {
+    return usersStore.users
+  }
+
+  return usersStore.users.filter((user) => {
+    const fullName = getFullName(user).toLowerCase()
+    return (
+        fullName.includes(query)
+        || user.surname.toLowerCase().includes(query)
+        || user.name.toLowerCase().includes(query)
+        || (user.patronymic?.toLowerCase().includes(query) ?? false)
+        || user.login.toLowerCase().includes(query)
+    )
+  })
+})
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -39,11 +60,9 @@ const getRoleLabel = (role: UserRole): string => {
 }
 
 const getFullName = (user: AdminUser): string => {
-  const patronymicInitial = user.patronymic
-      ? ` ${user.patronymic.charAt(0)}.`
-      : ''
-
-  return `${user.surname} ${user.name.charAt(0)}.${patronymicInitial}`.trim()
+  return [user.surname, user.name, user.patronymic]
+      .filter(Boolean)
+      .join(' ')
 }
 
 const formatStatus = (user: AdminUser): string => {
@@ -106,45 +125,58 @@ const deleteUser = async (user: AdminUser) => {
           Пользователи не найдены
         </p>
 
-        <div v-else class="users-table">
-          <div class="table-header">
-            <div class="col-name">ФИО</div>
-            <div class="col-login">Логин</div>
-            <div class="col-role">Роль</div>
-            <div class="col-status">Статус</div>
-            <div class="col-actions"></div>
-          </div>
+        <template v-else>
+          <input
+            v-model="searchQuery"
+            class="users-search"
+            type="search"
+            placeholder="Поиск по ФИО или логину"
+          >
 
-          <div v-for="user in usersStore.users" :key="user.id" class="table-row">
-            <div class="col-name" :title="`${user.surname} ${user.name} ${user.patronymic}`">
-              {{ getFullName(user) }}
+          <p v-if="filteredUsers.length === 0" class="card-subtitle">
+            По вашему запросу ничего не найдено
+          </p>
+
+          <div v-else class="users-table">
+            <div class="table-header">
+              <div class="col-name">ФИО</div>
+              <div class="col-login">Логин</div>
+              <div class="col-role">Роль</div>
+              <div class="col-status">Статус</div>
+              <div class="col-actions"></div>
             </div>
-            <div class="col-login">{{ user.login }}</div>
-            <div class="col-role">{{ getRoleLabel(user.role) }}</div>
-            <div class="col-status" :class="{ inactive: !user.isActive }">
-              {{ formatStatus(user) }}
-            </div>
-            <div class="col-actions">
-              <button
-                class="edit-btn"
-                type="button"
-                @click="editUser(user)"
-                aria-label="Редактировать"
-              >
-                <img :src="editIcon" alt="" aria-hidden="true" />
-              </button>
-              <button
-                class="close-btn"
-                type="button"
-                :disabled="deletingUserId === user.id || user.id === authStore.currentUser?.id"
-                @click="deleteUser(user)"
-                aria-label="Удалить"
-              >
-                ✕
-              </button>
+
+            <div v-for="user in filteredUsers" :key="user.id" class="table-row">
+              <div class="col-name">
+                {{ getFullName(user) }}
+              </div>
+              <div class="col-login">{{ user.login }}</div>
+              <div class="col-role">{{ getRoleLabel(user.role) }}</div>
+              <div class="col-status" :class="{ inactive: !user.isActive }">
+                {{ formatStatus(user) }}
+              </div>
+              <div class="col-actions">
+                <button
+                  class="edit-btn"
+                  type="button"
+                  @click="editUser(user)"
+                  aria-label="Редактировать"
+                >
+                  <img :src="editIcon" alt="" aria-hidden="true" />
+                </button>
+                <button
+                  class="close-btn"
+                  type="button"
+                  :disabled="deletingUserId === user.id || user.id === authStore.currentUser?.id"
+                  @click="deleteUser(user)"
+                  aria-label="Удалить"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </template>
       </div>
     </section>
   </PageFrame>

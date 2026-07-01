@@ -19,6 +19,11 @@ const admin_service_1 = require("./admin.service");
 const admin_guard_1 = require("./guards/admin.guard");
 const roles_seed_service_1 = require("./roles-seed.service");
 const refresh_token_entity_1 = require("../auth/entities/refresh-token.entity");
+const consultation_notification_preference_entity_1 = require("../notifications/consultation-notification-preference.entity");
+const consultation_entity_1 = require("../schedule/entities/consultation.entity");
+const schedule_entity_1 = require("../schedule/entities/schedule.entity");
+const schedule_item_entity_1 = require("../schedule/entities/schedule-item.entity");
+const schedule_upload_entity_1 = require("../schedule/entities/schedule-upload.entity");
 const role_entity_1 = require("../users/entities/role.entity");
 const student_profile_entity_1 = require("../users/entities/student-profile.entity");
 const teacher_profile_entity_1 = require("../users/entities/teacher-profile.entity");
@@ -40,6 +45,11 @@ exports.AdminModule = AdminModule = __decorate([
                 student_profile_entity_1.StudentProfile,
                 teacher_profile_entity_1.TeacherProfile,
                 staff_profile_entity_1.StaffProfile,
+                consultation_entity_1.Consultation,
+                schedule_item_entity_1.ScheduleItem,
+                schedule_entity_1.Schedule,
+                schedule_upload_entity_1.ScheduleUpload,
+                consultation_notification_preference_entity_1.ConsultationNotificationPreference,
             ]),
         ],
         controllers: [admin_controller_1.AdminController],

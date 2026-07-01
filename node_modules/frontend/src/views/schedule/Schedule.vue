@@ -32,11 +32,14 @@ import {
   type ScheduleKind,
   type SchedulePeriodMeta,
   BUILDING_OPTIONS,
+  CONSULTATION_BUILDING_OPTIONS,
+  CONSULTATION_DISTANCE_BUILDING,
   DISTANCE_BUILDING,
   DISTANCE_ROOM_LABEL,
   SPORTS_HALL_ROOM_LABEL,
   getAutoFilledRoomLabel,
   isAutoFilledRoomBuilding,
+  isConsultationDistanceBuilding,
   LESSON_TYPE_OPTIONS,
   buildConsultationAcademicWeeks,
   formatRoomForApi,
@@ -859,7 +862,7 @@ const openEditModalForLesson = async (lesson: CellLesson) => {
   isCreatingLesson.value = false
   editingLesson.value = lesson
   emptyCellData.value = null
-  const parsedRoom = parseRoomForForm(lesson.room)
+  const parsedRoom = parseRoomForForm(lesson.room, scheduleType.value === 'consults')
   const displaySlot = findDisplaySlotForLesson(lesson)
   const roomFields = scheduleType.value === 'auditories'
     ? {
@@ -1595,12 +1598,12 @@ watch(
     }
 
     if (type.toLowerCase().includes('онлайн')) {
-      editForm.value.building = DISTANCE_BUILDING
+      editForm.value.building = CONSULTATION_DISTANCE_BUILDING
       editForm.value.room = DISTANCE_ROOM_LABEL
       return
     }
 
-    if (editForm.value.building === DISTANCE_BUILDING) {
+    if (isConsultationDistanceBuilding(editForm.value.building)) {
       editForm.value.building = ''
     }
 
@@ -1874,10 +1877,6 @@ const isConsultationSchedule = computed(() => scheduleType.value === 'consults')
 
 const isOnlineConsultationType = computed(() =>
   isConsultationSchedule.value && editForm.value.type.toLowerCase().includes('онлайн'),
-)
-
-const consultationBuildingOptions = computed(() =>
-  BUILDING_OPTIONS.filter((building) => building !== DISTANCE_BUILDING),
 )
 
 // Проверка, может ли текущий пользователь редактировать
@@ -2626,7 +2625,7 @@ onUnmounted(() => {
                   >
                     <option value="">Не выбран</option>
                     <option
-                      v-for="building in (isConsultationSchedule ? consultationBuildingOptions : BUILDING_OPTIONS)"
+                      v-for="building in (isConsultationSchedule ? CONSULTATION_BUILDING_OPTIONS : BUILDING_OPTIONS)"
                       :key="building"
                       :value="building"
                     >

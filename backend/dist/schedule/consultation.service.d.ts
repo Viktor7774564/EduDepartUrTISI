@@ -1,5 +1,6 @@
 import { Repository } from 'typeorm';
 import { DepartmentsService } from '../academic/departments.service';
+import { ConsultationNotificationsService } from '../notifications/consultation-notifications.service';
 import { User } from '../users/entities/user.entity';
 import { CreateConsultationDto, UpdateConsultationDto } from './dto/consultation.dto';
 import { Consultation } from './entities/consultation.entity';
@@ -22,7 +23,8 @@ export declare class ConsultationService {
     private readonly usersRepository;
     private readonly departmentsService;
     private readonly teacherResolver;
-    constructor(consultationsRepository: Repository<Consultation>, usersRepository: Repository<User>, departmentsService: DepartmentsService, teacherResolver: TeacherResolver);
+    private readonly consultationNotificationsService;
+    constructor(consultationsRepository: Repository<Consultation>, usersRepository: Repository<User>, departmentsService: DepartmentsService, teacherResolver: TeacherResolver, consultationNotificationsService: ConsultationNotificationsService);
     formatTeacherName(user: User): string;
     private parseWeekStart;
     private formatWeekLabel;

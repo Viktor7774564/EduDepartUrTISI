@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
 import { fetchTeacherDepartments, type TeacherDepartmentInfo } from '@/api/departments'
 import PageFrame from '@/components/PageFrame.vue'
+import PasswordInput from '@/components/PasswordInput.vue'
 import type { AdminUser } from '@/api/admin'
 import type { UserRole } from '@/stores/auth'
 import { getPhotoUrl } from '@/config/api'
@@ -338,14 +339,12 @@ const goBack = () => router.push({ name: 'admin-edit-user' })
 
                 <div class="form-group">
                   <label for="password" class="form-label">Новый пароль</label>
-                  <input
+                  <PasswordInput
                     id="password"
                     v-model="form.password"
-                    type="password"
-                    class="form-input"
-                    :class="{ error: errors.password }"
                     placeholder="Оставьте пустым, чтобы не менять"
                     :disabled="isSubmitting"
+                    :error="!!errors.password"
                   />
                   <span v-if="errors.password" class="error-message">{{ errors.password }}</span>
                 </div>

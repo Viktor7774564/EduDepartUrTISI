@@ -7,6 +7,7 @@ import {
     ParseIntPipe,
     Patch,
     Post,
+    Put,
     Query,
     Req,
     UseGuards,
@@ -14,6 +15,8 @@ import {
 import { Request } from 'express';
 
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
+import { ConsultationNotificationPreferencesService } from './consultation-notification-preferences.service';
+import { UpdateConsultationNotificationPreferenceDto } from './dto/consultation-notification-preference.dto';
 import { PushSubscriptionDto, UnsubscribePushDto } from './dto/push-subscription.dto';
 import { Notification } from './notification.entity';
 import { NotificationsService } from './notifications.service';
@@ -34,11 +37,35 @@ export class NotificationsController {
         private readonly notificationsService: NotificationsService,
         private readonly pushNotificationsService: PushNotificationsService,
         private readonly pushSubscriptionsService: PushSubscriptionsService,
+        private readonly consultationNotificationPreferencesService: ConsultationNotificationPreferencesService,
     ) {}
 
     @Get()
     list(@Req() request: AuthRequest): Promise<Notification[]> {
         return this.notificationsService.listForUser(this.getUserId(request));
+    }
+
+    @Get('consultation-preferences/teachers')
+    listConsultationTeacherOptions() {
+        return this.consultationNotificationPreferencesService.listTeacherOptions();
+    }
+
+    @Get('consultation-preferences')
+    getConsultationPreferences(@Req() request: AuthRequest) {
+        return this.consultationNotificationPreferencesService.getForUser(
+            this.getUserId(request),
+        );
+    }
+
+    @Put('consultation-preferences')
+    updateConsultationPreferences(
+        @Req() request: AuthRequest,
+        @Body() dto: UpdateConsultationNotificationPreferenceDto,
+    ) {
+        return this.consultationNotificationPreferencesService.updateForUser(
+            this.getUserId(request),
+            dto,
+        );
     }
 
     @Get('push/vapid-public-key')
@@ -82,17 +109,17 @@ export class NotificationsController {
         return this.pushSubscriptionsService.unsubscribe(this.getUserId(request), dto.endpoint);
     }
 
+    @Patch('read-all')
+    markAllAsRead(@Req() request: AuthRequest): Promise<void> {
+        return this.notificationsService.markAllAsRead(this.getUserId(request));
+    }
+
     @Patch(':id/read')
     markAsRead(
         @Req() request: AuthRequest,
         @Param('id', ParseIntPipe) id: number,
     ): Promise<void> {
         return this.notificationsService.markAsRead(this.getUserId(request), id);
-    }
-
-    @Patch('read-all')
-    markAllAsRead(@Req() request: AuthRequest): Promise<void> {
-        return this.notificationsService.markAllAsRead(this.getUserId(request));
     }
 
     private getUserId(request: AuthRequest): number {

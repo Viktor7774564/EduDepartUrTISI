@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const departments_service_1 = require("../academic/departments.service");
+const consultation_notifications_service_1 = require("../notifications/consultation-notifications.service");
 const user_entity_1 = require("../users/entities/user.entity");
 const consultation_entity_1 = require("./entities/consultation.entity");
 const teacher_resolver_1 = require("./resolver/teacher.resolver");
@@ -35,11 +36,13 @@ let ConsultationService = class ConsultationService {
     usersRepository;
     departmentsService;
     teacherResolver;
-    constructor(consultationsRepository, usersRepository, departmentsService, teacherResolver) {
+    consultationNotificationsService;
+    constructor(consultationsRepository, usersRepository, departmentsService, teacherResolver, consultationNotificationsService) {
         this.consultationsRepository = consultationsRepository;
         this.usersRepository = usersRepository;
         this.departmentsService = departmentsService;
         this.teacherResolver = teacherResolver;
+        this.consultationNotificationsService = consultationNotificationsService;
     }
     formatTeacherName(user) {
         const nameInitial = user.name?.charAt(0) ?? '';
@@ -168,6 +171,7 @@ let ConsultationService = class ConsultationService {
         if (!withTeacher) {
             throw new common_1.NotFoundException('Консультация не найдена');
         }
+        await this.consultationNotificationsService.notifyConsultationChanged('created', withTeacher);
         return this.mapConsultation(withTeacher);
     }
     async updateConsultation(user, id, dto) {
@@ -178,6 +182,8 @@ let ConsultationService = class ConsultationService {
         if (!consultation) {
             throw new common_1.NotFoundException('Консультация не найдена');
         }
+        const previousSnapshot = this.consultationNotificationsService
+            .createConsultationSnapshot(consultation);
         this.assertTeacherInDepartment(user, consultation.departmentId);
         if (dto.subject !== undefined) {
             consultation.subject = dto.subject.trim();
@@ -215,16 +221,19 @@ let ConsultationService = class ConsultationService {
         if (!withTeacher) {
             throw new common_1.NotFoundException('Консультация не найдена');
         }
+        await this.consultationNotificationsService.notifyConsultationChanged('updated', withTeacher, previousSnapshot);
         return this.mapConsultation(withTeacher);
     }
     async deleteConsultation(user, id) {
         const consultation = await this.consultationsRepository.findOne({
             where: { id },
+            relations: ['teacher'],
         });
         if (!consultation) {
             throw new common_1.NotFoundException('Консультация не найдена');
         }
         this.assertTeacherInDepartment(user, consultation.departmentId);
+        await this.consultationNotificationsService.notifyConsultationChanged('deleted', consultation);
         await this.consultationsRepository.delete(id);
     }
 };
@@ -236,6 +245,7 @@ exports.ConsultationService = ConsultationService = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         departments_service_1.DepartmentsService,
-        teacher_resolver_1.TeacherResolver])
+        teacher_resolver_1.TeacherResolver,
+        consultation_notifications_service_1.ConsultationNotificationsService])
 ], ConsultationService);
 //# sourceMappingURL=consultation.service.js.map

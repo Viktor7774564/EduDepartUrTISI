@@ -28,6 +28,34 @@
   @apply outline-none border-[#4ea3d7] shadow-[0_0_0_3px_rgb(78_163_215_/_15%)];
 }
 
+.content .login-form .password-field {
+  @apply relative mb-[10px] z-[1];
+}
+
+.content .login-form .password-field__input {
+  @apply w-full h-[48px] border border-[#cfd8e3] rounded-[12px] bg-[#fbfdff] pl-[14px] pr-[44px] text-[16px] mb-0 transition-[border-color,box-shadow,transform] duration-[200ms] ease-in-out;
+}
+
+.content .login-form .password-field__input:focus {
+  @apply outline-none border-[#4ea3d7] shadow-[0_0_0_3px_rgb(78_163_215_/_15%)];
+}
+
+.content .login-form .password-field__toggle {
+  @apply absolute right-[12px] top-1/2 -translate-y-1/2 w-[28px] h-[28px] border-0 bg-transparent cursor-pointer flex items-center justify-center p-0;
+}
+
+.content .login-form .password-field__toggle:disabled {
+  @apply cursor-not-allowed opacity-60;
+}
+
+.content .login-form .password-field__toggle img {
+  @apply w-[20px] h-[20px] opacity-60 transition-opacity duration-[200ms];
+}
+
+.content .login-form .password-field__toggle:hover:not(:disabled) img {
+  @apply opacity-100;
+}
+
 .content .action-btn {
   @apply justify-self-center mt-[18px] min-w-[220px] h-[50px] border-0 rounded-[12px] bg-[#4ea3d7] text-white text-[17px] font-semibold cursor-pointer shadow-[0_10px_20px_rgba(78,163,215,0.24)];
 }
@@ -194,6 +222,10 @@
   }
 
   .content .login-form input {
+    @apply h-[50px] text-[16px];
+  }
+
+  .content .login-form .password-field__input {
     @apply h-[50px] text-[16px];
   }
 

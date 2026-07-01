@@ -6,6 +6,7 @@ import maxIcon from '@/assets/max.png'
 import bgCard from '@/assets/bg-card.png'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import PasswordInput from '@/components/PasswordInput.vue'
 // import { mockUsers } from '@/mocks/users'   // можно закомментировать или удалить позже
 
 const router = useRouter()
@@ -98,7 +99,11 @@ const onFormSubmit = async () => {
         <input id="login" v-model="formData.login" name="login" type="text" />
 
         <label for="password">Пароль</label>
-        <input id="password" v-model="formData.password" name="password" type="password" />
+        <PasswordInput
+          id="password"
+          v-model="formData.password"
+          variant="login"
+        />
 
         <p v-if="errorMessage" class="form-error">{{ errorMessage }}</p>
 

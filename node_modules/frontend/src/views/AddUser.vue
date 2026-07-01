@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
 import { fetchTeacherDepartments, type TeacherDepartmentInfo } from '@/api/departments'
 import PageFrame from '@/components/PageFrame.vue'
+import PasswordInput from '@/components/PasswordInput.vue'
 import type { UserRole } from '@/stores/auth'
 
 const router = useRouter()
@@ -287,14 +288,12 @@ const resetForm = () => {
                 <label for="password" class="form-label">
                   Пароль <span class="required">*</span>
                 </label>
-                <input
+                <PasswordInput
                   id="password"
                   v-model="form.password"
-                  type="password"
-                  class="form-input"
-                  :class="{ error: errors.password }"
                   placeholder="Введите пароль"
                   :disabled="isSubmitting"
+                  :error="!!errors.password"
                 />
                 <span v-if="errors.password" class="error-message">{{ errors.password }}</span>
               </div>

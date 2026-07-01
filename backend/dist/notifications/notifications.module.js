@@ -12,6 +12,9 @@ const jwt_1 = require("@nestjs/jwt");
 const typeorm_1 = require("@nestjs/typeorm");
 const auth_module_1 = require("../auth/auth.module");
 const user_entity_1 = require("../users/entities/user.entity");
+const consultation_notification_preference_entity_1 = require("./consultation-notification-preference.entity");
+const consultation_notification_preferences_service_1 = require("./consultation-notification-preferences.service");
+const consultation_notifications_service_1 = require("./consultation-notifications.service");
 const notification_entity_1 = require("./notification.entity");
 const notifications_controller_1 = require("./notifications.controller");
 const notifications_cleanup_service_1 = require("./notifications-cleanup.service");
@@ -32,6 +35,7 @@ exports.NotificationsModule = NotificationsModule = __decorate([
                 notification_entity_1.Notification,
                 user_entity_1.User,
                 push_subscription_entity_1.PushSubscription,
+                consultation_notification_preference_entity_1.ConsultationNotificationPreference,
             ]),
         ],
         controllers: [notifications_controller_1.NotificationsController],
@@ -41,8 +45,10 @@ exports.NotificationsModule = NotificationsModule = __decorate([
             notifications_cleanup_service_1.NotificationsCleanupService,
             push_subscriptions_service_1.PushSubscriptionsService,
             push_notifications_service_1.PushNotificationsService,
+            consultation_notification_preferences_service_1.ConsultationNotificationPreferencesService,
+            consultation_notifications_service_1.ConsultationNotificationsService,
         ],
-        exports: [notifications_service_1.NotificationsService],
+        exports: [notifications_service_1.NotificationsService, consultation_notifications_service_1.ConsultationNotificationsService],
     })
 ], NotificationsModule);
 //# sourceMappingURL=notifications.module.js.map

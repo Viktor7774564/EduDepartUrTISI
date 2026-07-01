@@ -144,6 +144,7 @@
   }
 
   .notifications-header,
+  .notifications-consultation-settings,
   .notifications-push-settings {
     @apply flex-col items-stretch;
   }
@@ -171,5 +172,101 @@
   .notifications-empty,
   .notifications-state {
     @apply py-[22px] px-[16px] text-[14px];
+  }
+}
+
+.notifications-consultation-settings {
+  @apply flex items-start justify-between gap-[16px] rounded-[16px] border border-[#d7e0e9] bg-[rgba(255,255,255,0.95)] p-[16px] shadow-[0_8px_20px_rgba(18,38,63,0.05)];
+}
+
+.notifications-consultation-settings__content {
+  @apply min-w-0 flex-1;
+}
+
+.notifications-consultation-settings__content h2 {
+  @apply m-0 text-[17px] font-bold text-[#18212a];
+}
+
+.notifications-consultation-settings__content > p {
+  @apply mt-[8px] mb-0 text-[14px] leading-[1.5] text-[#5f6975];
+}
+
+.notifications-consultation-settings__toggle,
+.notifications-consultation-settings__radio {
+  @apply mt-[14px] flex items-center gap-[10px] text-[14px] text-[#24313f] cursor-pointer;
+}
+
+.notifications-consultation-settings__mode {
+  @apply mt-[8px] flex flex-col gap-[8px];
+}
+
+.notifications-consultation-settings__teachers {
+  @apply mt-[14px] flex flex-col gap-[12px];
+}
+
+.notifications-consultation-settings__search {
+  @apply w-full min-h-[42px] rounded-[12px] border border-[#d7e0e9] bg-white px-[14px] text-[14px] text-[#24313f];
+}
+
+.notifications-consultation-settings__teacher-list {
+  @apply m-0 max-h-[280px] list-none overflow-y-auto rounded-[12px] border border-[#d7e0e9] bg-white p-[8px];
+}
+
+.notifications-consultation-settings__teacher-item label {
+  @apply flex items-start gap-[10px] rounded-[10px] px-[10px] py-[8px] cursor-pointer;
+}
+
+.notifications-consultation-settings__teacher-item label:hover {
+  @apply bg-[#f8fbfd];
+}
+
+.notifications-consultation-settings__teacher-name {
+  @apply block text-[14px] font-semibold text-[#18212a];
+}
+
+.notifications-consultation-settings__teacher-department {
+  @apply block text-[12px] text-[#6b7280];
+}
+
+.notifications-consultation-settings__hint {
+  @apply mt-[10px] mb-0 text-[13px] text-[#6b7280];
+}
+
+.notifications-consultation-settings__message {
+  @apply mt-[10px] text-[13px] font-medium text-[#047857];
+}
+
+.notifications-consultation-settings__message.error {
+  @apply text-[#b91c1c];
+}
+
+.notifications-consultation-settings__actions {
+  @apply flex shrink-0;
+}
+
+.notifications-consultation-settings__save {
+  @apply min-h-[42px] border-0 rounded-[12px] px-[16px] bg-[#4ea3d7] text-white text-[14px] font-semibold cursor-pointer whitespace-nowrap transition-all duration-[200ms];
+}
+
+.notifications-consultation-settings__save:hover:not(:disabled) {
+  @apply bg-[#3f93c7];
+}
+
+.notifications-consultation-settings__save:disabled {
+  @apply cursor-not-allowed opacity-[0.6];
+}
+
+@media (max-width: 768px) {
+  .notifications-consultation-settings {
+    @apply flex-col items-stretch;
+  }
+
+  .notifications-consultation-settings__actions,
+  .notifications-consultation-settings__save {
+    @apply w-full;
+  }
+
+  .notifications-consultation-settings__save {
+    @apply whitespace-normal text-center;
   }
 }

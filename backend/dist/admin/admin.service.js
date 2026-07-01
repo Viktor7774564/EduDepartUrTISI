@@ -64,6 +64,11 @@ const group_entity_1 = require("../academic/entities/group.entity");
 const sessions_service_1 = require("../sessions/sessions.service");
 const sessions_notifier_service_1 = require("../sessions/sessions-notifier.service");
 const avatar_service_1 = require("../uploads/avatar.service");
+const consultation_notification_preference_entity_1 = require("../notifications/consultation-notification-preference.entity");
+const consultation_entity_1 = require("../schedule/entities/consultation.entity");
+const schedule_entity_1 = require("../schedule/entities/schedule.entity");
+const schedule_item_entity_1 = require("../schedule/entities/schedule-item.entity");
+const schedule_upload_entity_1 = require("../schedule/entities/schedule-upload.entity");
 let AdminService = class AdminService {
     usersService;
     sessionsService;
@@ -78,7 +83,12 @@ let AdminService = class AdminService {
     departmentRepository;
     directionRepository;
     groupRepository;
-    constructor(usersService, sessionsService, sessionsNotifier, avatarService, departmentsService, roleRepository, refreshTokenRepository, studentProfileRepository, teacherProfileRepository, staffProfileRepository, departmentRepository, directionRepository, groupRepository) {
+    consultationsRepository;
+    scheduleItemsRepository;
+    schedulesRepository;
+    scheduleUploadsRepository;
+    consultationPreferencesRepository;
+    constructor(usersService, sessionsService, sessionsNotifier, avatarService, departmentsService, roleRepository, refreshTokenRepository, studentProfileRepository, teacherProfileRepository, staffProfileRepository, departmentRepository, directionRepository, groupRepository, consultationsRepository, scheduleItemsRepository, schedulesRepository, scheduleUploadsRepository, consultationPreferencesRepository) {
         this.usersService = usersService;
         this.sessionsService = sessionsService;
         this.sessionsNotifier = sessionsNotifier;
@@ -92,6 +102,11 @@ let AdminService = class AdminService {
         this.departmentRepository = departmentRepository;
         this.directionRepository = directionRepository;
         this.groupRepository = groupRepository;
+        this.consultationsRepository = consultationsRepository;
+        this.scheduleItemsRepository = scheduleItemsRepository;
+        this.schedulesRepository = schedulesRepository;
+        this.scheduleUploadsRepository = scheduleUploadsRepository;
+        this.consultationPreferencesRepository = consultationPreferencesRepository;
     }
     async listUsers() {
         const users = await this.usersService.findAllWithDetails();
@@ -203,9 +218,43 @@ let AdminService = class AdminService {
             throw new common_1.BadRequestException('Нельзя удалить собственную учётную запись');
         }
         const user = await this.usersService.findByIdWithDetails(id);
+        await this.cleanupUserReferences(id);
         await this.avatarService.deleteAvatar(id, user.photoUrl);
-        await this.usersService.remove(id);
+        try {
+            await this.usersService.remove(id);
+        }
+        catch (error) {
+            this.rethrowUserDeleteError(error);
+        }
         return { success: true };
+    }
+    async cleanupUserReferences(userId) {
+        const uploadsCount = await this.scheduleUploadsRepository.count({
+            where: { uploadedById: userId },
+        });
+        if (uploadsCount > 0) {
+            throw new common_1.BadRequestException('Нельзя удалить пользователя: у него есть загруженные файлы расписания');
+        }
+        await this.consultationsRepository.delete({ teacherId: userId });
+        await this.scheduleItemsRepository.update({ teacherId: userId }, { teacherId: null });
+        await this.schedulesRepository.update({ teacherId: userId }, { teacherId: null });
+        const preferences = await this.consultationPreferencesRepository
+            .createQueryBuilder('preference')
+            .where('preference.teacherIds @> :teacherIds::jsonb', {
+            teacherIds: JSON.stringify([userId]),
+        })
+            .getMany();
+        for (const preference of preferences) {
+            preference.teacherIds = preference.teacherIds.filter((teacherId) => teacherId !== userId);
+            await this.consultationPreferencesRepository.save(preference);
+        }
+    }
+    rethrowUserDeleteError(error) {
+        if (error instanceof typeorm_2.QueryFailedError
+            && error.driverError.code === '23503') {
+            throw new common_1.BadRequestException('Нельзя удалить пользователя: на него есть ссылки в других данных системы');
+        }
+        throw error;
     }
     async listActiveSessions() {
         return this.sessionsService.listActiveSessions();
@@ -422,11 +471,21 @@ exports.AdminService = AdminService = __decorate([
     __param(10, (0, typeorm_1.InjectRepository)(department_entity_1.Department)),
     __param(11, (0, typeorm_1.InjectRepository)(direction_entity_1.Direction)),
     __param(12, (0, typeorm_1.InjectRepository)(group_entity_1.Group)),
+    __param(13, (0, typeorm_1.InjectRepository)(consultation_entity_1.Consultation)),
+    __param(14, (0, typeorm_1.InjectRepository)(schedule_item_entity_1.ScheduleItem)),
+    __param(15, (0, typeorm_1.InjectRepository)(schedule_entity_1.Schedule)),
+    __param(16, (0, typeorm_1.InjectRepository)(schedule_upload_entity_1.ScheduleUpload)),
+    __param(17, (0, typeorm_1.InjectRepository)(consultation_notification_preference_entity_1.ConsultationNotificationPreference)),
     __metadata("design:paramtypes", [users_service_1.UsersService,
         sessions_service_1.SessionsService,
         sessions_notifier_service_1.SessionsNotifierService,
         avatar_service_1.AvatarService,
         departments_service_1.DepartmentsService,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

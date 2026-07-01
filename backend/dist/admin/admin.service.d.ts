@@ -16,6 +16,11 @@ import { SessionsNotifierService } from '../sessions/sessions-notifier.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AvatarService } from '../uploads/avatar.service';
+import { ConsultationNotificationPreference } from '../notifications/consultation-notification-preference.entity';
+import { Consultation } from '../schedule/entities/consultation.entity';
+import { Schedule } from '../schedule/entities/schedule.entity';
+import { ScheduleItem } from '../schedule/entities/schedule-item.entity';
+import { ScheduleUpload } from '../schedule/entities/schedule-upload.entity';
 export type { AdminSessionResponse };
 export type AdminUserResponse = ReturnType<typeof mapUserToAuthResponse> & {
     isActive: boolean;
@@ -34,7 +39,12 @@ export declare class AdminService {
     private readonly departmentRepository;
     private readonly directionRepository;
     private readonly groupRepository;
-    constructor(usersService: UsersService, sessionsService: SessionsService, sessionsNotifier: SessionsNotifierService, avatarService: AvatarService, departmentsService: DepartmentsService, roleRepository: Repository<Role>, refreshTokenRepository: Repository<RefreshToken>, studentProfileRepository: Repository<StudentProfile>, teacherProfileRepository: Repository<TeacherProfile>, staffProfileRepository: Repository<StaffProfile>, departmentRepository: Repository<Department>, directionRepository: Repository<Direction>, groupRepository: Repository<Group>);
+    private readonly consultationsRepository;
+    private readonly scheduleItemsRepository;
+    private readonly schedulesRepository;
+    private readonly scheduleUploadsRepository;
+    private readonly consultationPreferencesRepository;
+    constructor(usersService: UsersService, sessionsService: SessionsService, sessionsNotifier: SessionsNotifierService, avatarService: AvatarService, departmentsService: DepartmentsService, roleRepository: Repository<Role>, refreshTokenRepository: Repository<RefreshToken>, studentProfileRepository: Repository<StudentProfile>, teacherProfileRepository: Repository<TeacherProfile>, staffProfileRepository: Repository<StaffProfile>, departmentRepository: Repository<Department>, directionRepository: Repository<Direction>, groupRepository: Repository<Group>, consultationsRepository: Repository<Consultation>, scheduleItemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>, scheduleUploadsRepository: Repository<ScheduleUpload>, consultationPreferencesRepository: Repository<ConsultationNotificationPreference>);
     listUsers(): Promise<AdminUserResponse[]>;
     getUser(id: number): Promise<AdminUserResponse>;
     updateUser(id: number, dto: UpdateUserDto, currentUserId: number, photo?: Express.Multer.File): Promise<AdminUserResponse>;
@@ -42,6 +52,8 @@ export declare class AdminService {
     deleteUser(id: number, currentUserId: number): Promise<{
         success: true;
     }>;
+    private cleanupUserReferences;
+    private rethrowUserDeleteError;
     listActiveSessions(): Promise<AdminSessionResponse[]>;
     revokeSession(id: number): Promise<{
         success: true;

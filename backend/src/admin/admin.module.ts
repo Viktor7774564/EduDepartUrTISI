@@ -13,6 +13,11 @@ import { AdminGuard } from './guards/admin.guard';
 import { RolesSeedService } from './roles-seed.service';
 
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
+import { ConsultationNotificationPreference } from '../notifications/consultation-notification-preference.entity';
+import { Consultation } from '../schedule/entities/consultation.entity';
+import { Schedule } from '../schedule/entities/schedule.entity';
+import { ScheduleItem } from '../schedule/entities/schedule-item.entity';
+import { ScheduleUpload } from '../schedule/entities/schedule-upload.entity';
 import { Role } from '../users/entities/role.entity';
 import { StudentProfile } from '../users/entities/student-profile.entity';
 import { TeacherProfile } from '../users/entities/teacher-profile.entity';
@@ -31,6 +36,11 @@ import { StaffProfile } from '../users/entities/staff-profile.entity';
             StudentProfile,
             TeacherProfile,
             StaffProfile,
+            Consultation,
+            ScheduleItem,
+            Schedule,
+            ScheduleUpload,
+            ConsultationNotificationPreference,
         ]),
     ],
     controllers: [AdminController],

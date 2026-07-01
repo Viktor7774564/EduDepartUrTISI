@@ -26,6 +26,7 @@ function shouldServeNotificationsPage(req: { method?: string; headers: { accept?
   if (
     url.startsWith('/notifications/push')
     || url.startsWith('/notifications/read-all')
+    || url.startsWith('/notifications/consultation-preferences')
     || /\/notifications\/\d+\/read(?:\?|$)/.test(url)
   ) {
     return false

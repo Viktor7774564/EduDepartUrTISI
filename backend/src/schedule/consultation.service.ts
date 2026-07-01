@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { DepartmentsService } from '../academic/departments.service';
+import { ConsultationNotificationsService } from '../notifications/consultation-notifications.service';
 import { User } from '../users/entities/user.entity';
 import { CreateConsultationDto, UpdateConsultationDto } from './dto/consultation.dto';
 import { Consultation } from './entities/consultation.entity';
@@ -44,6 +45,7 @@ export class ConsultationService {
         private readonly usersRepository: Repository<User>,
         private readonly departmentsService: DepartmentsService,
         private readonly teacherResolver: TeacherResolver,
+        private readonly consultationNotificationsService: ConsultationNotificationsService,
     ) {}
 
     formatTeacherName(user: User): string {
@@ -215,6 +217,8 @@ export class ConsultationService {
             throw new NotFoundException('Консультация не найдена');
         }
 
+        await this.consultationNotificationsService.notifyConsultationChanged('created', withTeacher);
+
         return this.mapConsultation(withTeacher);
     }
 
@@ -231,6 +235,9 @@ export class ConsultationService {
         if (!consultation) {
             throw new NotFoundException('Консультация не найдена');
         }
+
+        const previousSnapshot = this.consultationNotificationsService
+            .createConsultationSnapshot(consultation);
 
         this.assertTeacherInDepartment(user, consultation.departmentId);
 
@@ -285,12 +292,19 @@ export class ConsultationService {
             throw new NotFoundException('Консультация не найдена');
         }
 
+        await this.consultationNotificationsService.notifyConsultationChanged(
+            'updated',
+            withTeacher,
+            previousSnapshot,
+        );
+
         return this.mapConsultation(withTeacher);
     }
 
     async deleteConsultation(user: User, id: number): Promise<void> {
         const consultation = await this.consultationsRepository.findOne({
             where: { id },
+            relations: ['teacher'],
         });
 
         if (!consultation) {
@@ -298,6 +312,8 @@ export class ConsultationService {
         }
 
         this.assertTeacherInDepartment(user, consultation.departmentId);
+
+        await this.consultationNotificationsService.notifyConsultationChanged('deleted', consultation);
         await this.consultationsRepository.delete(id);
     }
 }
