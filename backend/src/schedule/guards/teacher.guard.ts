@@ -30,9 +30,12 @@ export class TeacherGuard implements CanActivate {
 
         const user = await this.usersService.findByIdWithDetails(userId);
 
-        if (user.role.code !== RoleCode.TEACHER) {
+        if (
+            user.role.code !== RoleCode.TEACHER
+            && user.role.code !== RoleCode.EMPLOYEE
+        ) {
             throw new ForbiddenException(
-                'Доступ только для преподавателей',
+                'Недостаточно прав для управления консультациями',
             );
         }
 

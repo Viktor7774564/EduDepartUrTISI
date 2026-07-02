@@ -58,6 +58,7 @@ import {
 } from './scheduleOptions'
 import type { Socket } from 'socket.io-client'
 import { connectScheduleSocket } from '@/api/scheduleSocket'
+import { canManageConsultations } from '@/utils/consultationAccess'
 import PageFrame from "@/components/PageFrame.vue";
 
 const route = useRoute()
@@ -1901,11 +1902,7 @@ const isOnlineConsultationType = computed(() =>
 // Проверка, может ли текущий пользователь редактировать
 const canEdit = computed(() => {
   if (scheduleType.value === 'consults') {
-    if (authStore.currentUser?.role !== 'teacher') {
-      return false
-    }
-
-    return authStore.currentUser.departmentId === Number(firstValue.value)
+    return canManageConsultations(authStore.currentUser, firstValue.value)
   }
 
   return hasScheduleManageAccess(authStore.currentUser)

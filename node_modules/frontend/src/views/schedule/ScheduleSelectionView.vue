@@ -10,10 +10,12 @@ import {
 } from '@/api/schedule'
 import { fetchConsultationDepartments, type DepartmentInfo } from '@/api/consultations'
 import PageFrame from '@/components/PageFrame.vue'
+import { useAuthStore } from '@/stores/auth'
 import { getGroupFaculty, scheduleTypeMeta, DISTANCE_BUILDING, DISTANCE_ROOM_LABEL, type ScheduleKind } from './scheduleOptions'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const scheduleType = computed(() => route.params.type as ScheduleKind)
 const meta = computed(() => scheduleTypeMeta[scheduleType.value])
@@ -181,10 +183,27 @@ const loadDepartments = async () => {
 
   try {
     departments.value = await fetchConsultationDepartments()
+    applyDefaultDepartmentForConsultations()
   } catch {
     departments.value = []
   } finally {
     isLoadingOptions.value = false
+  }
+}
+
+const applyDefaultDepartmentForConsultations = () => {
+  if (!isConsults.value || firstChoice.value) {
+    return
+  }
+
+  const user = authStore.currentUser
+  if (!user?.departmentId || (user.role !== 'teacher' && user.role !== 'employee')) {
+    return
+  }
+
+  const match = departments.value.find((department) => department.id === user.departmentId)
+  if (match) {
+    firstChoice.value = String(match.id)
   }
 }
 

@@ -32,7 +32,8 @@ export declare class ConsultationService {
     private mapConsultation;
     listDepartments(): Promise<DepartmentInfo[]>;
     getDepartmentConsultations(departmentId: number): Promise<DepartmentConsultationsResponse>;
-    private assertTeacherInDepartment;
+    private resolveUserDepartmentId;
+    private assertUserInDepartment;
     private resolveDepartmentTeacher;
     createConsultation(user: User, dto: CreateConsultationDto): Promise<ScheduleDisplayLesson>;
     updateConsultation(user: User, id: number, dto: UpdateConsultationDto): Promise<ScheduleDisplayLesson>;

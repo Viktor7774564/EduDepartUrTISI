@@ -146,10 +146,16 @@ export class ConsultationService {
         };
     }
 
-    private assertTeacherInDepartment(user: User, departmentId: number): void {
-        const teacherDepartmentId = user.teacherProfile?.departmentId;
+    private resolveUserDepartmentId(user: User): number | null {
+        return user.teacherProfile?.departmentId
+            ?? user.staffProfile?.departmentId
+            ?? null;
+    }
 
-        if (!teacherDepartmentId || teacherDepartmentId !== departmentId) {
+    private assertUserInDepartment(user: User, departmentId: number): void {
+        const userDepartmentId = this.resolveUserDepartmentId(user);
+
+        if (!userDepartmentId || userDepartmentId !== departmentId) {
             throw new ForbiddenException(
                 'Можно управлять консультациями только своей кафедры',
             );
@@ -189,7 +195,7 @@ export class ConsultationService {
     }
 
     async createConsultation(user: User, dto: CreateConsultationDto): Promise<ScheduleDisplayLesson> {
-        this.assertTeacherInDepartment(user, dto.departmentId);
+        this.assertUserInDepartment(user, dto.departmentId);
         await this.departmentsService.getTeacherDepartmentById(dto.departmentId);
 
         const teacher = await this.resolveDepartmentTeacher(dto.departmentId, dto.teacherName);
@@ -239,7 +245,7 @@ export class ConsultationService {
         const previousSnapshot = this.consultationNotificationsService
             .createConsultationSnapshot(consultation);
 
-        this.assertTeacherInDepartment(user, consultation.departmentId);
+        this.assertUserInDepartment(user, consultation.departmentId);
 
         if (dto.subject !== undefined) {
             consultation.subject = dto.subject.trim();
@@ -311,7 +317,7 @@ export class ConsultationService {
             throw new NotFoundException('Консультация не найдена');
         }
 
-        this.assertTeacherInDepartment(user, consultation.departmentId);
+        this.assertUserInDepartment(user, consultation.departmentId);
 
         await this.consultationNotificationsService.notifyConsultationChanged('deleted', consultation);
         await this.consultationsRepository.delete(id);

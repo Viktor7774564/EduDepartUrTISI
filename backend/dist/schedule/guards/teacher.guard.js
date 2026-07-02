@@ -27,8 +27,9 @@ let TeacherGuard = class TeacherGuard {
             throw new common_1.UnauthorizedException();
         }
         const user = await this.usersService.findByIdWithDetails(userId);
-        if (user.role.code !== role_entity_1.RoleCode.TEACHER) {
-            throw new common_1.ForbiddenException('Доступ только для преподавателей');
+        if (user.role.code !== role_entity_1.RoleCode.TEACHER
+            && user.role.code !== role_entity_1.RoleCode.EMPLOYEE) {
+            throw new common_1.ForbiddenException('Недостаточно прав для управления консультациями');
         }
         return true;
     }
