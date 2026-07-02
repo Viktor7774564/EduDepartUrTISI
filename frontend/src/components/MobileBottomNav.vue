@@ -70,21 +70,23 @@ const isScheduleLinkActive = (id: ScheduleKind) => {
 
 <template>
   <nav class="mobile-nav" aria-label="Мобильная навигация">
-    <RouterLink
-      v-if="showMySchedule && myScheduleRoute"
-      class="mobile-nav__item"
-      :class="{ 'mobile-nav__item--active': isMyScheduleLinkActive }"
-      :to="myScheduleRoute"
-    >
-      <span class="mobile-nav__label">Моё расписание</span>
-    </RouterLink>
+    <div class="mobile-nav__side mobile-nav__side--left">
+      <RouterLink
+        v-if="showMySchedule && myScheduleRoute"
+        class="mobile-nav__item"
+        :class="{ 'mobile-nav__item--active': isMyScheduleLinkActive }"
+        :to="myScheduleRoute"
+      >
+        <span class="mobile-nav__label">Моё</span>
+      </RouterLink>
 
-    <MobileNavScheduleLink
-      v-for="link in leftLinks"
-      :key="link.id"
-      :link="link"
-      :active="isScheduleLinkActive(link.id)"
-    />
+      <MobileNavScheduleLink
+        v-for="link in leftLinks"
+        :key="link.id"
+        :link="link"
+        :active="isScheduleLinkActive(link.id)"
+      />
+    </div>
 
     <RouterLink
       class="mobile-nav__home"
@@ -92,14 +94,26 @@ const isScheduleLinkActive = (id: ScheduleKind) => {
       to="/"
       aria-label="Главная"
     >
+      <span class="mobile-nav__home-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path
+            d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 01-1.5 1.5H15v-5.5H9V20.5H5.5A1.5 1.5 0 014 19V10.5z"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </span>
       <span class="mobile-nav__label">Главная</span>
     </RouterLink>
 
-    <MobileNavScheduleLink
-      v-for="link in rightLinks"
-      :key="link.id"
-      :link="link"
-      :active="isScheduleLinkActive(link.id)"
-    />
+    <div class="mobile-nav__side mobile-nav__side--right">
+      <MobileNavScheduleLink
+        v-for="link in rightLinks"
+        :key="link.id"
+        :link="link"
+        :active="isScheduleLinkActive(link.id)"
+      />
+    </div>
   </nav>
 </template>
