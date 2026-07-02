@@ -360,7 +360,7 @@
 }
 
 .schedule-page .lab {
-  @apply bg-[#fff9c4] dark:bg-[#B0A00F];
+  @apply bg-[#fff9c4] dark:bg-[#988C28];
 }
 
 .schedule-page .exam {
@@ -509,7 +509,8 @@
 }
 
 .schedule-page .type-badge.lab {
-  @apply bg-[rgba(255,193,7,0.14)] border-2 border-[#ffc107] text-[#f57f17];
+  @apply bg-[rgba(255,193,7,0.14)] border-2 border-[#ffc107] text-[#f57f17]
+    dark:bg-[rgba(201,162,39,0.22)] dark:border-[#b8942e] dark:text-[#e8c966];
 }
 
 .schedule-page .type-badge.exam {
