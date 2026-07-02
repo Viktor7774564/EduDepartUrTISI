@@ -75,6 +75,9 @@ export declare class AdminAcademicService {
     deleteDirection(directionId: number): Promise<{
         success: true;
     }>;
+    deleteDepartment(departmentId: number): Promise<{
+        success: true;
+    }>;
     mergeDirections(sourceDirectionId: number, targetDirectionId: number): Promise<{
         success: true;
     }>;

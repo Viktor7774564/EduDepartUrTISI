@@ -118,6 +118,9 @@ let AdminService = class AdminService {
             isActive: user.isActive,
         }));
     }
+    listStaffDepartments() {
+        return this.departmentsService.listStaffDepartments();
+    }
     async getUser(id) {
         const user = await this.usersService.findByIdWithDetails(id);
         return {
@@ -298,7 +301,7 @@ let AdminService = class AdminService {
         }
         if (dto.role === role_entity_1.RoleCode.EMPLOYEE ||
             dto.role === role_entity_1.RoleCode.ADMIN) {
-            if (!dto.department?.trim()) {
+            if (!dto.departmentId && !dto.department?.trim()) {
                 throw new common_1.BadRequestException('Укажите структурное подразделение');
             }
             if (dto.role === role_entity_1.RoleCode.EMPLOYEE &&
@@ -342,8 +345,19 @@ let AdminService = class AdminService {
             cabinet: dto.cabinet?.trim() || null,
         });
     }
+    async resolveStaffDepartment(dto) {
+        if (dto.departmentId) {
+            const department = await this.departmentRepository.findOne({
+                where: { id: dto.departmentId },
+            });
+            if (department) {
+                return department;
+            }
+        }
+        return this.departmentsService.resolveDepartmentByInput(dto.department.trim());
+    }
     async createStaffProfile(userId, dto) {
-        const department = await this.findOrCreateDepartment(dto.department.trim());
+        const department = await this.resolveStaffDepartment(dto);
         await this.staffProfileRepository.save({
             userId,
             departmentId: department.id,
@@ -396,7 +410,7 @@ let AdminService = class AdminService {
                     await this.createStaffProfile(userId, dto);
                     return;
                 }
-                const department = await this.findOrCreateDepartment(dto.department.trim());
+                const department = await this.resolveStaffDepartment(dto);
                 await this.staffProfileRepository.update(profile.id, {
                     departmentId: department.id,
                     position: dto.position?.trim() || 'Администратор',

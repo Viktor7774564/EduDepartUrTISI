@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var DepartmentsService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DepartmentsService = void 0;
 const common_1 = require("@nestjs/common");
@@ -19,9 +20,18 @@ const typeorm_2 = require("typeorm");
 const department_entity_1 = require("./entities/department.entity");
 const teacher_departments_constants_1 = require("./teacher-departments.constants");
 let DepartmentsService = class DepartmentsService {
+    static { DepartmentsService_1 = this; }
     departmentRepository;
+    static STAFF_DEPARTMENT_MARKERS = ['учебный отдел'];
     constructor(departmentRepository) {
         this.departmentRepository = departmentRepository;
+    }
+    isStaffDepartment(department) {
+        const normalizedName = department.name.trim().toLowerCase();
+        if (DepartmentsService_1.STAFF_DEPARTMENT_MARKERS.some((marker) => normalizedName.includes(marker))) {
+            return true;
+        }
+        return !department.shortName?.trim();
     }
     mapDepartment(department) {
         return {
@@ -33,6 +43,66 @@ let DepartmentsService = class DepartmentsService {
                 name: department.name,
             }),
         };
+    }
+    async listStaffDepartments() {
+        const departments = await this.departmentRepository.find({
+            order: { name: 'ASC' },
+        });
+        return departments
+            .filter((department) => this.isStaffDepartment(department))
+            .map((department) => ({
+            id: department.id,
+            name: department.name,
+        }));
+    }
+    async resolveStaffDepartmentId(departmentId) {
+        const department = await this.departmentRepository.findOne({
+            where: { id: departmentId },
+        });
+        if (!department || !this.isStaffDepartment(department)) {
+            throw new common_1.BadRequestException('Выберите отдел из списка');
+        }
+        return department;
+    }
+    async resolveDepartmentByInput(raw) {
+        const trimmed = raw.trim();
+        if (!trimmed) {
+            throw new common_1.BadRequestException('Укажите структурное подразделение');
+        }
+        const byExactName = await this.departmentRepository.findOne({
+            where: { name: trimmed },
+        });
+        if (byExactName) {
+            return byExactName;
+        }
+        const departments = await this.departmentRepository.find();
+        const normalizedInput = this.normalizeDepartmentInput(trimmed);
+        for (const department of departments) {
+            if (department.shortName?.trim()) {
+                const shortName = department.shortName.trim();
+                if (shortName === trimmed || shortName.toLowerCase() === trimmed.toLowerCase()) {
+                    return department;
+                }
+                if (this.normalizeDepartmentInput(shortName) === normalizedInput) {
+                    return department;
+                }
+            }
+            if (this.normalizeDepartmentInput(department.name) === normalizedInput) {
+                return department;
+            }
+        }
+        return this.departmentRepository.save({
+            name: trimmed,
+            shortName: null,
+        });
+    }
+    normalizeDepartmentInput(value) {
+        return value
+            .trim()
+            .toLowerCase()
+            .replace(/[«»„""]/g, '')
+            .replace(/\s+/g, ' ')
+            .replace(/^кафедра\s+/u, '');
     }
     async listTeacherDepartments() {
         const departments = await this.departmentRepository.find({
@@ -71,7 +141,7 @@ let DepartmentsService = class DepartmentsService {
     }
 };
 exports.DepartmentsService = DepartmentsService;
-exports.DepartmentsService = DepartmentsService = __decorate([
+exports.DepartmentsService = DepartmentsService = DepartmentsService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(department_entity_1.Department)),
     __metadata("design:paramtypes", [typeorm_2.Repository])

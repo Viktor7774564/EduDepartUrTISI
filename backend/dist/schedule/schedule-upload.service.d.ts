@@ -46,6 +46,9 @@ export declare class ScheduleUploadService implements OnModuleInit {
     private parseUploadedWorkbook;
     private findPeriodUploads;
     private deleteSchedulesByUploadIds;
+    private findLatestAlternativeUpload;
+    private reimportFromStoredUpload;
+    private handleOwnedSchedulesBeforeUploadDelete;
     private removeUploads;
     private toResponse;
     private loadScheduleItems;

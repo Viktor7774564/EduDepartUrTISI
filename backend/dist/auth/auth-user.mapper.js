@@ -40,6 +40,7 @@ function mapUserToAuthResponse(user) {
         return {
             ...base,
             position: user.staffProfile.position,
+            departmentId: user.staffProfile.departmentId,
             department: user.staffProfile.department.name,
             cabinet: user.staffProfile.cabinet ?? undefined,
             canManageSchedule: (0, education_department_access_1.canManageSchedule)(user),

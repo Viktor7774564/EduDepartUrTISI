@@ -96,23 +96,16 @@ export async function createStaffDepartment(payload: {
   return response.data
 }
 
-export async function setDepartmentHead(
-    departmentId: number,
-    headUserId: number | null,
-): Promise<AcademicDepartment> {
-  const response = await api.patch<AcademicDepartment>(
-      `/admin/academic/departments/${departmentId}/head`,
-      { headUserId },
-  )
-  return response.data
-}
-
 export async function deleteAcademicGroup(groupId: number): Promise<void> {
   await api.delete(`/admin/academic/groups/${groupId}`)
 }
 
 export async function deleteAcademicDirection(directionId: number): Promise<void> {
   await api.delete(`/admin/academic/directions/${directionId}`)
+}
+
+export async function deleteAcademicDepartment(departmentId: number): Promise<void> {
+  await api.delete(`/admin/academic/departments/${departmentId}`)
 }
 
 export async function mergeAcademicDirections(

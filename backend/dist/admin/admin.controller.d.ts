@@ -39,6 +39,10 @@ export declare class AdminController {
     deleteAcademicDirection(id: number): Promise<{
         success: true;
     }>;
+    deleteAcademicDepartment(id: number): Promise<{
+        success: true;
+    }>;
+    listStaffDepartments(): Promise<import("../academic/departments.service").StaffDepartmentInfo[]>;
     mergeAcademicDirections(sourceId: number, targetId: number): Promise<{
         success: true;
     }>;

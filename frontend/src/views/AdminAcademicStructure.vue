@@ -10,13 +10,13 @@ import {
   createStaffDepartment,
   createTeacherDepartment,
   deleteAcademicDirection,
+  deleteAcademicDepartment,
   deleteAcademicGroup,
   educationFormLabels,
   fetchAcademicOverview,
   mergeAcademicDirections,
   roleLabels,
   selectableEducationFormOptions,
-  setDepartmentHead,
   type AcademicDepartment,
   type AcademicDirection,
   type AcademicGroup,
@@ -32,11 +32,11 @@ const activeTab = ref<TabId>('teacher')
 const overview = ref<AcademicStructureOverview | null>(null)
 const isLoading = ref(false)
 const pageError = ref('')
-const savingDepartmentId = ref<number | null>(null)
 const structureSearch = ref('')
 const mergeTargetByDirection = ref<Record<number, string>>({})
 const deletingGroupId = ref<number | null>(null)
 const deletingDirectionId = ref<number | null>(null)
+const deletingDepartmentId = ref<number | null>(null)
 const mergingDirectionId = ref<number | null>(null)
 const newDirectionName = ref('')
 const isCreatingDirection = ref(false)
@@ -143,51 +143,27 @@ function matchesMember(
       || member.position.toLowerCase().includes(query)
 }
 
-async function onHeadChange(department: AcademicDepartment, value: string) {
-  const headUserId = value ? Number(value) : null
-  savingDepartmentId.value = department.id
-  pageError.value = ''
-
-  try {
-    const updated = await setDepartmentHead(department.id, headUserId)
-    updateDepartmentInOverview(updated)
-  } catch (err: any) {
-    pageError.value = err.response?.data?.message || 'Не удалось назначить руководителя'
-  } finally {
-    savingDepartmentId.value = null
-  }
-}
-
-function updateDepartmentInOverview(updated: AcademicDepartment) {
-  if (!overview.value) {
-    return
-  }
-
-  const list = updated.type === 'teacher'
-      ? overview.value.teacherDepartments
-      : overview.value.staffDepartments
-
-  const index = list.findIndex((item) => item.id === updated.id)
-
-  if (index >= 0) {
-    list[index] = updated
-  }
-}
-
 const goBack = async () => {
   await router.push({ name: 'admin-panel' })
 }
 
-const headLabel = (type: AcademicDepartment['type']) =>
-    type === 'teacher' ? 'Заведующий кафедрой' : 'Руководитель отдела'
-
-const emptyLabel = (type: AcademicDepartment['type']) =>
-    type === 'teacher' ? 'Нет преподавателей' : 'Нет сотрудников'
+const emptyLabel = () => 'Никого не добавлено'
 
 const membersCountLabel = (department: AcademicDepartment) => {
   const count = department.members.length
 
   if (department.type === 'teacher') {
+    const teachers = department.members.filter((member) => member.role === 'teacher').length
+    const others = count - teachers
+
+    if (others > 0 && teachers > 0) {
+      return `${teachers} преподавателей, ${others} сотрудников`
+    }
+
+    if (others > 0) {
+      return `${others} сотрудников`
+    }
+
     return `${count} преподавателей`
   }
 
@@ -206,8 +182,37 @@ function canDeleteGroup(group: AcademicGroup): boolean {
   return group.students.length === 0
 }
 
+function canDeleteDepartment(department: AcademicDepartment): boolean {
+  return department.members.length === 0
+}
+
 function otherDirections(directionId: number): AcademicDirection[] {
   return (overview.value?.directions ?? []).filter((direction) => direction.id !== directionId)
+}
+
+async function deleteDepartment(department: AcademicDepartment) {
+  if (!canDeleteDepartment(department)) {
+    return
+  }
+
+  const label = department.type === 'teacher' ? 'кафедру' : 'отдел'
+  const confirmed = window.confirm(`Удалить ${label} «${department.name}»?`)
+
+  if (!confirmed) {
+    return
+  }
+
+  deletingDepartmentId.value = department.id
+  pageError.value = ''
+
+  try {
+    await deleteAcademicDepartment(department.id)
+    await loadOverview()
+  } catch (err: any) {
+    pageError.value = err.response?.data?.message || `Не удалось удалить ${label}`
+  } finally {
+    deletingDepartmentId.value = null
+  }
 }
 
 async function deleteGroup(group: AcademicGroup) {
@@ -678,29 +683,19 @@ async function createGroup(directionId: number) {
                   </p>
                 </div>
 
-                <div class="academic-section__head">
-                  <label :for="`head-${department.id}`">{{ headLabel(department.type) }}</label>
-                  <select
-                    :id="`head-${department.id}`"
-                    class="form-select"
-                    :disabled="savingDepartmentId === department.id"
-                    :value="department.headUserId ?? ''"
-                    @change="onHeadChange(department, ($event.target as HTMLSelectElement).value)"
-                  >
-                    <option value="">Не назначен</option>
-                    <option
-                      v-for="member in department.members"
-                      :key="member.id"
-                      :value="member.id"
-                    >
-                      {{ member.fullName }}
-                    </option>
-                  </select>
-                </div>
+                <button
+                  v-if="canDeleteDepartment(department)"
+                  type="button"
+                  class="btn btn-secondary academic-delete-btn"
+                  :disabled="deletingDepartmentId === department.id"
+                  @click="deleteDepartment(department)"
+                >
+                  {{ deletingDepartmentId === department.id ? '...' : (department.type === 'teacher' ? 'Удалить кафедру' : 'Удалить отдел') }}
+                </button>
               </div>
 
               <div v-if="department.members.length === 0" class="academic-section__empty">
-                {{ emptyLabel(department.type) }}
+                {{ emptyLabel() }}
               </div>
 
               <ul v-else class="academic-members">
@@ -708,16 +703,12 @@ async function createGroup(directionId: number) {
                   v-for="member in department.members"
                   :key="member.id"
                   class="academic-member"
-                  :class="{ 'is-head': member.id === department.headUserId }"
                 >
                   <div class="academic-member__name">
                     {{ member.fullName }}
-                    <span v-if="member.id === department.headUserId" class="academic-member__tag">
-                      Руководитель
-                    </span>
                   </div>
                   <div class="academic-member__meta">
-                    <template v-if="department.type === 'staff'">
+                    <template v-if="department.type === 'staff' || member.role !== 'teacher'">
                       {{ roleLabels[member.role] }} ·
                     </template>
                     {{ member.position }}

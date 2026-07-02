@@ -173,13 +173,13 @@ const validate = (): boolean => {
       errors.value.position = 'Введите должность'
     }
     if (!form.value.department?.trim()) {
-      errors.value.department = 'Введите отдел'
+      errors.value.department = 'Укажите отдел или кафедру'
     }
   }
   
   if (form.value.role === 'admin') {
     if (!form.value.department?.trim()) {
-      errors.value.department = 'Введите отдел'
+      errors.value.department = 'Укажите отдел или кафедру'
     }
   }
   
@@ -205,7 +205,9 @@ const handleSubmit = async () => {
       direction: form.value.direction?.trim(),
       educationForm: form.value.educationForm,
       course: form.value.course,
-      department: form.value.department?.trim(),
+      department: ['employee', 'admin'].includes(form.value.role)
+        ? form.value.department?.trim()
+        : undefined,
       departmentId: form.value.role === 'teacher' ? form.value.departmentId : undefined,
       position: form.value.position?.trim(),
       cabinet: form.value.cabinet?.trim(),
@@ -576,7 +578,7 @@ const resetForm = () => {
             <div class="form-row">
               <div class="form-group full-width">
                 <label for="department" class="form-label">
-                  Отдел <span class="required">*</span>
+                  Отдел / кафедра <span class="required">*</span>
                 </label>
                 <input
                   id="department"
@@ -584,7 +586,7 @@ const resetForm = () => {
                   type="text"
                   class="form-input"
                   :class="{ error: errors.department }"
-                  placeholder="Например: Учебный отдел (для доступа к расписанию)"
+                  placeholder="Например: Учебный отдел, ИСТ или Кафедра «Информационных систем и технологий»"
                   :disabled="isSubmitting"
                 />
                 <span v-if="errors.department" class="error-message">{{ errors.department }}</span>
@@ -598,16 +600,16 @@ const resetForm = () => {
             
             <div class="form-row">
               <div class="form-group full-width">
-                <label for="department" class="form-label">
-                  Отдел <span class="required">*</span>
+                <label for="adminDepartment" class="form-label">
+                  Отдел / кафедра <span class="required">*</span>
                 </label>
                 <input
-                  id="department"
+                  id="adminDepartment"
                   v-model="form.department"
                   type="text"
                   class="form-input"
                   :class="{ error: errors.department }"
-                  placeholder="Например: Технический отдел"
+                  placeholder="Например: Технический отдел, ИСТ или Кафедра «Информационных систем и технологий»"
                   :disabled="isSubmitting"
                 />
                 <span v-if="errors.department" class="error-message">{{ errors.department }}</span>

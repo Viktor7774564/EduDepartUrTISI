@@ -162,6 +162,51 @@ let ScheduleUploadService = class ScheduleUploadService {
             uploadId: (0, typeorm_2.In)(uploadIds),
         });
     }
+    async findLatestAlternativeUpload(groupName, periodStart, periodEnd, excludeUploadId) {
+        return this.uploadsRepository
+            .createQueryBuilder('upload')
+            .where('upload.groupName = :groupName', { groupName })
+            .andWhere('upload.periodStart = :periodStart', { periodStart })
+            .andWhere('upload.periodEnd = :periodEnd', { periodEnd })
+            .andWhere('upload.parseStatus = :status', { status: schedule_upload_entity_1.ScheduleParseStatus.SUCCESS })
+            .andWhere('upload.id != :excludeUploadId', { excludeUploadId })
+            .orderBy('upload.uploadedAt', 'DESC')
+            .getOne();
+    }
+    async reimportFromStoredUpload(upload) {
+        const filePath = (0, node_path_1.join)(this.schedulesDir, upload.storedFileName);
+        const buffer = await (0, promises_1.readFile)(filePath);
+        const parsed = (0, excel_grid_parser_1.parseScheduleWorkbook)(buffer);
+        const importResult = await this.scheduleImportService.importParsedSchedule(parsed, upload);
+        upload.lessonsCount = importResult.itemsCount;
+        upload.parseWarnings = importResult.warnings.length > 0
+            ? importResult.warnings
+            : null;
+        await this.uploadsRepository.save(upload);
+    }
+    async handleOwnedSchedulesBeforeUploadDelete(upload) {
+        const ownedSchedule = await this.schedulesRepository.findOne({
+            where: { uploadId: upload.id },
+        });
+        if (!ownedSchedule) {
+            return;
+        }
+        if (!upload.groupName || !upload.periodStart || !upload.periodEnd) {
+            await this.deleteSchedulesByUploadIds([upload.id]);
+            return;
+        }
+        const alternativeUpload = await this.findLatestAlternativeUpload(upload.groupName, upload.periodStart, upload.periodEnd, upload.id);
+        if (!alternativeUpload) {
+            await this.deleteSchedulesByUploadIds([upload.id]);
+            return;
+        }
+        try {
+            await this.reimportFromStoredUpload(alternativeUpload);
+        }
+        catch {
+            await this.deleteSchedulesByUploadIds([upload.id]);
+        }
+    }
     async removeUploads(uploads) {
         const uploadIds = uploads.map((upload) => upload.id);
         await this.deleteSchedulesByUploadIds(uploadIds);
@@ -339,7 +384,7 @@ let ScheduleUploadService = class ScheduleUploadService {
         if (upload.uploadedById !== uploadedById) {
             throw new common_1.ForbiddenException('Можно удалять только свои загрузки');
         }
-        await this.deleteSchedulesByUploadIds([id]);
+        await this.handleOwnedSchedulesBeforeUploadDelete(upload);
         const filePath = (0, node_path_1.join)(this.schedulesDir, upload.storedFileName);
         try {
             await (0, promises_1.unlink)(filePath);

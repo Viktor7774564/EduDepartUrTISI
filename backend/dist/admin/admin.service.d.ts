@@ -46,6 +46,7 @@ export declare class AdminService {
     private readonly consultationPreferencesRepository;
     constructor(usersService: UsersService, sessionsService: SessionsService, sessionsNotifier: SessionsNotifierService, avatarService: AvatarService, departmentsService: DepartmentsService, roleRepository: Repository<Role>, refreshTokenRepository: Repository<RefreshToken>, studentProfileRepository: Repository<StudentProfile>, teacherProfileRepository: Repository<TeacherProfile>, staffProfileRepository: Repository<StaffProfile>, departmentRepository: Repository<Department>, directionRepository: Repository<Direction>, groupRepository: Repository<Group>, consultationsRepository: Repository<Consultation>, scheduleItemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>, scheduleUploadsRepository: Repository<ScheduleUpload>, consultationPreferencesRepository: Repository<ConsultationNotificationPreference>);
     listUsers(): Promise<AdminUserResponse[]>;
+    listStaffDepartments(): Promise<import("../academic/departments.service").StaffDepartmentInfo[]>;
     getUser(id: number): Promise<AdminUserResponse>;
     updateUser(id: number, dto: UpdateUserDto, currentUserId: number, photo?: Express.Multer.File): Promise<AdminUserResponse>;
     createUser(dto: CreateUserDto, photo?: Express.Multer.File): Promise<AdminUserResponse>;
@@ -63,6 +64,7 @@ export declare class AdminService {
     private createProfile;
     private createStudentProfile;
     private createTeacherProfile;
+    private resolveStaffDepartment;
     private createStaffProfile;
     private updateProfile;
     private removeAllProfiles;

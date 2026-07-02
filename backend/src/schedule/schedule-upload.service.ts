@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { randomBytes } from 'node:crypto';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 
 import { In, Repository } from 'typeorm';
@@ -225,6 +225,72 @@ export class ScheduleUploadService implements OnModuleInit {
         await this.schedulesRepository.delete({
             uploadId: In(uploadIds),
         });
+    }
+
+    private async findLatestAlternativeUpload(
+        groupName: string,
+        periodStart: string,
+        periodEnd: string,
+        excludeUploadId: number,
+    ): Promise<ScheduleUpload | null> {
+        return this.uploadsRepository
+            .createQueryBuilder('upload')
+            .where('upload.groupName = :groupName', { groupName })
+            .andWhere('upload.periodStart = :periodStart', { periodStart })
+            .andWhere('upload.periodEnd = :periodEnd', { periodEnd })
+            .andWhere('upload.parseStatus = :status', { status: ScheduleParseStatus.SUCCESS })
+            .andWhere('upload.id != :excludeUploadId', { excludeUploadId })
+            .orderBy('upload.uploadedAt', 'DESC')
+            .getOne();
+    }
+
+    private async reimportFromStoredUpload(upload: ScheduleUpload): Promise<void> {
+        const filePath = join(this.schedulesDir, upload.storedFileName);
+        const buffer = await readFile(filePath);
+        const parsed = parseScheduleWorkbook(buffer);
+        const importResult = await this.scheduleImportService.importParsedSchedule(
+            parsed,
+            upload,
+        );
+
+        upload.lessonsCount = importResult.itemsCount;
+        upload.parseWarnings = importResult.warnings.length > 0
+            ? importResult.warnings
+            : null;
+        await this.uploadsRepository.save(upload);
+    }
+
+    private async handleOwnedSchedulesBeforeUploadDelete(upload: ScheduleUpload): Promise<void> {
+        const ownedSchedule = await this.schedulesRepository.findOne({
+            where: { uploadId: upload.id },
+        });
+
+        if (!ownedSchedule) {
+            return;
+        }
+
+        if (!upload.groupName || !upload.periodStart || !upload.periodEnd) {
+            await this.deleteSchedulesByUploadIds([upload.id]);
+            return;
+        }
+
+        const alternativeUpload = await this.findLatestAlternativeUpload(
+            upload.groupName,
+            upload.periodStart,
+            upload.periodEnd,
+            upload.id,
+        );
+
+        if (!alternativeUpload) {
+            await this.deleteSchedulesByUploadIds([upload.id]);
+            return;
+        }
+
+        try {
+            await this.reimportFromStoredUpload(alternativeUpload);
+        } catch {
+            await this.deleteSchedulesByUploadIds([upload.id]);
+        }
     }
 
     private async removeUploads(uploads: Pick<ScheduleUpload, 'id' | 'storedFileName'>[]): Promise<void> {
@@ -497,7 +563,7 @@ export class ScheduleUploadService implements OnModuleInit {
             throw new ForbiddenException('Можно удалять только свои загрузки');
         }
 
-        await this.deleteSchedulesByUploadIds([id]);
+        await this.handleOwnedSchedulesBeforeUploadDelete(upload);
 
         const filePath = join(this.schedulesDir, upload.storedFileName);
 

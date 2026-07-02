@@ -80,6 +80,12 @@ let AdminController = class AdminController {
     deleteAcademicDirection(id) {
         return this.adminAcademicService.deleteDirection(id);
     }
+    deleteAcademicDepartment(id) {
+        return this.adminAcademicService.deleteDepartment(id);
+    }
+    listStaffDepartments() {
+        return this.adminService.listStaffDepartments();
+    }
     mergeAcademicDirections(sourceId, targetId) {
         return this.adminAcademicService.mergeDirections(sourceId, targetId);
     }
@@ -202,6 +208,19 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "deleteAcademicDirection", null);
+__decorate([
+    (0, common_1.Delete)('academic/departments/:id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteAcademicDepartment", null);
+__decorate([
+    (0, common_1.Get)('academic/departments/staff'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "listStaffDepartments", null);
 __decorate([
     (0, common_1.Post)('academic/directions/:sourceId/merge-into/:targetId'),
     __param(0, (0, common_1.Param)('sourceId', common_1.ParseIntPipe)),

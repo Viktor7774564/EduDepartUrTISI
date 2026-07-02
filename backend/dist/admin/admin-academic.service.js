@@ -337,6 +337,27 @@ let AdminAcademicService = class AdminAcademicService {
         await this.directionRepository.delete(directionId);
         return { success: true };
     }
+    async deleteDepartment(departmentId) {
+        const department = await this.departmentRepository.findOne({
+            where: { id: departmentId },
+            relations: {
+                teacherProfiles: true,
+                staffProfiles: true,
+            },
+        });
+        if (!department) {
+            throw new common_1.NotFoundException('Подразделение не найдено');
+        }
+        const isTeacherDepartment = this.isTeacherDepartment(department);
+        if (department.teacherProfiles.length > 0) {
+            throw new common_1.BadRequestException('Нельзя удалить кафедру: на ней есть преподаватели');
+        }
+        if (department.staffProfiles.length > 0) {
+            throw new common_1.BadRequestException('Нельзя удалить отдел: в нём есть сотрудники');
+        }
+        await this.departmentRepository.delete(departmentId);
+        return { success: true };
+    }
     async mergeDirections(sourceDirectionId, targetDirectionId) {
         if (sourceDirectionId === targetDirectionId) {
             throw new common_1.BadRequestException('Нельзя объединить направление с самим собой');
@@ -384,6 +405,12 @@ let AdminAcademicService = class AdminAcademicService {
         return true;
     }
     mapDepartment(department, isTeacherDepartment) {
+        const members = isTeacherDepartment
+            ? [
+                ...department.teacherProfiles.map((profile) => this.mapTeacherMember(profile)),
+                ...department.staffProfiles.map((profile) => this.mapStaffMember(profile)),
+            ]
+            : department.staffProfiles.map((profile) => this.mapStaffMember(profile));
         return {
             id: department.id,
             name: department.name,
@@ -393,9 +420,7 @@ let AdminAcademicService = class AdminAcademicService {
             headFullName: department.headUser
                 ? this.formatFullName(department.headUser)
                 : null,
-            members: isTeacherDepartment
-                ? department.teacherProfiles.map((profile) => this.mapTeacherMember(profile))
-                : department.staffProfiles.map((profile) => this.mapStaffMember(profile)),
+            members,
         };
     }
     mapTeacherMember(profile) {

@@ -102,6 +102,10 @@ export class AdminService {
         }));
     }
 
+    listStaffDepartments() {
+        return this.departmentsService.listStaffDepartments();
+    }
+
     async getUser(id: number): Promise<AdminUserResponse> {
         const user = await this.usersService.findByIdWithDetails(id);
 
@@ -411,7 +415,7 @@ export class AdminService {
             dto.role === RoleCode.EMPLOYEE ||
             dto.role === RoleCode.ADMIN
         ) {
-            if (!dto.department?.trim()) {
+            if (!dto.departmentId && !dto.department?.trim()) {
                 throw new BadRequestException(
                     'Укажите структурное подразделение',
                 );
@@ -485,13 +489,27 @@ export class AdminService {
         });
     }
 
+    private async resolveStaffDepartment(
+        dto: CreateUserDto | UpdateUserDto,
+    ): Promise<Department> {
+        if (dto.departmentId) {
+            const department = await this.departmentRepository.findOne({
+                where: { id: dto.departmentId },
+            });
+
+            if (department) {
+                return department;
+            }
+        }
+
+        return this.departmentsService.resolveDepartmentByInput(dto.department!.trim());
+    }
+
     private async createStaffProfile(
         userId: number,
         dto: CreateUserDto | UpdateUserDto,
     ): Promise<void> {
-        const department = await this.findOrCreateDepartment(
-            dto.department!.trim(),
-        );
+        const department = await this.resolveStaffDepartment(dto);
 
         await this.staffProfileRepository.save({
             userId,
@@ -567,9 +585,7 @@ export class AdminService {
                     return;
                 }
 
-                const department = await this.findOrCreateDepartment(
-                    dto.department!.trim(),
-                );
+                const department = await this.resolveStaffDepartment(dto);
 
                 await this.staffProfileRepository.update(profile.id, {
                     departmentId: department.id,

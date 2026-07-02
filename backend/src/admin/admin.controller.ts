@@ -279,6 +279,26 @@ export class AdminController {
 
 
 
+    @Delete('academic/departments/:id')
+
+    deleteAcademicDepartment(@Param('id', ParseIntPipe) id: number) {
+
+        return this.adminAcademicService.deleteDepartment(id);
+
+    }
+
+
+
+    @Get('academic/departments/staff')
+
+    listStaffDepartments() {
+
+        return this.adminService.listStaffDepartments();
+
+    }
+
+
+
     @Post('academic/directions/:sourceId/merge-into/:targetId')
 
     mergeAcademicDirections(

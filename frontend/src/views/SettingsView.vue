@@ -43,15 +43,6 @@ const goToStartPage = () => {
           <button class="settings-btn" type="button" @click="goToTheme">
             Тема
           </button>
-
-          <button
-            class="settings-btn settings-btn--optional"
-            type="button"
-            @click="goToStartPage"
-          >
-            <span class="settings-btn__label">Стартовая страница</span>
-            <span class="settings-btn__hint">опционально</span>
-          </button>
         </div>
       </div>
     </section>

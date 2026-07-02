@@ -63,6 +63,7 @@ export function mapUserToAuthResponse(user: User): AuthUserResponse {
         return {
             ...base,
             position: user.staffProfile.position,
+            departmentId: user.staffProfile.departmentId,
             department: user.staffProfile.department.name,
             cabinet: user.staffProfile.cabinet ?? undefined,
             canManageSchedule: canManageSchedule(user),
