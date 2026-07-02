@@ -222,8 +222,8 @@ const validate = (): boolean => {
     errors.value.login = 'Минимум 3 символа'
   }
 
-  if (form.value.password && form.value.password.length < 3) {
-    errors.value.password = 'Минимум 3 символа'
+  if (form.value.password && form.value.password.length < 8) {
+    errors.value.password = 'Минимум 8 символов'
   }
 
   if (!form.value.surname.trim()) {

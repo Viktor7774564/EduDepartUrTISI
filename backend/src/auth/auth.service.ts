@@ -3,6 +3,8 @@ import {
     UnauthorizedException,
     ConflictException,
     ForbiddenException,
+    BadRequestException,
+    NotFoundException,
 } from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
@@ -22,6 +24,10 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { mapUserToAuthResponse } from './auth-user.mapper';
 import { User } from '../users/entities/user.entity';
 import { SessionsNotifierService } from '../sessions/sessions-notifier.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UserSessionResponse } from '../sessions/sessions.types';
+
+const MAX_ACTIVE_SESSIONS = 3;
 
 @Injectable()
 export class AuthService {
@@ -99,6 +105,128 @@ export class AuthService {
         return this.generateTokens(user);
     }
 
+    async changePassword(
+        userId: number,
+        currentSessionId: number,
+        dto: ChangePasswordDto,
+    ) {
+        const user = await this.usersService.findById(userId);
+
+        const isCurrentValid = await bcrypt.compare(
+            dto.currentPassword,
+            user.passwordHash,
+        );
+
+        if (!isCurrentValid) {
+            throw new UnauthorizedException('Неверный текущий пароль');
+        }
+
+        const isSamePassword = await bcrypt.compare(
+            dto.newPassword,
+            user.passwordHash,
+        );
+
+        if (isSamePassword) {
+            throw new BadRequestException(
+                'Новый пароль должен отличаться от текущего',
+            );
+        }
+
+        const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+        await this.usersService.update(userId, { passwordHash });
+
+        const userWithDetails =
+            await this.usersService.findByIdWithDetails(userId);
+
+        if (dto.logoutAllDevices) {
+            await this.revokeAllUserSessions(userId);
+
+            return {
+                success: true,
+                loggedOutAllDevices: true,
+            };
+        }
+
+        const currentSession = await this.refreshTokenRepository.findOne({
+            where: {
+                id: currentSessionId,
+                userId,
+                isActive: true,
+            },
+        });
+
+        if (currentSession) {
+            await this.refreshTokenRepository.update(
+                { id: currentSessionId },
+                { isActive: false },
+            );
+
+            this.sessionsNotifier.notifySessionRemoved(
+                currentSessionId,
+            );
+        }
+
+        const tokens = await this.createSessionTokens(userWithDetails);
+
+        return {
+            ...tokens,
+            success: true,
+            loggedOutAllDevices: false,
+        };
+    }
+
+    async listUserSessions(
+        userId: number,
+        currentSessionId: number,
+    ): Promise<UserSessionResponse[]> {
+        const sessions = await this.refreshTokenRepository.find({
+            where: {
+                userId,
+                isActive: true,
+            },
+            order: {
+                createdAt: 'DESC',
+            },
+        });
+
+        return sessions.map((session) => ({
+            id: session.id,
+            createdAt: session.createdAt,
+            isCurrent: session.id === currentSessionId,
+        }));
+    }
+
+    async revokeUserSession(
+        userId: number,
+        currentSessionId: number,
+        sessionId: number,
+    ): Promise<{ success: true; currentSessionRevoked: boolean }> {
+        const session = await this.refreshTokenRepository.findOne({
+            where: {
+                id: sessionId,
+                userId,
+                isActive: true,
+            },
+        });
+
+        if (!session) {
+            throw new NotFoundException('Активная сессия не найдена');
+        }
+
+        await this.refreshTokenRepository.update(
+            { id: sessionId },
+            { isActive: false },
+        );
+
+        this.sessionsNotifier.notifySessionRemoved(sessionId);
+
+        return {
+            success: true,
+            currentSessionRevoked: sessionId === currentSessionId,
+        };
+    }
+
     async getCurrentUser(userId: number) {
         const user =
             await this.usersService.findByIdWithDetails(
@@ -122,24 +250,29 @@ export class AuthService {
         userId: number,
         refreshToken: string,
     ) {
-        const storedToken =
-            await this.refreshTokenRepository.findOne({
+        const activeSessions =
+            await this.refreshTokenRepository.find({
                 where: {
                     userId,
                     isActive: true,
                 },
             });
 
-        if (!storedToken) {
-            throw new UnauthorizedException();
+        let matchedSession: RefreshToken | null = null;
+
+        for (const session of activeSessions) {
+            const isValid = await bcrypt.compare(
+                refreshToken,
+                session.tokenHash,
+            );
+
+            if (isValid) {
+                matchedSession = session;
+                break;
+            }
         }
 
-        const isValid = await bcrypt.compare(
-            refreshToken,
-            storedToken.tokenHash,
-        );
-
-        if (!isValid) {
+        if (!matchedSession) {
             throw new UnauthorizedException();
         }
 
@@ -159,39 +292,48 @@ export class AuthService {
         }
 
         await this.refreshTokenRepository.update(
-            {
-                userId,
-                isActive: true,
-            },
-            {
-                isActive: false,
-            },
+            { id: matchedSession.id },
+            { isActive: false },
         );
 
-        return this.generateTokens(user);
+        this.sessionsNotifier.notifySessionRemoved(
+            matchedSession.id,
+        );
+
+        return this.createSessionTokens(user);
     }
 
-    async logout(userId: number) {
-        await this.sessionsNotifier.notifyUserSessionsRemoved(
-            userId,
-        );
-
-        await this.refreshTokenRepository.update(
-            {
+    async logout(userId: number, sessionId: number) {
+        const session = await this.refreshTokenRepository.findOne({
+            where: {
+                id: sessionId,
                 userId,
                 isActive: true,
             },
-            {
-                isActive: false,
-            },
+        });
+
+        if (!session) {
+            return {
+                success: true,
+            };
+        }
+
+        await this.refreshTokenRepository.update(
+            { id: sessionId },
+            { isActive: false },
         );
+
+        this.sessionsNotifier.notifySessionRemoved(sessionId);
 
         return {
             success: true,
         };
     }
 
-    private async generateTokens(user: User) {
+    private async generateTokens(
+        user: User,
+        options: { revokeAllSessions?: boolean } = {},
+    ) {
         if (!user.isActive) {
             throw new ForbiddenException(
                 'Учётная запись деактивирована',
@@ -200,6 +342,19 @@ export class AuthService {
 
         await this.cleanupOldSessions(user.id);
 
+        if (options.revokeAllSessions) {
+            await this.revokeAllUserSessions(user.id);
+        } else {
+            await this.enforceSessionLimit(
+                user.id,
+                MAX_ACTIVE_SESSIONS - 1,
+            );
+        }
+
+        return this.createSessionTokens(user);
+    }
+
+    private async createSessionTokens(user: User) {
         const payload = {
             sub: user.id,
             login: user.login,
@@ -220,21 +375,6 @@ export class AuthService {
         const tokenHash = await bcrypt.hash(
             refreshToken,
             10,
-        );
-
-        await this.sessionsNotifier.notifyUserSessionsRemoved(
-            user.id,
-        );
-
-        // одна активная сессия
-        await this.refreshTokenRepository.update(
-            {
-                userId: user.id,
-                isActive: true,
-            },
-            {
-                isActive: false,
-            },
         );
 
         const session =
@@ -268,6 +408,59 @@ export class AuthService {
             refreshToken,
             user: mapUserToAuthResponse(user),
         };
+    }
+
+    private async enforceSessionLimit(
+        userId: number,
+        maxSessions: number,
+    ): Promise<void> {
+        const activeSessions =
+            await this.refreshTokenRepository.find({
+                where: {
+                    userId,
+                    isActive: true,
+                },
+                order: {
+                    createdAt: 'ASC',
+                },
+            });
+
+        const excess = activeSessions.length - maxSessions;
+
+        if (excess <= 0) {
+            return;
+        }
+
+        const sessionsToRemove = activeSessions.slice(0, excess);
+
+        for (const session of sessionsToRemove) {
+            await this.refreshTokenRepository.update(
+                { id: session.id },
+                { isActive: false },
+            );
+
+            this.sessionsNotifier.notifySessionRemoved(
+                session.id,
+            );
+        }
+    }
+
+    private async revokeAllUserSessions(
+        userId: number,
+    ): Promise<void> {
+        await this.sessionsNotifier.notifyUserSessionsRemoved(
+            userId,
+        );
+
+        await this.refreshTokenRepository.update(
+            {
+                userId,
+                isActive: true,
+            },
+            {
+                isActive: false,
+            },
+        );
     }
 
     private async cleanupOldSessions(

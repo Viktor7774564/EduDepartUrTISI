@@ -17,7 +17,7 @@ export class CreateUserDto {
     login!: string;
 
     @IsString()
-    @MinLength(3)
+    @MinLength(8, { message: 'Пароль должен быть не менее 8 символов' })
     password!: string;
 
     @IsEnum(RoleCode)

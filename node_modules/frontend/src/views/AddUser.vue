@@ -134,8 +134,8 @@ const validate = (): boolean => {
   
   if (!form.value.password) {
     errors.value.password = 'Введите пароль'
-  } else if (form.value.password.length < 3) {
-    errors.value.password = 'Минимум 3 символа'
+  } else if (form.value.password.length < 8) {
+    errors.value.password = 'Минимум 8 символов'
   }
   
   if (!form.value.surname.trim()) {

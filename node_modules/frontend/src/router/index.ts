@@ -54,11 +54,6 @@ const router = createRouter({
           name: 'settings-theme',
           component: () => import('../views/settings/SettingsThemeView.vue'),
         },
-        {
-          path: 'start-page',
-          name: 'settings-start-page',
-          component: () => import('../views/settings/SettingsStartPageView.vue'),
-        },
       ],
     },
     {
@@ -175,6 +170,17 @@ router.beforeEach((to) => {
         return getErrorRoute('403', 'У вас нет доступа к загрузке расписания')
       }
     } catch {
+      return {
+        name: 'login',
+        query: { redirect: to.fullPath },
+      }
+    }
+  }
+
+  if (typeof window !== 'undefined' && to.path.startsWith('/settings')) {
+    const storedUser = window.localStorage.getItem(AUTH_STORAGE_KEY)
+
+    if (!storedUser) {
       return {
         name: 'login',
         query: { redirect: to.fullPath },

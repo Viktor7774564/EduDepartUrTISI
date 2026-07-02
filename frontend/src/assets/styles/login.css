@@ -1,14 +1,18 @@
 .content {
-  @apply flex-1 grid grid-cols-2 min-h-0 bg-[linear-gradient(180deg,#f7fbfe_0%,#eef4f9_100%)];
+  @apply flex-1 grid grid-cols-2 min-h-0 bg-[linear-gradient(180deg,#f7fbfe_0%,#eef4f9_100%)] dark:bg-[linear-gradient(180deg,#171b22_0%,#121418_100%)];
 }
 
 .content .login-card {
-  @apply relative border-r border-[rgba(99,171,222,0.22)] bg-white flex flex-col items-center justify-center py-[48px] px-[28px] overflow-hidden;
+  @apply relative border-r border-[rgba(99,171,222,0.22)] dark:border-[rgba(78,163,215,0.2)] bg-white dark:bg-[#1e2228] flex flex-col items-center justify-center py-[48px] px-[28px] overflow-hidden;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
+.dark .content .login-card {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
 .content .login-card h1 {
-  @apply text-[clamp(28px,2.8vw,40px)] font-semibold mb-[28px] text-[#101215];
+  @apply text-[clamp(28px,2.8vw,40px)] font-semibold mb-[28px] text-[#101215] dark:text-[#f0f4f7];
 }
 
 .content .login-form {
@@ -17,11 +21,11 @@
 }
 
 .content .login-form label {
-  @apply text-[15px] font-medium text-[#24313f];
+  @apply text-[15px] font-medium text-[#24313f] dark:text-[#d5dde6];
 }
 
 .content .login-form input {
-  @apply h-[48px] border border-[#cfd8e3] rounded-[12px] bg-[#fbfdff] px-[14px] text-[16px] mb-[10px] z-[1] transition-[border-color,box-shadow,transform] duration-[200ms] ease-in-out;
+  @apply h-[48px] border border-[#cfd8e3] dark:border-[#4a5562] rounded-[12px] bg-[#fbfdff] dark:bg-[#2a3038] dark:text-[#f0f4f7] px-[14px] text-[16px] mb-[10px] z-[1] transition-[border-color,box-shadow,transform] duration-[200ms] ease-in-out;
 }
 
 .content .login-form input:focus {
@@ -33,7 +37,7 @@
 }
 
 .content .login-form .password-field__input {
-  @apply w-full h-[48px] border border-[#cfd8e3] rounded-[12px] bg-[#fbfdff] pl-[14px] pr-[44px] text-[16px] mb-0 transition-[border-color,box-shadow,transform] duration-[200ms] ease-in-out;
+  @apply w-full h-[48px] border border-[#cfd8e3] dark:border-[#4a5562] rounded-[12px] bg-[#fbfdff] dark:bg-[#2a3038] dark:text-[#f0f4f7] pl-[14px] pr-[44px] text-[16px] mb-0 transition-[border-color,box-shadow,transform] duration-[200ms] ease-in-out;
 }
 
 .content .login-form .password-field__input:focus {
@@ -49,7 +53,7 @@
 }
 
 .content .login-form .password-field__toggle img {
-  @apply w-[20px] h-[20px] opacity-60 transition-opacity duration-[200ms];
+  @apply w-[20px] h-[20px] opacity-60 dark:invert transition-opacity duration-[200ms];
 }
 
 .content .login-form .password-field__toggle:hover:not(:disabled) img {
@@ -61,11 +65,11 @@
 }
 
 .content .form-error {
-  @apply text-[#c43636] text-[14px] mt-[2px] z-[1];
+  @apply text-[#c43636] dark:text-[#f1948a] text-[14px] mt-[2px] z-[1];
 }
 
 .content .mock-note {
-  @apply mt-[24px] py-[12px] px-[18px] rounded-[10px] bg-[rgb(78_163_215_/_10%)] text-[#1f4053] text-[16px] text-center z-[1];
+  @apply mt-[24px] py-[12px] px-[18px] rounded-[10px] bg-[rgb(78_163_215_/_10%)] dark:bg-[rgba(78,163,215,0.16)] text-[#1f4053] dark:text-[#9fd0ef] text-[16px] text-center z-[1];
 }
 
 .content .links-side {
@@ -74,11 +78,11 @@
 
 .content .links-card {
   width: min(860px, 100%);
-  @apply border border-[rgba(99,171,222,0.22)] rounded-[18px] bg-white shadow-[0_18px_40px_rgba(15,33,55,0.08)] pt-[24px] px-[24px] pb-[28px] relative z-[2];
+  @apply border border-[rgba(99,171,222,0.22)] dark:border-[rgba(78,163,215,0.2)] rounded-[18px] bg-white dark:bg-[#1e2228] shadow-[0_18px_40px_rgba(15,33,55,0.08)] dark:shadow-[0_18px_40px_rgba(0,0,0,0.25)] pt-[24px] px-[24px] pb-[28px] relative z-[2];
 }
 
 .content .links-card h2 {
-  @apply text-center text-[clamp(24px,2.2vw,32px)] font-semibold mb-[28px] text-[#101215];
+  @apply text-center text-[clamp(24px,2.2vw,32px)] font-semibold mb-[28px] text-[#101215] dark:text-[#f0f4f7];
 }
 
 .content .links-card ul {
@@ -86,7 +90,7 @@
 }
 
 .content .links-card li {
-  @apply flex justify-between items-center gap-[24px] bg-[#f8fbfe] rounded-[16px] py-[14px] px-[16px] border border-[#e4edf5];
+  @apply flex justify-between items-center gap-[24px] bg-[#f8fbfe] dark:bg-[#252a31] rounded-[16px] py-[14px] px-[16px] border border-[#e4edf5] dark:border-[#3a424d];
 }
 
 .content .link-info {
@@ -98,11 +102,11 @@
 }
 
 .content .link-info h3 {
-  @apply text-[16px] font-semibold leading-[1.15] m-0;
+  @apply text-[16px] font-semibold leading-[1.15] m-0 text-[#101215] dark:text-[#f0f4f7];
 }
 
 .content .link-info p {
-  @apply text-[14px] mt-[2px] mb-0 leading-[1.15] text-[#5f6975];
+  @apply text-[14px] mt-[2px] mb-0 leading-[1.15] text-[#5f6975] dark:text-[#9aa3ad];
 }
 
 .content .links-card li button {
@@ -207,6 +211,10 @@
     border-bottom: 1px solid rgba(99, 171, 222, 0.18);
     padding-top: 44px;
     padding-bottom: 40px;
+  }
+
+  .dark .content .login-card {
+    border-bottom-color: rgba(78, 163, 215, 0.2);
   }
 
   .content .login-card h1 {

@@ -4,11 +4,11 @@
 }
 
 .admin-panel-page .admin-card {
-  @apply w-full max-w-[450px] min-h-[320px] bg-[#ececec] border border-[#4ea3d7] rounded-[18px] shadow-[0_6px_14px_rgba(0,0,0,0.15)] flex flex-col items-center gap-[36px] p-[48px] px-[42px] relative z-[2];
+  @apply w-full max-w-[450px] min-h-[320px] bg-[#ececec] dark:bg-[#1e2228] border border-[#4ea3d7] rounded-[18px] shadow-[0_6px_14px_rgba(0,0,0,0.15)] flex flex-col items-center gap-[36px] p-[48px] px-[42px] relative z-[2];
 }
 
 .admin-panel-page .admin-title {
-  @apply text-[26px] font-medium m-0 text-center;
+  @apply text-[26px] font-medium m-0 text-center text-[#101215] dark:text-[#f0f4f7];
 }
 
 .admin-panel-page .admin-actions {
@@ -28,7 +28,7 @@
 }
 
 .admin-edit-page .admin-card {
-  @apply w-full max-w-[1100px] bg-[#ececec] border border-[#4ea3d7] rounded-[14px] shadow-[0_4px_12px_rgba(0,0,0,0.12)] py-[40px] px-[48px] relative z-[2];
+  @apply w-full max-w-[1100px] bg-[#ececec] dark:bg-[#1e2228] border border-[#4ea3d7] rounded-[14px] shadow-[0_4px_12px_rgba(0,0,0,0.12)] py-[40px] px-[48px] relative z-[2];
 }
 
 .admin-edit-page .card-header {
@@ -47,7 +47,7 @@
 }
 
 .admin-edit-page .card-title {
-  @apply m-0 text-[24px] font-semibold text-[#101215] text-center min-w-0;
+  @apply m-0 text-[24px] font-semibold text-[#101215] dark:text-[#f0f4f7] text-center min-w-0;
   grid-column: 2;
   grid-row: 1;
 }
@@ -57,11 +57,11 @@
 }
 
 .admin-edit-page .form-section {
-  @apply bg-white border border-[#d7e0e9] rounded-[10px] p-[24px];
+  @apply bg-white dark:bg-[#252a31] border border-[#d7e0e9] dark:border-[#3a424d] rounded-[10px] p-[24px];
 }
 
 .admin-edit-page .section-title {
-  @apply m-0 mb-[20px] text-[18px] font-semibold text-[#24313f] pb-[12px] border-b-2 border-[#4ea3d7];
+  @apply m-0 mb-[20px] text-[18px] font-semibold text-[#24313f] dark:text-[#d5dde6] pb-[12px] border-b-2 border-[#4ea3d7];
 }
 
 .admin-edit-page .form-row {
@@ -82,7 +82,7 @@
 }
 
 .admin-edit-page .form-label {
-  @apply text-[14px] font-medium text-[#24313f];
+  @apply text-[14px] font-medium text-[#24313f] dark:text-[#d5dde6];
 }
 
 .admin-edit-page .required {
@@ -91,7 +91,7 @@
 
 .admin-edit-page .form-input,
 .admin-edit-page .form-select {
-  @apply py-[10px] px-[14px] border border-[#d7e0e9] rounded-[8px] text-[14px] bg-white transition-all duration-[200ms];
+  @apply py-[10px] px-[14px] border border-[#d7e0e9] dark:border-[#3a424d] rounded-[8px] text-[14px] bg-white dark:bg-[#252a31] transition-all duration-[200ms];
 }
 
 .admin-edit-page .password-field {
@@ -143,7 +143,7 @@
 }
 
 .admin-edit-page .form-actions {
-  @apply flex gap-[16px] justify-end pt-[20px] border-t border-[#d7e0e9];
+  @apply flex gap-[16px] justify-end pt-[20px] border-t border-[#d7e0e9] dark:border-[#3a424d];
 }
 
 .admin-edit-page .btn {
@@ -159,11 +159,11 @@
 }
 
 .admin-edit-page .btn-secondary {
-  @apply bg-white text-[#24313f] border border-[#d7e0e9];
+  @apply bg-white dark:bg-[#252a31] text-[#24313f] dark:text-[#d5dde6] border border-[#d7e0e9] dark:border-[#3a424d];
 }
 
 .admin-edit-page .btn-secondary:hover {
-  @apply bg-[#f5f5f5] border-[#4ea3d7];
+  @apply bg-[#f5f5f5] dark:bg-[#323842] border-[#4ea3d7] dark:border-[#4ea3d7];
 }
 
 .admin-edit-page .btn:disabled {
@@ -173,7 +173,7 @@
 
 .admin-edit-page .form-input:disabled,
 .admin-edit-page .form-select:disabled {
-  @apply bg-[#f5f5f5] cursor-not-allowed;
+  @apply bg-[#f5f5f5] dark:bg-[#2a3038] cursor-not-allowed;
 }
 
 .admin-edit-page .submit-message {
@@ -181,15 +181,15 @@
 }
 
 .admin-edit-page .submit-message.success {
-  @apply bg-[#d4edda] text-[#155724] border border-[#c3e6cb];
+  @apply bg-[#d4edda] dark:bg-[#1a3d2a] text-[#155724] dark:text-[#7dcea0] border border-[#c3e6cb] dark:border-[#2d5a3d];
 }
 
 .admin-edit-page .submit-message.error {
-  @apply bg-[#f8d7da] text-[#721c24] border border-[#f5c6cb];
+  @apply bg-[#f8d7da] dark:bg-[#3d1a1a] text-[#721c24] dark:text-[#f1948a] border border-[#f5c6cb] dark:border-[#5a2d2d];
 }
 
 .admin-edit-page .card-subtitle {
-  @apply text-[16px] text-[#5f6975] text-center mb-[32px] pb-[16px] border-b border-[#d7e0e9];
+  @apply text-[16px] text-[#5f6975] dark:text-[#9aa3ad] text-center mb-[32px] pb-[16px] border-b border-[#d7e0e9] dark:border-[#3a424d];
 }
 
 .admin-edit-page .users-table {
@@ -197,7 +197,7 @@
 }
 
 .admin-edit-page .checkbox-label {
-  @apply flex items-center gap-[10px] text-[14px] text-[#24313f] cursor-pointer;
+  @apply flex items-center gap-[10px] text-[14px] text-[#24313f] dark:text-[#d5dde6] cursor-pointer;
 }
 
 .admin-edit-page .avatar-preview-row {
@@ -205,7 +205,7 @@
 }
 
 .admin-edit-page .avatar-preview {
-  @apply w-[96px] h-[96px] rounded-full object-cover border-2 border-[#4ea3d7] bg-white;
+  @apply w-[96px] h-[96px] rounded-full object-cover border-2 border-[#4ea3d7] bg-white dark:bg-[#252a31];
 }
 
 .topbar .profile-icon {
@@ -213,12 +213,12 @@
 }
 
 .admin-edit-page .table-header {
-  @apply grid gap-[16px] py-[14px] px-[18px] bg-[rgba(78,163,215,0.15)] rounded-[10px] font-semibold text-[14px] text-[#24313f];
+  @apply grid gap-[16px] py-[14px] px-[18px] bg-[rgba(78,163,215,0.15)] dark:bg-[rgba(78,163,215,0.12)] rounded-[10px] font-semibold text-[14px] text-[#24313f] dark:text-[#d5dde6];
   grid-template-columns: 1.5fr 1.2fr 1.2fr 1fr 100px;
 }
 
 .admin-edit-page .table-row {
-  @apply grid gap-[16px] py-[16px] px-[18px] bg-white border border-[#d7e0e9] rounded-[10px] items-center transition-shadow duration-[200ms];
+  @apply grid gap-[16px] py-[16px] px-[18px] bg-white dark:bg-[#252a31] border border-[#d7e0e9] dark:border-[#3a424d] rounded-[10px] items-center transition-shadow duration-[200ms];
   grid-template-columns: 1.5fr 1.2fr 1.2fr 1fr 100px;
 }
 
@@ -236,7 +236,7 @@
 .admin-edit-page .col-role,
 .admin-edit-page .col-status,
 .admin-edit-page .col-created {
-  @apply text-[14px] text-[#24313f] whitespace-nowrap overflow-hidden text-ellipsis;
+  @apply text-[14px] text-[#24313f] dark:text-[#d5dde6] whitespace-nowrap overflow-hidden text-ellipsis;
 }
 
 .admin-edit-page .col-name {
@@ -245,7 +245,7 @@
 
 .admin-edit-page .col-login {
   font-family: monospace;
-  @apply text-[#5f6975];
+  @apply text-[#5f6975] dark:text-[#9aa3ad];
 }
 
 .admin-edit-page .col-status {
@@ -257,7 +257,7 @@
 }
 
 .admin-edit-page .col-created {
-  @apply text-[#5f6975];
+  @apply text-[#5f6975] dark:text-[#9aa3ad];
 }
 
 .admin-edit-page .col-role {
@@ -269,7 +269,7 @@
 }
 
 .admin-edit-page .edit-btn {
-  @apply w-[34px] h-[34px] border border-[#4ea3d7] rounded-[8px] bg-white flex items-center justify-center cursor-pointer transition-all duration-[200ms] p-[6px];
+  @apply w-[34px] h-[34px] border border-[#4ea3d7] rounded-[8px] bg-white dark:bg-[#252a31] flex items-center justify-center cursor-pointer transition-all duration-[200ms] p-[6px];
 }
 
 .admin-edit-page .edit-btn:hover {
@@ -285,7 +285,7 @@
 }
 
 .admin-edit-page .close-btn {
-  @apply w-[34px] h-[34px] border border-[#e74c3c] rounded-[8px] bg-white text-[#e74c3c] text-[20px] leading-[1] flex items-center justify-center cursor-pointer transition-all duration-[200ms];
+  @apply w-[34px] h-[34px] border border-[#e74c3c] rounded-[8px] bg-white dark:bg-[#252a31] text-[#e74c3c] text-[20px] leading-[1] flex items-center justify-center cursor-pointer transition-all duration-[200ms];
 }
 
 .admin-edit-page .close-btn:hover {
@@ -379,7 +379,7 @@
 }
 
 .admin-edit-page .users-search {
-  @apply w-full py-[10px] px-[14px] mb-[24px] border border-[#d7e0e9] rounded-[8px] text-[14px] bg-white;
+  @apply w-full py-[10px] px-[14px] mb-[24px] border border-[#d7e0e9] dark:border-[#3a424d] rounded-[8px] text-[14px] bg-white dark:bg-[#252a31];
 }
 
 .admin-edit-page .users-search:focus {
@@ -392,7 +392,7 @@
 }
 
 .admin-edit-page .users-filter-select {
-  @apply py-[10px] px-[14px] border border-[#d7e0e9] rounded-[8px] text-[14px] bg-white;
+  @apply py-[10px] px-[14px] border border-[#d7e0e9] dark:border-[#3a424d] rounded-[8px] text-[14px] bg-white dark:bg-[#252a31];
 }
 
 .admin-edit-page .users-filters .users-search {
@@ -408,7 +408,7 @@
 }
 
 .admin-edit-page .academic-tab {
-  @apply py-[10px] px-[18px] border border-[#d7e0e9] rounded-[8px] bg-white text-[14px] font-medium text-[#24313f] cursor-pointer transition-all duration-[200ms];
+  @apply py-[10px] px-[18px] border border-[#d7e0e9] dark:border-[#3a424d] rounded-[8px] bg-white dark:bg-[#252a31] text-[14px] font-medium text-[#24313f] dark:text-[#d5dde6] cursor-pointer transition-all duration-[200ms];
 }
 
 .admin-edit-page .academic-tab.active {
@@ -420,15 +420,15 @@
 }
 
 .admin-edit-page .academic-section {
-  @apply bg-white border border-[#d7e0e9] rounded-[10px] p-[24px];
+  @apply bg-white dark:bg-[#252a31] border border-[#d7e0e9] dark:border-[#3a424d] rounded-[10px] p-[24px];
 }
 
 .admin-edit-page .academic-section__header {
-  @apply flex flex-wrap items-start justify-between gap-[16px] mb-[20px] pb-[16px] border-b border-[#d7e0e9];
+  @apply flex flex-wrap items-start justify-between gap-[16px] mb-[20px] pb-[16px] border-b border-[#d7e0e9] dark:border-[#3a424d];
 }
 
 .admin-edit-page .academic-section__title {
-  @apply m-0 text-[18px] font-semibold text-[#24313f];
+  @apply m-0 text-[18px] font-semibold text-[#24313f] dark:text-[#d5dde6];
 }
 
 .admin-edit-page .academic-section__badge {
@@ -437,7 +437,7 @@
 
 .admin-edit-page .academic-section__meta,
 .admin-edit-page .academic-group__meta {
-  @apply m-0 mt-[6px] text-[14px] text-[#5f6975];
+  @apply m-0 mt-[6px] text-[14px] text-[#5f6975] dark:text-[#9aa3ad];
 }
 
 .admin-edit-page .academic-section__head {
@@ -445,23 +445,23 @@
 }
 
 .admin-edit-page .academic-section__head label {
-  @apply text-[13px] font-medium text-[#24313f];
+  @apply text-[13px] font-medium text-[#24313f] dark:text-[#d5dde6];
 }
 
 .admin-edit-page .academic-section__empty {
-  @apply text-[14px] text-[#5f6975];
+  @apply text-[14px] text-[#5f6975] dark:text-[#9aa3ad];
 }
 
 .admin-edit-page .academic-create-panel {
-  @apply bg-white border border-[#d7e0e9] rounded-[10px] p-[20px] mb-[20px];
+  @apply bg-white dark:bg-[#252a31] border border-[#d7e0e9] dark:border-[#3a424d] rounded-[10px] p-[20px] mb-[20px];
 }
 
 .admin-edit-page .academic-create-panel--nested {
-  @apply mt-[16px] mb-0 bg-[#f8fbfd];
+  @apply mt-[16px] mb-0 bg-[#f8fbfd] dark:bg-[#2a3038];
 }
 
 .admin-edit-page .academic-create-panel__title {
-  @apply m-0 mb-[14px] text-[16px] font-semibold text-[#24313f];
+  @apply m-0 mb-[14px] text-[16px] font-semibold text-[#24313f] dark:text-[#d5dde6];
 }
 
 .admin-edit-page .academic-create-row,
@@ -503,11 +503,11 @@
 }
 
 .admin-edit-page .academic-group {
-  @apply mt-[16px] pt-[16px] border-t border-[#eef2f6];
+  @apply mt-[16px] pt-[16px] border-t border-[#eef2f6] dark:border-[#3a424d];
 }
 
 .admin-edit-page .academic-group__title {
-  @apply m-0 text-[16px] font-semibold text-[#24313f];
+  @apply m-0 text-[16px] font-semibold text-[#24313f] dark:text-[#d5dde6];
 }
 
 .admin-edit-page .academic-members {
@@ -515,16 +515,16 @@
 }
 
 .admin-edit-page .academic-member {
-  @apply grid gap-[4px] py-[12px] px-[14px] rounded-[8px] bg-[#f8fbfd] border border-[#e8eef3];
+  @apply grid gap-[4px] py-[12px] px-[14px] rounded-[8px] bg-[#f8fbfd] dark:bg-[#2a3038] border border-[#e8eef3] dark:border-[#3a424d];
   grid-template-columns: 1.4fr 1.2fr 1fr;
 }
 
 .admin-edit-page .academic-member.is-head {
-  @apply border-[#4ea3d7] bg-[rgba(78,163,215,0.08)];
+  @apply border-[#4ea3d7] bg-[rgba(78,163,215,0.08)] dark:bg-[rgba(78,163,215,0.12)];
 }
 
 .admin-edit-page .academic-member__name {
-  @apply text-[14px] font-medium text-[#24313f];
+  @apply text-[14px] font-medium text-[#24313f] dark:text-[#d5dde6];
 }
 
 .admin-edit-page .academic-member__tag {
@@ -533,7 +533,7 @@
 
 .admin-edit-page .academic-member__meta,
 .admin-edit-page .academic-member__login {
-  @apply text-[13px] text-[#5f6975];
+  @apply text-[13px] text-[#5f6975] dark:text-[#9aa3ad];
 }
 
 @media (max-width: 768px) {

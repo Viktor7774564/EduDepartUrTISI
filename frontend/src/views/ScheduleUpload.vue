@@ -445,6 +445,10 @@ const toggleUploadWarnings = (id: number) => {
   color: #5f6770;
 }
 
+:global(.dark) .file-name-hint {
+  color: #9aa3ad;
+}
+
 .uploads-section {
   margin-top: 8px;
 }
@@ -454,8 +458,16 @@ const toggleUploadWarnings = (id: number) => {
   color: #5f6770;
 }
 
+:global(.dark) .uploads-state {
+  color: #9aa3ad;
+}
+
 .uploads-state.error {
   color: #b42318;
+}
+
+:global(.dark) .uploads-state.error {
+  color: #f1948a;
 }
 
 .uploads-table .table-header,
@@ -468,6 +480,10 @@ const toggleUploadWarnings = (id: number) => {
   text-decoration: none;
 }
 
+:global(.dark) .file-link {
+  color: #6bb5e0;
+}
+
 .file-link:hover {
   text-decoration: underline;
 }
@@ -477,6 +493,10 @@ const toggleUploadWarnings = (id: number) => {
   margin-top: 4px;
   font-size: 12px;
   color: #5f6770;
+}
+
+:global(.dark) .file-size {
+  color: #9aa3ad;
 }
 
 .error-details,
@@ -498,11 +518,19 @@ const toggleUploadWarnings = (id: number) => {
   color: #7a5b00;
 }
 
+:global(.dark) .warnings-block {
+  color: #d4a843;
+}
+
 .parse-warning {
   display: block;
   margin-top: 4px;
   font-size: 12px;
   color: #9a6700;
+}
+
+:global(.dark) .parse-warning {
+  color: #d4a843;
 }
 
 .warning-toggle {
@@ -534,6 +562,10 @@ const toggleUploadWarnings = (id: number) => {
   margin-bottom: 4px;
   font-size: 12px;
   color: #355f8c;
+}
+
+:global(.dark) .upload-period {
+  color: #9fd0ef;
 }
 
 .schedule-upload-page .close-btn {
@@ -637,6 +669,10 @@ const toggleUploadWarnings = (id: number) => {
     color: #5f6975;
     text-transform: uppercase;
     letter-spacing: 0.03em;
+  }
+
+  :global(.dark) .schedule-upload-page .uploads-table .table-row > [class^='col-']::before {
+    color: #9aa3ad;
   }
 
   .schedule-upload-page .col-actions {

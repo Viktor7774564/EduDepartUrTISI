@@ -16,7 +16,7 @@
 }
 
 .selection-page .back-home-btn {
-  @apply mb-[18px] inline-flex items-center gap-[10px] border-0 rounded-[12px] bg-white/85 text-[#1c232b] px-[14px] py-[10px] text-[15px] font-semibold cursor-pointer shadow-[0_8px_22px_rgba(18,38,63,0.08)] transition-transform duration-[200ms] ease-in-out;
+  @apply mb-[18px] inline-flex items-center gap-[10px] border-0 rounded-[12px] bg-white/85 text-[#1c232b] dark:bg-[rgba(37,42,49,0.92)] dark:text-[#f0f4f7] px-[14px] py-[10px] text-[15px] font-semibold cursor-pointer shadow-[0_8px_22px_rgba(18,38,63,0.08)] dark:shadow-[0_8px_22px_rgba(0,0,0,0.24)] transition-transform duration-[200ms] ease-in-out;
 }
 
 .selection-page .back-home-btn:hover {
@@ -24,15 +24,15 @@
 }
 
 .selection-page .back-home-arrow {
-  @apply inline-flex items-center justify-center w-[24px] h-[24px] rounded-full bg-[#eef2f6] text-[#2d90d2] text-[16px];
+  @apply inline-flex items-center justify-center w-[24px] h-[24px] rounded-full bg-[#eef2f6] dark:bg-[#2a3038] text-[#2d90d2] text-[16px];
 }
 
 .selection-page h1 {
-  @apply m-0 mb-[12px] text-[clamp(34px,4vw,54px)] leading-[1.05] text-[#111111];
+  @apply m-0 mb-[12px] text-[clamp(34px,4vw,54px)] leading-[1.05] text-[#111111] dark:text-[#f0f4f7];
 }
 
 .selection-page p {
-  @apply max-w-[480px] m-0 mb-[40px] text-[18px] leading-[1.55] text-[#4d5660];
+  @apply max-w-[480px] m-0 mb-[40px] text-[18px] leading-[1.55] text-[#4d5660] dark:text-[#9aa3ad];
 }
 
 .selection-page .form-grid {
@@ -60,11 +60,11 @@
 }
 
 .selection-page .picker-trigger {
-  @apply w-full min-h-[54px] flex items-center justify-between gap-[12px] px-[16px] border border-[#c9d2dc] rounded-[14px] bg-white text-[#1c232b] text-[16px] shadow-[0_10px_24px_rgba(18,38,63,0.06)] cursor-pointer text-left;
+  @apply w-full min-h-[54px] flex items-center justify-between gap-[12px] px-[16px] border border-[#c9d2dc] dark:border-[#3a424d] rounded-[14px] bg-white dark:bg-[#252a31] text-[#1c232b] dark:text-[#f0f4f7] text-[16px] shadow-[0_10px_24px_rgba(18,38,63,0.06)] dark:shadow-[0_10px_24px_rgba(0,0,0,0.2)] cursor-pointer text-left;
 }
 
 .selection-page .picker-trigger:disabled {
-  @apply bg-[#eef2f6] cursor-not-allowed;
+  @apply bg-[#eef2f6] dark:bg-[#2a3038] cursor-not-allowed;
 }
 
 .selection-page .picker-trigger.open {
@@ -72,7 +72,7 @@
 }
 
 .selection-page .picker-arrow {
-  @apply block w-[8px] h-[8px] border-r-2 border-b-2 border-[#5b6470] rotate-45 transition-transform duration-[200ms] ease-in-out mt-[-4px];
+  @apply block w-[8px] h-[8px] border-r-2 border-b-2 border-[#5b6470] dark:border-[#9aa3ad] rotate-45 transition-transform duration-[200ms] ease-in-out mt-[-4px];
 }
 
 .selection-page .picker-arrow.open {
@@ -88,10 +88,14 @@
 }
 
 .selection-page .picker-panel {
-  @apply absolute top-[calc(100%-1px)] left-0 right-0 z-[1200] max-h-[220px] overflow-y-auto pt-[6px] pb-[10px] border-2 border-[#2d90d2] border-t-0 rounded-b-[14px] bg-white shadow-[0_12px_28px_rgba(18,38,63,0.12)];
+  @apply absolute top-[calc(100%-1px)] left-0 right-0 z-[1200] max-h-[220px] overflow-y-auto pt-[6px] pb-[10px] border-2 border-[#2d90d2] border-t-0 rounded-b-[14px] bg-white dark:bg-[#1e2228] shadow-[0_12px_28px_rgba(18,38,63,0.12)] dark:shadow-[0_12px_28px_rgba(0,0,0,0.28)];
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: #59b4ef #eef2f6;
+}
+
+.dark .selection-page .picker-panel {
+  scrollbar-color: #59b4ef #2a3038;
 }
 
 .selection-page .picker-panel::-webkit-scrollbar {
@@ -102,17 +106,21 @@
   background: #eef2f6;
 }
 
+.dark .selection-page .picker-panel::-webkit-scrollbar-track {
+  background: #2a3038;
+}
+
 .selection-page .picker-panel::-webkit-scrollbar-thumb {
   background: #59b4ef;
   border-radius: 999px;
 }
 
 .selection-page .picker-option {
-  @apply w-full py-[10px] px-[16px] border-0 bg-transparent text-[#5f6977] text-[16px] text-left cursor-pointer;
+  @apply w-full py-[10px] px-[16px] border-0 bg-transparent text-[#5f6977] dark:text-[#9aa3ad] text-[16px] text-left cursor-pointer;
 }
 
 .selection-page .picker-option:hover {
-  @apply bg-[rgba(89,180,239,0.08)];
+  @apply bg-[rgba(89,180,239,0.08)] dark:bg-[rgba(89,180,239,0.14)];
 }
 
 .selection-page .picker-group {
@@ -166,7 +174,7 @@
 }
 
 .schedule-page .title {
-  @apply m-0 text-[clamp(28px,4vw,42px)] font-extrabold text-[#101215];
+  @apply m-0 text-[clamp(28px,4vw,42px)] font-extrabold text-[#101215] dark:text-[#f0f4f7];
 }
 
 .schedule-page .week-nav {
@@ -174,11 +182,11 @@
 }
 
 .schedule-page .week-label {
-  @apply py-[10px] px-[16px] rounded-[12px] bg-[rgba(255,255,255,0.92)] border border-[#d7e0e9] font-bold;
+  @apply py-[10px] px-[16px] rounded-[12px] bg-[rgba(255,255,255,0.92)] dark:bg-[rgba(37,42,49,0.92)] border border-[#d7e0e9] dark:border-[#3a424d] font-bold;
 }
 
 .schedule-page select.week-label {
-  @apply min-h-[42px] min-w-[220px] text-center text-[#24313f] shadow-[0_8px_18px_rgba(18,38,63,0.06)] cursor-pointer;
+  @apply min-h-[42px] min-w-[220px] text-center text-[#24313f] dark:text-[#d5dde6] shadow-[0_8px_18px_rgba(18,38,63,0.06)] dark:shadow-[0_8px_18px_rgba(0,0,0,0.2)] cursor-pointer;
 }
 
 .schedule-page select.week-label:focus {
@@ -206,11 +214,11 @@
 }
 
 .schedule-page .legend-item {
-  @apply flex items-center gap-[8px] text-[#24313f];
+  @apply flex items-center gap-[8px] text-[#24313f] dark:text-[#d5dde6];
 }
 
 .schedule-page .legend-item--note {
-  @apply italic text-[#5f6770];
+  @apply italic text-[#5f6770] dark:text-[#9aa3ad];
 }
 
 .schedule-page .box {
@@ -228,7 +236,7 @@
 }
 
 .schedule-page .header div {
-  @apply bg-[#dfe7ef] p-[10px] text-center font-extrabold text-[#18212a];
+  @apply bg-[#dfe7ef] dark:bg-[#2a3038] p-[10px] text-center font-extrabold text-[#18212a] dark:text-[#f0f4f7];
 }
 
 .schedule-page .header .header-day {
@@ -240,7 +248,7 @@
 }
 
 .schedule-page .header-day__date {
-  @apply text-[12px] font-semibold text-[#536170];
+  @apply text-[12px] font-semibold text-[#536170] dark:text-[#9aa3ad];
 }
 
 .schedule-page .header-day__holiday {
@@ -248,23 +256,23 @@
 }
 
 .schedule-page .header .header-day--holiday {
-  @apply bg-[#fff3d6] text-[#5c3b00];
+  @apply bg-[#fff3d6] dark:bg-[rgba(255,243,214,0.18)] text-[#5c3b00] dark:text-[#e8b84a];
 }
 
 .schedule-page .header .header-day--preholiday {
-  @apply bg-[#e7f3ff] text-[#143c5f];
+  @apply bg-[#e7f3ff] dark:bg-[rgba(231,243,255,0.14)] text-[#143c5f] dark:text-[#7ec4f0];
 }
 
 .schedule-page .preholiday-toggle {
-  @apply mt-[4px] rounded-[8px] border border-[#4ea3d7] bg-white px-[7px] py-[3px] text-[10px] font-bold text-[#236f9f] cursor-pointer;
+  @apply mt-[4px] rounded-[8px] border border-[#4ea3d7] bg-white dark:bg-[#252a31] px-[7px] py-[3px] text-[10px] font-bold text-[#236f9f] cursor-pointer;
 }
 
 .schedule-page .preholiday-toggle:hover {
-  @apply bg-[#f0f8ff];
+  @apply bg-[#f0f8ff] dark:bg-[#2a3038];
 }
 
 .schedule-page .time {
-  @apply flex justify-center items-center bg-[#dfe7ef] text-[#18212a] font-bold;
+  @apply flex justify-center items-center bg-[#dfe7ef] dark:bg-[#2a3038] text-[#18212a] dark:text-[#f0f4f7] font-bold;
 }
 
 .schedule-page .weekday-time-header,
@@ -284,23 +292,23 @@
 }
 
 .schedule-page .cell {
-  @apply min-h-[92px] min-w-0 p-[4px] border border-[#d7dee6] bg-[rgba(255,255,255,0.78)];
+  @apply min-h-[92px] min-w-0 p-[4px] border border-[#d7dee6] dark:border-[#3a424d] bg-[rgba(255,255,255,0.78)] dark:bg-[rgba(37,42,49,0.78)];
 }
 
 .schedule-page .cell--parallel {
-  @apply border-[#e6a817] bg-[rgba(255,248,225,0.92)];
+  @apply border-[#e6a817] bg-[rgba(255,248,225,0.92)] dark:bg-[rgba(255,248,225,0.12)];
 }
 
 .schedule-page .cell--holiday {
-  @apply border-[#f0c14b] bg-[rgba(255,248,225,0.58)];
+  @apply border-[#f0c14b] bg-[rgba(255,248,225,0.58)] dark:bg-[rgba(255,248,225,0.1)];
 }
 
 .schedule-page .cell--parallel.cell--holiday {
-  @apply bg-[rgba(255,244,204,0.95)];
+  @apply bg-[rgba(255,244,204,0.95)] dark:bg-[rgba(255,244,204,0.14)];
 }
 
 .schedule-page .cell--preholiday {
-  @apply border-[#8fc5ed] bg-[rgba(232,244,255,0.72)];
+  @apply border-[#8fc5ed] bg-[rgba(232,244,255,0.72)] dark:bg-[rgba(232,244,255,0.12)];
 }
 
 .schedule-page .cell--removed {
@@ -308,11 +316,11 @@
 }
 
 .schedule-page .cell-slot-time {
-  @apply mb-[4px] rounded-[6px] bg-[rgba(78,163,215,0.14)] px-[6px] py-[3px] text-center text-[10px] font-bold text-[#236f9f];
+  @apply mb-[4px] rounded-[6px] bg-[rgba(78,163,215,0.14)] dark:bg-[rgba(78,163,215,0.22)] px-[6px] py-[3px] text-center text-[10px] font-bold text-[#236f9f];
 }
 
 .schedule-page .parallel-warning {
-  @apply max-w-[960px] mx-auto mb-[16px] p-[14px_18px] rounded-[12px] border border-[#f0c14b] bg-[#fff8e1] text-[#5c4a00] text-[14px] leading-[1.45];
+  @apply max-w-[960px] mx-auto mb-[16px] p-[14px_18px] rounded-[12px] border border-[#f0c14b] bg-[#fff8e1] dark:bg-[rgba(255,248,225,0.1)] text-[#5c4a00] dark:text-[#e8c547] text-[14px] leading-[1.45];
 }
 
 .schedule-page .parallel-warning ul {
@@ -324,7 +332,7 @@
 }
 
 .schedule-page .parallel-notice {
-  @apply mx-[22px] mt-[12px] p-[10px_12px] rounded-[8px] border border-[#f0c14b] bg-[#fff8e1] text-[#5c4a00] text-[13px] leading-[1.4];
+  @apply mx-[22px] mt-[12px] p-[10px_12px] rounded-[8px] border border-[#f0c14b] bg-[#fff8e1] dark:bg-[rgba(255,248,225,0.1)] text-[#5c4a00] dark:text-[#e8c547] text-[13px] leading-[1.4];
 }
 
 .schedule-page .lesson {
@@ -344,23 +352,23 @@
 }
 
 .schedule-page .lecture {
-  @apply bg-[#c8e6c9];
+  @apply bg-[#c8e6c9] dark:bg-[#23A227]
 }
 
 .schedule-page .practice {
-  @apply bg-[#b3e5fc];
+  @apply bg-[#b3e5fc] dark:bg-[#2257A6]
 }
 
 .schedule-page .lab {
-  @apply bg-[#fff9c4];
+  @apply bg-[#fff9c4] dark:bg-[#B0A00F];
 }
 
 .schedule-page .exam {
-  @apply bg-[#f8bbd0];
+  @apply bg-[#f8bbd0] dark:bg-[#FF3A7E];
 }
 
 .schedule-page .special {
-  @apply bg-white border border-dashed border-[#8a939e];
+  @apply bg-white dark:bg-[#252a31] border border-dashed border-[#8a939e] dark:border-[#5f6975];
 }
 
 .schedule-page .consultation {
@@ -372,11 +380,11 @@
 }
 
 .schedule-page .box.exam {
-  @apply bg-[#f8bbd0];
+  @apply bg-[#f8bbd0] dark:bg-[#FF3A7E];
 }
 
 .schedule-page .box.special {
-  @apply bg-white border border-dashed border-[#8a939e];
+  @apply bg-white dark:bg-[#252a31] border border-dashed border-[#8a939e] dark:border-[#5f6975];
 }
 
 .schedule-page .box.consultation {
@@ -388,19 +396,19 @@
 }
 
 .schedule-page .empty-state {
-  @apply max-w-[720px] mx-auto my-[80px] py-[36px] px-[28px] rounded-[24px] bg-[rgba(255,255,255,0.9)] shadow-[0_20px_40px_rgba(18,38,63,0.08)] text-center;
+  @apply max-w-[720px] mx-auto my-[80px] py-[36px] px-[28px] rounded-[24px] bg-[rgba(255,255,255,0.9)] dark:bg-[rgba(37,42,49,0.92)] shadow-[0_20px_40px_rgba(18,38,63,0.08)] dark:shadow-[0_20px_40px_rgba(0,0,0,0.24)] text-center;
 }
 
 .schedule-page .empty-state h2 {
-  @apply m-0 mb-[12px] text-[28px];
+  @apply m-0 mb-[12px] text-[28px] text-[#101215] dark:text-[#f0f4f7];
 }
 
 .schedule-page .empty-state p {
-  @apply m-0 text-[#5f6975] leading-[1.55];
+  @apply m-0 text-[#5f6975] dark:text-[#9aa3ad] leading-[1.55];
 }
 
 .schedule-page .modal-overlay {
-  @apply fixed inset-0 bg-[rgba(0,0,0,0.18)] flex items-start justify-center z-[1100] p-[12px] overflow-y-auto;
+  @apply fixed inset-0 bg-[rgba(0,0,0,0.18)] dark:bg-[rgba(0,0,0,0.45)] flex items-start justify-center z-[1100] p-[12px] overflow-y-auto;
   padding-top: max(12px, env(safe-area-inset-top));
   padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
@@ -409,10 +417,10 @@
   @apply relative
   w-[876px]
   max-w-[min(96vw,876px)]
-  border border-[#999999]
+  border border-[#999999] dark:border-[#3a424d]
   rounded-[10px]
-  bg-[#f4f4f4]
-  shadow-[0_12px_28px_rgba(0,0,0,0.18)]
+  bg-[#f4f4f4] dark:bg-[#1e2228]
+  shadow-[0_12px_28px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_28px_rgba(0,0,0,0.36)]
   flex flex-col
   my-auto;
 
@@ -430,7 +438,7 @@
 }
 
 .schedule-page .transfer-summary {
-  @apply mb-[20px] grid gap-[6px] rounded-[12px] border border-[#d7e0e9] bg-white px-[14px] py-[12px] text-[#24313f];
+  @apply mb-[20px] grid gap-[6px] rounded-[12px] border border-[#d7e0e9] dark:border-[#3a424d] bg-white dark:bg-[#252a31] px-[14px] py-[12px] text-[#24313f] dark:text-[#d5dde6];
 }
 
 .schedule-page .transfer-summary strong {
@@ -438,7 +446,7 @@
 }
 
 .schedule-page .transfer-summary span {
-  @apply text-[14px] text-[#5f6975];
+  @apply text-[14px] text-[#5f6975] dark:text-[#9aa3ad];
 }
 
 .schedule-page .modal-header-actions {
@@ -446,7 +454,7 @@
 }
 
 .schedule-page .edit-btn {
-  @apply static w-[34px] h-[34px] border border-[#4ea3d7] rounded-[8px] bg-white flex items-center justify-center cursor-pointer transition-all duration-[200ms] p-[4px];
+  @apply static w-[34px] h-[34px] border border-[#4ea3d7] rounded-[8px] bg-white dark:bg-[#252a31] flex items-center justify-center cursor-pointer transition-all duration-[200ms] p-[4px];
 }
 
 .schedule-page .edit-btn:hover {
@@ -463,7 +471,7 @@
 }
 
 .schedule-page .modal-title {
-  @apply m-0 py-[17px] px-[22px] border-b border-[#999999] text-[25px] italic font-normal shrink-0;
+  @apply m-0 py-[17px] px-[22px] border-b border-[#999999] dark:border-[#3a424d] text-[25px] italic font-normal shrink-0 text-[#101215] dark:text-[#f0f4f7];
 }
 
 .schedule-page .modal-body {
@@ -472,7 +480,7 @@
 
 .schedule-page .close-btn,
 .schedule-page .close-btn-main {
-  @apply w-[34px] h-[34px] border border-[#4ea3d7] rounded-[8px] bg-white flex items-center justify-center cursor-pointer transition-all duration-[200ms] p-[4px] text-red-600 text-[22px] leading-[1] font-normal;
+  @apply w-[34px] h-[34px] border border-[#4ea3d7] rounded-[8px] bg-white dark:bg-[#252a31] flex items-center justify-center cursor-pointer transition-all duration-[200ms] p-[4px] text-red-600 text-[22px] leading-[1] font-normal;
 }
 
 .schedule-page .close-btn {
@@ -509,7 +517,7 @@
 }
 
 .schedule-page .type-badge.special {
-  @apply bg-white border-2 border-dashed border-[#8a939e] text-[#24313f];
+  @apply bg-white dark:bg-[#252a31] border-2 border-dashed border-[#8a939e] dark:border-[#5f6975] text-[#24313f] dark:text-[#d5dde6];
 }
 
 .schedule-page .type-badge.consultation {
@@ -521,7 +529,7 @@
 }
 
 .schedule-page .modal-info p {
-  @apply m-0 mb-[24px] text-[18px] leading-[1.35];
+  @apply m-0 mb-[24px] text-[18px] leading-[1.35] text-[#24313f] dark:text-[#d5dde6];
 }
 
 .schedule-page .modal-info strong {
@@ -542,12 +550,12 @@
 }
 
 .schedule-page .form-label {
-  @apply text-[14px] font-medium text-[#24313f];
+  @apply text-[14px] font-medium text-[#24313f] dark:text-[#d5dde6];
 }
 
 .schedule-page .form-input,
 .schedule-page .form-select {
-  @apply py-[10px] px-[14px] border border-[#d7e0e9] rounded-[8px] text-[14px] bg-white transition-all duration-[200ms];
+  @apply py-[10px] px-[14px] border border-[#d7e0e9] dark:border-[#3a424d] rounded-[8px] text-[14px] bg-white dark:bg-[#252a31] text-[#24313f] dark:text-[#f0f4f7] transition-all duration-[200ms];
 }
 
 .schedule-page .form-input:hover,
@@ -561,7 +569,7 @@
 }
 
 .schedule-page .form-hint {
-  @apply text-[12px] leading-[1.35] text-[#5f6975];
+  @apply text-[12px] leading-[1.35] text-[#5f6975] dark:text-[#9aa3ad];
 }
 
 .schedule-page .form-hint--danger {
@@ -569,7 +577,7 @@
 }
 
 .schedule-page .transfer-recommendations {
-  @apply mb-[24px] rounded-[12px] border border-[#d7e0e9] bg-[#f8fbfd] p-[14px];
+  @apply mb-[24px] rounded-[12px] border border-[#d7e0e9] dark:border-[#3a424d] bg-[#f8fbfd] dark:bg-[#252a31] p-[14px];
 }
 
 .schedule-page .transfer-recommendations__head {
@@ -577,11 +585,11 @@
 }
 
 .schedule-page .transfer-recommendations__head h3 {
-  @apply m-0 text-[16px] font-semibold text-[#24313f];
+  @apply m-0 text-[16px] font-semibold text-[#24313f] dark:text-[#d5dde6];
 }
 
 .schedule-page .transfer-recommendations__head span {
-  @apply text-[12px] text-[#5f6975];
+  @apply text-[12px] text-[#5f6975] dark:text-[#9aa3ad];
 }
 
 .schedule-page .transfer-recommendations__list {
@@ -589,7 +597,7 @@
 }
 
 .schedule-page .transfer-recommendation {
-  @apply w-full text-left rounded-[10px] border border-[#d7e0e9] bg-white py-[10px] px-[12px] cursor-pointer transition-all duration-[160ms];
+  @apply w-full text-left rounded-[10px] border border-[#d7e0e9] dark:border-[#3a424d] bg-white dark:bg-[#1e2228] py-[10px] px-[12px] cursor-pointer transition-all duration-[160ms];
 }
 
 .schedule-page .transfer-recommendation:hover {
@@ -597,19 +605,19 @@
 }
 
 .schedule-page .transfer-recommendation--selected {
-  @apply border-[#4caf50] bg-[#f2fbf3];
+  @apply border-[#4caf50] bg-[#f2fbf3] dark:bg-[rgba(76,175,80,0.12)];
 }
 
 .schedule-page .transfer-recommendation__title {
-  @apply block text-[14px] font-semibold text-[#24313f];
+  @apply block text-[14px] font-semibold text-[#24313f] dark:text-[#d5dde6];
 }
 
 .schedule-page .transfer-recommendation__reasons {
-  @apply block mt-[4px] text-[12px] leading-[1.35] text-[#5f6975];
+  @apply block mt-[4px] text-[12px] leading-[1.35] text-[#5f6975] dark:text-[#9aa3ad];
 }
 
 .schedule-page .edit-actions {
-  @apply flex gap-[16px] justify-end pt-[20px] border-t border-[#d7e0e9];
+  @apply flex gap-[16px] justify-end pt-[20px] border-t border-[#d7e0e9] dark:border-[#3a424d];
 }
 
 .schedule-page .btn {
@@ -625,39 +633,39 @@
 }
 
 .schedule-page .btn-secondary {
-  @apply bg-white text-[#24313f] border border-[#d7e0e9];
+  @apply bg-white dark:bg-[#252a31] text-[#24313f] dark:text-[#d5dde6] border border-[#d7e0e9] dark:border-[#3a424d];
 }
 
 .schedule-page .btn-secondary:hover {
-  @apply bg-[#f5f5f5] border-[#4ea3d7];
+  @apply bg-[#f5f5f5] dark:bg-[#2a3038] border-[#4ea3d7];
 }
 
 .schedule-page .context-menu {
-  @apply fixed min-w-[220px] py-[6px] m-0 list-none bg-white border border-[#d9dfe5] rounded-[12px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-[3000];
+  @apply fixed min-w-[220px] py-[6px] m-0 list-none bg-white dark:bg-[#252a31] border border-[#d9dfe5] dark:border-[#3a424d] rounded-[12px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.36)] z-[3000];
 }
 
 .schedule-page .context-menu li {
-  @apply py-[12px] px-[18px] cursor-pointer transition-colors duration-[150ms] ease-in-out;
+  @apply py-[12px] px-[18px] cursor-pointer transition-colors duration-[150ms] ease-in-out text-[#24313f] dark:text-[#d5dde6];
 }
 
 .schedule-page .context-menu li:hover {
-  @apply bg-[#f3f6f9];
+  @apply bg-[#f3f6f9] dark:bg-[#2a3038];
 }
 
 .schedule-page .mobile-action-sheet-overlay {
-  @apply fixed inset-0 z-[4000] bg-[rgba(0,0,0,0.28)] flex items-end justify-center p-[12px];
+  @apply fixed inset-0 z-[4000] bg-[rgba(0,0,0,0.28)] dark:bg-[rgba(0,0,0,0.5)] flex items-end justify-center p-[12px];
 }
 
 .schedule-page .mobile-action-sheet {
-  @apply w-full max-w-[520px] bg-white rounded-t-[20px] rounded-b-[16px] shadow-[0_-10px_30px_rgba(0,0,0,0.18)] px-[14px] pt-[10px] pb-[14px];
+  @apply w-full max-w-[520px] bg-white dark:bg-[#1e2228] rounded-t-[20px] rounded-b-[16px] shadow-[0_-10px_30px_rgba(0,0,0,0.18)] dark:shadow-[0_-10px_30px_rgba(0,0,0,0.36)] px-[14px] pt-[10px] pb-[14px];
 }
 
 .schedule-page .mobile-action-sheet-handle {
-  @apply w-[42px] h-[4px] rounded-full bg-[#d3dbe3] mx-auto mb-[12px];
+  @apply w-[42px] h-[4px] rounded-full bg-[#d3dbe3] dark:bg-[#3a424d] mx-auto mb-[12px];
 }
 
 .schedule-page .mobile-action-sheet-title {
-  @apply text-[16px] font-semibold text-[#101215] text-center mb-[12px];
+  @apply text-[16px] font-semibold text-[#101215] dark:text-[#f0f4f7] text-center mb-[12px];
 }
 
 .schedule-page .mobile-action-sheet-actions {
@@ -665,7 +673,7 @@
 }
 
 .schedule-page .sheet-action {
-  @apply w-full min-h-[46px] rounded-[12px] border border-[#d7e0e9] bg-white text-[#24313f] text-[15px] font-semibold;
+  @apply w-full min-h-[46px] rounded-[12px] border border-[#d7e0e9] dark:border-[#3a424d] bg-white dark:bg-[#252a31] text-[#24313f] dark:text-[#d5dde6] text-[15px] font-semibold;
 }
 
 .schedule-page .sheet-action.primary {
@@ -673,11 +681,11 @@
 }
 
 .schedule-page .sheet-action.secondary {
-  @apply bg-[#f5f8fb];
+  @apply bg-[#f5f8fb] dark:bg-[#2a3038];
 }
 
 .schedule-page .sheet-action.danger {
-  @apply bg-[#fff5f5] border-[#f0c8c8] text-[#c43636];
+  @apply bg-[#fff5f5] dark:bg-[rgba(196,54,54,0.12)] border-[#f0c8c8] dark:border-[rgba(196,54,54,0.35)] text-[#c43636];
 }
 
 @media (max-width: 1100px) {
@@ -829,6 +837,10 @@
     letter-spacing: 0.02em;
   }
 
+  .dark .schedule-page .table::after {
+    color: #9aa3ad;
+  }
+
   .schedule-page .header,
   .schedule-page .row {
     min-width: 1016px;
@@ -840,6 +852,11 @@
     left: 0;
     z-index: 3;
     box-shadow: 4px 0 8px rgba(24, 33, 42, 0.08);
+  }
+
+  .dark .schedule-page .header > div:first-child,
+  .dark .schedule-page .row > .time:first-child {
+    box-shadow: 4px 0 8px rgba(0, 0, 0, 0.28);
   }
 
   .schedule-page .header .header-day {
@@ -906,7 +923,7 @@
   }
 
   .schedule-page .modal-title {
-    @apply text-[18px] py-[12px] px-[14px] pr-[88px] sticky top-0 bg-[#f4f4f4] z-[2];
+    @apply text-[18px] py-[12px] px-[14px] pr-[88px] sticky top-0 bg-[#f4f4f4] dark:bg-[#1e2228] z-[2];
     flex-shrink: 0;
   }
 
@@ -971,61 +988,40 @@
     z-index: 2;
   }
 
+  .dark .schedule-page .edit-actions {
+    background: #1e2228;
+    border-top-color: #3a424d;
+  }
+
   .schedule-page .btn {
     @apply w-full;
   }
 }
 
 .context-menu {
-  position: fixed;
-  min-width: 220px;
-  padding: 6px 0;
-  margin: 0;
-  list-style: none;
-  background: #ffffff;
-  border: 1px solid #d9dfe5;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  z-index: 3000;
+  @apply fixed min-w-[220px] py-[6px] m-0 list-none bg-white dark:bg-[#252a31] border border-[#d9dfe5] dark:border-[#3a424d] rounded-[12px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.36)] z-[3000];
 }
 
 .context-menu li {
-  padding: 12px 18px;
-  cursor: pointer;
-  transition: background 0.15s ease;
+  @apply py-[12px] px-[18px] cursor-pointer transition-colors duration-[150ms] ease-in-out text-[#24313f] dark:text-[#d5dde6];
 }
 
 .context-menu li:hover {
-  background: #f3f6f9;
+  @apply bg-[#f3f6f9] dark:bg-[#2a3038];
 }
 
 @media (max-width: 640px) {
   .context-menu-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 2999;
-    background: rgba(0, 0, 0, 0.28);
+    @apply fixed inset-0 z-[2999] bg-[rgba(0,0,0,0.28)] dark:bg-[rgba(0,0,0,0.5)];
   }
 
   .context-menu {
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: auto;
-    width: 100%;
-    min-width: 0;
-    max-width: none;
-    max-height: 70vh;
-    overflow-y: auto;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-    border-radius: 18px 18px 0 0;
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.18);
+    @apply left-0 right-0 bottom-0 top-auto w-full min-w-0 max-w-none max-h-[70vh] overflow-y-auto px-[12px] pt-[10px] rounded-t-[18px] rounded-b-none shadow-[0_-10px_30px_rgba(0,0,0,0.18)] dark:shadow-[0_-10px_30px_rgba(0,0,0,0.36)] bg-white dark:bg-[#1e2228];
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
     transform: none !important;
   }
 
   .context-menu li {
-    padding: 14px;
-    font-size: 15px;
-    border-radius: 10px;
+    @apply py-[14px] text-[15px] rounded-[10px];
   }
 }

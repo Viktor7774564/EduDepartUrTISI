@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useSlots } from 'vue'
 import { useRouter } from 'vue-router'
 
 defineProps<{
@@ -6,6 +7,7 @@ defineProps<{
 }>()
 
 const router = useRouter()
+const slots = useSlots()
 
 const goBack = async () => {
   await router.push({ name: 'settings' })
@@ -24,8 +26,7 @@ const goBack = async () => {
         <h1 class="card-title">{{ title }}</h1>
       </div>
 
-      <p class="settings-placeholder">Раздел в разработке</p>
-
+      <p v-if="!slots.default" class="settings-placeholder">Раздел в разработке</p>
       <slot />
     </div>
   </section>

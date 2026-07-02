@@ -10,3 +10,8 @@ export type AdminSessionResponse = {
 export type SessionRemovedPayload = {
     id: number;
 };
+export type UserSessionResponse = {
+    id: number;
+    createdAt: Date;
+    isCurrent: boolean;
+};

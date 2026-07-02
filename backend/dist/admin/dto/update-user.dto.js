@@ -38,7 +38,7 @@ __decorate([
 ], UpdateUserDto.prototype, "login", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(3),
+    (0, class_validator_1.MinLength)(8, { message: 'Пароль должен быть не менее 8 символов' }),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], UpdateUserDto.prototype, "password", void 0);

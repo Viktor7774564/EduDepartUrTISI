@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const auth_service_1 = require("./auth.service");
 const register_dto_1 = require("./dto/register.dto");
 const login_dto_1 = require("./dto/login.dto");
+const change_password_dto_1 = require("./dto/change-password.dto");
 const refresh_token_guard_1 = require("./guards/refresh-token.guard");
 const access_token_guard_1 = require("./guards/access-token.guard");
 let AuthController = class AuthController {
@@ -37,7 +38,16 @@ let AuthController = class AuthController {
         return this.authService.refresh(req.user.sub, req.user.refreshToken);
     }
     logout(req) {
-        return this.authService.logout(req.user.sub);
+        return this.authService.logout(req.user.sub, req.user.sid);
+    }
+    listSessions(req) {
+        return this.authService.listUserSessions(req.user.sub, req.user.sid);
+    }
+    revokeSession(req, id) {
+        return this.authService.revokeUserSession(req.user.sub, req.user.sid, id);
+    }
+    changePassword(req, dto) {
+        return this.authService.changePassword(req.user.sub, req.user.sid, dto);
     }
 };
 exports.AuthController = AuthController;
@@ -79,6 +89,32 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "logout", null);
+__decorate([
+    (0, common_1.UseGuards)(access_token_guard_1.AccessTokenGuard),
+    (0, common_1.Get)('sessions'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "listSessions", null);
+__decorate([
+    (0, common_1.UseGuards)(access_token_guard_1.AccessTokenGuard),
+    (0, common_1.Delete)('sessions/:id'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "revokeSession", null);
+__decorate([
+    (0, common_1.UseGuards)(access_token_guard_1.AccessTokenGuard),
+    (0, common_1.Patch)('password'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, change_password_dto_1.ChangePasswordDto]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "changePassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])

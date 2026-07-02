@@ -1,5 +1,9 @@
+body {
+  @apply bg-[#e8e8e8] text-[#101215] dark:bg-[#121418] dark:text-[#f0f4f7];
+}
+
 .app-shell {
-  @apply min-h-screen min-h-[100dvh] flex flex-col bg-[#e8e8e8] text-[#101215];
+  @apply min-h-screen min-h-[100dvh] flex flex-col bg-[#e8e8e8] text-[#101215] dark:bg-[#121418] dark:text-[#f0f4f7];
 }
 
 .page-content {
@@ -7,7 +11,7 @@
 }
 
 .topbar {
-  @apply sticky top-0 z-[1000] min-h-[72px] px-[28px] bg-[#333840] grid grid-cols-[auto_1fr_auto] items-center gap-[18px];
+  @apply sticky top-0 z-[1000] min-h-[72px] px-[28px] bg-[#333840] dark:bg-[#1a1d23] grid grid-cols-[auto_1fr_auto] items-center gap-[18px];
 }
 
 .brand img {
@@ -48,15 +52,15 @@
 }
 
 .profile-dropdown {
-  @apply absolute top-[calc(100%+10px)] right-0 bg-white rounded-[12px] min-w-[180px] shadow-[0_10px_25px_rgba(0,0,0,0.15)] overflow-hidden z-[2000] flex flex-col;
+  @apply absolute top-[calc(100%+10px)] right-0 bg-white dark:bg-[#252a31] rounded-[12px] min-w-[180px] shadow-[0_10px_25px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_25px_rgba(0,0,0,0.35)] overflow-hidden z-[2000] flex flex-col;
 }
 
 .dropdown-item {
-  @apply w-full py-[12px] px-[14px] border-0 bg-transparent text-left cursor-pointer text-[14px];
+  @apply w-full py-[12px] px-[14px] border-0 bg-transparent text-left cursor-pointer text-[14px] text-[#24313f] dark:text-[#d5dde6];
 }
 
 .dropdown-item:hover {
-  @apply bg-[rgba(0,0,0,0.05)];
+  @apply bg-[rgba(0,0,0,0.05)] dark:bg-[rgba(255,255,255,0.08)];
 }
 
 .dropdown-item.danger {
@@ -72,7 +76,7 @@
 }
 
 .bottombar {
-  @apply relative z-[1] shrink-0 h-[85px] bg-[#333840];
+  @apply relative z-[1] shrink-0 h-[85px] bg-[#333840] dark:bg-[#1a1d23];
 }
 
 .mobile-nav {
@@ -122,7 +126,7 @@
 }
 
 .page-frame {
-  @apply relative flex-1 min-h-0 bg-[#efefef];
+  @apply relative flex-1 min-h-0 bg-[#efefef] dark:bg-[#121418];
   overflow-x: clip;
   overflow-y: visible;
 }
@@ -352,7 +356,7 @@
   }
 
   .bottombar.bottombar--mobile-nav {
-    @apply fixed bottom-0 left-0 right-0 z-[1000] h-auto min-h-[56px] bg-[#333840] border-t border-[rgba(255,255,255,0.08)];
+    @apply fixed bottom-0 left-0 right-0 z-[1000] h-auto min-h-[56px] bg-[#333840] dark:bg-[#1a1d23] border-t border-[rgba(255,255,255,0.08)];
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 

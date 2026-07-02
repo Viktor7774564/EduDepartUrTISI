@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import api from '@/api/client'
+import { changePassword as changePasswordApi } from '@/api/auth'
 import { refreshAccessToken } from '@/api/authRefresh'
 import { unregisterPushSubscription } from '@/api/pushNotifications'
 
@@ -32,6 +33,12 @@ interface LoginResult {
   success: boolean
   message?: string
   user?: AuthUser
+}
+
+interface ChangePasswordResult {
+  success: boolean
+  message?: string
+  loggedOutAllDevices?: boolean
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -74,6 +81,58 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     return validateSession()
+  }
+
+  async function changePassword(
+    currentPassword: string,
+    newPassword: string,
+    logoutAllDevices = false,
+  ): Promise<ChangePasswordResult> {
+    try {
+      const response = await changePasswordApi({
+        currentPassword,
+        newPassword,
+        logoutAllDevices,
+      })
+
+      if (response.loggedOutAllDevices) {
+        clearSession()
+        return {
+          success: true,
+          loggedOutAllDevices: true,
+        }
+      }
+
+      if (!response.accessToken || !response.user) {
+        return { success: false, message: 'Некорректный ответ сервера' }
+      }
+
+      setSession(
+        response.user,
+        response.accessToken,
+        response.refreshToken,
+      )
+
+      return { success: true, loggedOutAllDevices: false }
+    } catch (error: unknown) {
+      if (!axios.isAxiosError(error)) {
+        return { success: false, message: 'Не удалось сменить пароль' }
+      }
+
+      if (!error.response) {
+        return {
+          success: false,
+          message: 'Сервер недоступен. Проверьте, что бэкенд запущен.',
+        }
+      }
+
+      const data = error.response.data
+      const message = typeof data === 'object' && data && 'message' in data
+        ? String((data as { message?: unknown }).message ?? 'Не удалось сменить пароль')
+        : 'Не удалось сменить пароль'
+
+      return { success: false, message }
+    }
   }
 
   async function validateSession(): Promise<boolean> {
@@ -188,5 +247,6 @@ export const useAuthStore = defineStore('auth', () => {
     validateSession,
     login,
     logout,
+    changePassword,
   }
 })

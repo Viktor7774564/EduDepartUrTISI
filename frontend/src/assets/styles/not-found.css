@@ -11,11 +11,11 @@
 
 .error-page-main h1,
 .not-found-main h1 {
-  @apply m-0 mb-[14px] text-[clamp(36px,3.1vw,36px)];
+  @apply m-0 mb-[14px] text-[clamp(36px,3.1vw,36px)] text-[#101215] dark:text-[#f0f4f7];
 }
 
 .error-page-description {
-  @apply m-0 mb-[22px] text-[clamp(16px,1.2vw,18px)] text-[#4a4a4a] max-w-[420px];
+  @apply m-0 mb-[22px] text-[clamp(16px,1.2vw,18px)] text-[#4a4a4a] dark:text-[#9aa3ad] max-w-[420px];
 }
 
 .error-page-main .back-btn,

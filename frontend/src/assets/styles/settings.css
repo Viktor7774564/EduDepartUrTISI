@@ -9,7 +9,7 @@
 
 .settings-page .settings-card,
 .settings-detail-page .settings-card {
-  @apply w-full max-w-[450px] bg-[#ececec] border border-[#4ea3d7] rounded-[18px] shadow-[0_6px_14px_rgba(0,0,0,0.15)] flex flex-col relative z-[2];
+  @apply w-full max-w-[450px] bg-[#ececec] dark:bg-[#1e2228] border border-[#4ea3d7] rounded-[18px] shadow-[0_6px_14px_rgba(0,0,0,0.15)] dark:shadow-[0_6px_14px_rgba(0,0,0,0.35)] flex flex-col relative z-[2];
 }
 
 .settings-page .settings-card {
@@ -21,7 +21,7 @@
 }
 
 .settings-page .settings-title {
-  @apply text-[26px] font-medium m-0 text-center;
+  @apply text-[26px] font-medium m-0 text-center text-[#101215] dark:text-[#f0f4f7];
 }
 
 .settings-page .settings-actions {
@@ -37,11 +37,11 @@
 }
 
 .settings-page .settings-btn--optional {
-  @apply bg-[#ececec] text-[#24313f] border border-[#4ea3d7];
+  @apply bg-[#ececec] dark:bg-[#252a31] text-[#24313f] dark:text-[#f0f4f7] border border-[#4ea3d7];
 }
 
 .settings-page .settings-btn--optional:hover {
-  @apply bg-[#e0e0e0];
+  @apply bg-[#e0e0e0] dark:bg-[#323842];
 }
 
 .settings-page .settings-btn__label {
@@ -68,7 +68,7 @@
 }
 
 .settings-detail-page .card-title {
-  @apply m-0 text-[24px] font-semibold text-[#101215] text-center min-w-0;
+  @apply m-0 text-[24px] font-semibold text-[#101215] dark:text-[#f0f4f7] text-center min-w-0;
   grid-column: 2;
   grid-row: 1;
 }
@@ -107,5 +107,179 @@
 }
 
 .settings-detail-page .settings-placeholder {
-  @apply m-0 text-center text-[16px] text-[#5f6975] py-[48px];
+  @apply m-0 text-center text-[16px] text-[#5f6975] dark:text-[#9aa3ad] py-[48px];
+}
+
+.settings-detail-page .settings-form {
+  @apply flex flex-col gap-[20px];
+}
+
+.settings-detail-page .form-group {
+  @apply flex flex-col gap-[6px];
+}
+
+.settings-detail-page .form-label {
+  @apply text-[14px] font-medium text-[#24313f] dark:text-[#d5dde6];
+}
+
+.settings-detail-page .required {
+  @apply text-[#e74c3c];
+}
+
+.settings-detail-page .password-field {
+  @apply relative;
+}
+
+.settings-detail-page .password-field .password-field__input {
+  @apply w-full pr-[44px] py-[10px] px-[14px] border border-[#d7e0e9] dark:border-[#4a5562] rounded-[8px] text-[14px] bg-white dark:bg-[#2a3038] dark:text-[#f0f4f7] transition-all duration-[200ms];
+}
+
+.settings-detail-page .password-field__toggle {
+  @apply absolute right-[10px] top-1/2 -translate-y-1/2 w-[28px] h-[28px] border-0 bg-transparent cursor-pointer flex items-center justify-center p-0;
+}
+
+.settings-detail-page .password-field__toggle:disabled {
+  @apply cursor-not-allowed opacity-60;
+}
+
+.settings-detail-page .password-field__toggle img {
+  @apply w-[20px] h-[20px] opacity-60 dark:invert transition-opacity duration-[200ms];
+}
+
+.settings-detail-page .password-field__toggle:hover:not(:disabled) img {
+  @apply opacity-100;
+}
+
+.settings-detail-page .password-field .password-field__input:hover {
+  @apply border-[#4ea3d7];
+}
+
+.settings-detail-page .password-field .password-field__input:focus {
+  @apply outline-none border-[#4ea3d7] shadow-[0_0_0_3px_rgba(78,163,215,0.1)];
+}
+
+.settings-detail-page .password-field .password-field__input.error {
+  @apply border-[#e74c3c];
+}
+
+.settings-detail-page .password-field .password-field__input.error:focus {
+  @apply shadow-[0_0_0_3px_rgba(231,76,60,0.1)];
+}
+
+.settings-detail-page .error-message {
+  @apply text-[12px] text-[#e74c3c] mt-[2px];
+}
+
+.settings-detail-page .settings-submit-btn {
+  @apply w-full min-h-[52px] border-0 rounded-[14px] bg-[#4ea3d7] text-white text-[15px] font-medium cursor-pointer transition-[transform,background-color] duration-[200ms] px-[20px] py-[12px] mt-[8px];
+}
+
+.settings-detail-page .settings-submit-btn:hover:not(:disabled) {
+  @apply bg-[#3f96cb] translate-y-[-2px];
+}
+
+.settings-detail-page .settings-submit-btn:disabled {
+  @apply opacity-70 cursor-not-allowed translate-y-0;
+}
+
+.settings-detail-page .settings-message {
+  @apply m-0 text-[14px] text-center py-[12px] px-[16px] rounded-[10px];
+}
+
+.settings-detail-page .settings-message.success {
+  @apply bg-[#e8f7ef] dark:bg-[#1a3d2a] text-[#1f7a45] dark:text-[#7dcea0];
+}
+
+.settings-detail-page .settings-message.error {
+  @apply bg-[#fdecea] dark:bg-[#3d1a1a] text-[#c0392b] dark:text-[#f1948a];
+}
+
+.settings-detail-page .settings-checkbox-label {
+  @apply flex items-start gap-[10px] text-[14px] text-[#24313f] dark:text-[#d5dde6] cursor-pointer leading-[1.4];
+}
+
+.settings-detail-page .settings-checkbox-label input {
+  @apply mt-[2px] shrink-0;
+}
+
+.settings-detail-page .settings-sessions-hint {
+  @apply m-0 mb-[20px] text-[14px] text-[#5f6975] dark:text-[#9aa3ad] leading-[1.5];
+}
+
+.settings-detail-page .settings-sessions-status {
+  @apply m-0 text-center text-[16px] text-[#5f6975] dark:text-[#9aa3ad] py-[24px];
+}
+
+.settings-detail-page .settings-sessions-list {
+  @apply list-none m-0 p-0 flex flex-col gap-[12px];
+}
+
+.settings-detail-page .settings-session-item {
+  @apply flex items-center justify-between gap-[16px] p-[16px] rounded-[12px] bg-white dark:bg-[#252a31] border border-[#d7e0e9] dark:border-[#3a424d];
+}
+
+.settings-detail-page .settings-session-item--current {
+  @apply border-[#4ea3d7] bg-[#f4faff] dark:bg-[#2a3038];
+}
+
+.settings-detail-page .settings-session-item__info {
+  @apply flex flex-col gap-[4px] min-w-0;
+}
+
+.settings-detail-page .settings-session-item__title {
+  @apply text-[15px] font-medium text-[#24313f] dark:text-[#d5dde6];
+}
+
+.settings-detail-page .settings-session-item__date {
+  @apply text-[13px] text-[#5f6975] dark:text-[#9aa3ad];
+}
+
+.settings-detail-page .settings-session-item__revoke {
+  @apply shrink-0 min-h-[40px] border-0 rounded-[10px] bg-[#4ea3d7] text-white text-[14px] cursor-pointer transition-[background-color] duration-[200ms] px-[16px] py-[8px];
+}
+
+.settings-detail-page .settings-session-item__revoke:hover:not(:disabled) {
+  @apply bg-[#3f96cb];
+}
+
+.settings-detail-page .settings-session-item__revoke:disabled {
+  @apply opacity-70 cursor-not-allowed;
+}
+
+.settings-detail-page .settings-theme-hint {
+  @apply m-0 mb-[24px] text-[14px] text-[#5f6975] dark:text-[#9aa3ad] leading-[1.5];
+}
+
+.settings-detail-page .settings-theme-options {
+  @apply grid grid-cols-2 gap-[16px];
+}
+
+.settings-detail-page .settings-theme-option {
+  @apply flex flex-col items-center gap-[12px] p-[20px] rounded-[14px]
+  border-2 border-[#d7e0e9] bg-white
+  dark:border-[#3a424d] dark:bg-[#252a31]
+  cursor-pointer transition-[border-color,transform,background-color] duration-[200ms];
+}
+
+.settings-detail-page .settings-theme-option:hover {
+  @apply border-[#4ea3d7] translate-y-[-2px];
+}
+
+.settings-detail-page .settings-theme-option--active {
+  @apply border-[#4ea3d7]
+  bg-[#f4faff] dark:bg-[#2a3038]
+  shadow-[0_0_0_3px_rgba(78,163,215,0.15)];
+}
+
+.settings-detail-page .settings-theme-option__icon-wrap {
+  @apply w-[56px] h-[56px] flex items-center justify-center rounded-full
+  bg-[#e8e8e8] dark:bg-[#121418];
+}
+
+.settings-detail-page .settings-theme-option__icon {
+  @apply w-[32px] h-[32px] dark:invert;
+}
+
+.settings-detail-page .settings-theme-option__label {
+  @apply text-[15px] font-medium text-[#24313f] dark:text-[#f0f4f7];
 }

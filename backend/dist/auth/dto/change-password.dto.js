@@ -9,21 +9,27 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RegisterDto = void 0;
+exports.ChangePasswordDto = void 0;
 const class_validator_1 = require("class-validator");
-class RegisterDto {
-    login;
-    password;
+class ChangePasswordDto {
+    currentPassword;
+    newPassword;
+    logoutAllDevices;
 }
-exports.RegisterDto = RegisterDto;
+exports.ChangePasswordDto = ChangePasswordDto;
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)({ message: 'Логин не может быть пустым' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Введите текущий пароль' }),
     __metadata("design:type", String)
-], RegisterDto.prototype, "login", void 0);
+], ChangePasswordDto.prototype, "currentPassword", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(8, { message: 'Пароль должен быть не менее 8 символов' }),
+    (0, class_validator_1.MinLength)(3, { message: 'Новый пароль должен быть не менее 3 символов' }),
     __metadata("design:type", String)
-], RegisterDto.prototype, "password", void 0);
-//# sourceMappingURL=register.dto.js.map
+], ChangePasswordDto.prototype, "newPassword", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], ChangePasswordDto.prototype, "logoutAllDevices", void 0);
+//# sourceMappingURL=change-password.dto.js.map

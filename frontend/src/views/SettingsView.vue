@@ -19,10 +19,6 @@ const goToSessions = () => {
 const goToTheme = () => {
   void router.push({ name: 'settings-theme' })
 }
-
-const goToStartPage = () => {
-  void router.push({ name: 'settings-start-page' })
-}
 </script>
 
 <template>

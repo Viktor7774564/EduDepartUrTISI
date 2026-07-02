@@ -558,4 +558,8 @@ onBeforeUnmount(() => {
   color: #5f6770;
   font-size: 14px;
 }
+
+:global(.dark) .picker-empty {
+  color: #9aa3ad;
+}
 </style>

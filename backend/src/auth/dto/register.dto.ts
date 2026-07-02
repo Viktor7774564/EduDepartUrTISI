@@ -6,6 +6,6 @@ export class RegisterDto {
     login!: string;
 
     @IsString()
-    @MinLength(6, { message: 'Пароль должен быть не менее 6 символов' })
+    @MinLength(8, { message: 'Пароль должен быть не менее 8 символов' })
     password!: string;
 }
