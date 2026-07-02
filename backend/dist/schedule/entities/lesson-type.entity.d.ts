@@ -4,6 +4,7 @@ export declare enum LessonTypeCode {
     PRACTICE = "practice",
     LAB = "lab",
     CREDIT = "credit",
+    KR_DEFENSE = "kr_defense",
     SPECIAL = "special"
 }
 export declare class LessonType {

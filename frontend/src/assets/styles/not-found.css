@@ -18,7 +18,8 @@
   @apply m-0 mb-[22px] text-[clamp(16px,1.2vw,18px)] text-[#4a4a4a] max-w-[420px];
 }
 
-.back-btn {
+.error-page-main .back-btn,
+.not-found-main .back-btn {
   @apply min-w-[300px] h-[58px] border-0 rounded-[14px] bg-[#4ea3d7] text-[#eef6fb] text-[clamp(20px,1.55vw,20px)] cursor-pointer no-underline inline-flex items-center justify-center px-[16px];
 }
 

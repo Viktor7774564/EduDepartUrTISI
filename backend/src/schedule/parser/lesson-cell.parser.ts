@@ -32,12 +32,17 @@ function parseSubgroupNumber(value: string): number | null {
     return null;
 }
 
+function isKrDefenseLessonType(value: string): boolean {
+    return value.includes('защ') && value.includes('кр');
+}
+
 function normalizeLessonType(raw: string): string {
     const value = raw.trim().replace(/;$/, '').toLowerCase();
 
     if (value.startsWith('лек')) return 'Лекция';
     if (value.startsWith('практ')) return 'Практика';
     if (value.startsWith('лаб')) return 'Лаб. раб.';
+    if (isKrDefenseLessonType(value)) return 'Защита КР';
     if (value.includes('зач')) return 'Зачет';
 
     return raw.trim().replace(/;$/, '');

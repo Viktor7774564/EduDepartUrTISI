@@ -243,11 +243,14 @@ export function getWeekStartFromLabel(
 
 export const SPECIAL_LESSON_TYPE = 'Особое' as const
 
+export const KR_DEFENSE_LESSON_TYPE = 'Защита КР' as const
+
 export const LESSON_TYPE_OPTIONS = [
   'Лекция',
   'Практика',
   'Лабораторная',
   'Зачёт',
+  KR_DEFENSE_LESSON_TYPE,
   SPECIAL_LESSON_TYPE,
 ] as const
 
@@ -355,12 +358,17 @@ export function isRomanRoom(room: string): boolean {
   return isRomanRoomUk3(normalized) || isRomanRoomUk5(normalized)
 }
 
+function isKrDefenseLessonType(value: string): boolean {
+  return value.includes('защ') && value.includes('кр')
+}
+
 export function isSubgroupApplicableLessonType(type: string): boolean {
   const value = type.trim().toLowerCase()
 
   return value.includes('практ')
     || value.includes('лаб')
     || value.includes('зач')
+    || isKrDefenseLessonType(value)
 }
 
 export function isSpecialLessonType(type: string): boolean {
@@ -429,6 +437,7 @@ export function normalizeLessonTypeForForm(type: string): string {
   if (value.includes('лек')) return 'Лекция'
   if (value.includes('практ')) return 'Практика'
   if (value.includes('лаб')) return 'Лабораторная'
+  if (isKrDefenseLessonType(value)) return KR_DEFENSE_LESSON_TYPE
   if (value.includes('зач')) return 'Зачёт'
 
   return type

@@ -556,21 +556,14 @@ const toggleUploadWarnings = (id: number) => {
   }
 
   .schedule-upload-page .card-header {
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
+    grid-template-columns: 38px 1fr 38px;
+    gap: 10px;
     margin-bottom: 16px;
   }
 
   .schedule-upload-page .card-title {
-    position: static;
-    transform: none;
-    width: auto;
-    flex: 1;
-    text-align: left;
     font-size: 20px;
     line-height: 1.25;
-    pointer-events: auto;
   }
 
   .schedule-upload-page .card-subtitle {

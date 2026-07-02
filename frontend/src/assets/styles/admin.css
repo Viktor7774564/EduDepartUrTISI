@@ -32,11 +32,14 @@
 }
 
 .admin-edit-page .card-header {
-  @apply flex items-center gap-[20px] mb-[32px] relative;
+  @apply grid items-center gap-x-[12px] gap-y-[12px] mb-[32px];
+  grid-template-columns: 40px 1fr 40px;
 }
 
 .admin-edit-page .back-btn {
-  @apply w-[40px] h-[40px] border-0 rounded-[10px] bg-[#4ea3d7] flex items-center justify-center cursor-pointer transition-colors duration-[200ms] shrink-0 relative z-[1];
+  @apply w-[40px] h-[40px] min-w-[40px] max-w-[40px] p-0 border-0 rounded-[10px] bg-[#4ea3d7] flex items-center justify-center cursor-pointer transition-colors duration-[200ms] shrink-0;
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .admin-edit-page .back-btn:hover {
@@ -44,7 +47,9 @@
 }
 
 .admin-edit-page .card-title {
-  @apply m-0 text-[24px] font-semibold text-[#101215] text-center absolute left-1/2 -translate-x-1/2 w-full pointer-events-none;
+  @apply m-0 text-[24px] font-semibold text-[#101215] text-center min-w-0;
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .admin-edit-page .user-form {
@@ -555,18 +560,17 @@
   }
 
   .admin-edit-page .card-header {
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .schedule-upload-page .card-header {
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
+    grid-template-columns: 38px 1fr 38px;
+    gap: 10px;
   }
 
   .admin-edit-page .back-btn {
-    @apply self-start w-[38px] h-[38px];
+    @apply w-[38px] h-[38px] min-w-[38px] max-w-[38px];
+  }
+
+  .schedule-upload-page .card-header {
+    grid-template-columns: 38px 1fr 38px;
+    gap: 10px;
   }
 
   .admin-edit-page .card-subtitle {

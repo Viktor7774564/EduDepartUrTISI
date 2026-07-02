@@ -22,6 +22,9 @@ let LessonTypeResolver = class LessonTypeResolver {
     constructor(lessonTypesRepository) {
         this.lessonTypesRepository = lessonTypesRepository;
     }
+    isKrDefenseLessonType(value) {
+        return value.includes('защ') && value.includes('кр');
+    }
     mapRawToCode(raw) {
         const value = raw.trim().toLowerCase();
         if (value.startsWith('лек'))
@@ -30,6 +33,8 @@ let LessonTypeResolver = class LessonTypeResolver {
             return lesson_type_entity_1.LessonTypeCode.PRACTICE;
         if (value.startsWith('лаб'))
             return lesson_type_entity_1.LessonTypeCode.LAB;
+        if (this.isKrDefenseLessonType(value))
+            return lesson_type_entity_1.LessonTypeCode.KR_DEFENSE;
         if (value.includes('зач'))
             return lesson_type_entity_1.LessonTypeCode.CREDIT;
         if (value.includes('куратор') || value === 'особое' || value === 'особенное') {
@@ -46,6 +51,7 @@ let LessonTypeResolver = class LessonTypeResolver {
             case lesson_type_entity_1.LessonTypeCode.PRACTICE: return 'Практика';
             case lesson_type_entity_1.LessonTypeCode.LAB: return 'Лаб. раб.';
             case lesson_type_entity_1.LessonTypeCode.CREDIT: return 'Зачёт';
+            case lesson_type_entity_1.LessonTypeCode.KR_DEFENSE: return 'Защита КР';
             case lesson_type_entity_1.LessonTypeCode.SPECIAL: return 'Особое';
             default: return raw.trim();
         }

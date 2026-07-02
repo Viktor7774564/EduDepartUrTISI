@@ -11,6 +11,7 @@ import { getPhotoUrl } from '@/config/api'
 import { unregisterPushSubscription } from '@/api/pushNotifications'
 import { useNotificationsStore } from '@/stores/notifications'
 import { hasScheduleManageAccess } from '@/utils/educationDepartmentAccess'
+import MobileBottomNav from '@/components/MobileBottomNav.vue'
 
 const notificationsStore = useNotificationsStore()
 
@@ -183,7 +184,7 @@ const handleVisibilityChange = async () => {
 </script>
 
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :class="{ 'app-shell--mobile-nav': showAuthHeader }">
     <header class="topbar">
       <RouterLink class="brand" to="/" aria-label="УрТИСИ">
         <img :src="logoUrtisi" alt="Логотип УрТИСИ" />
@@ -285,7 +286,9 @@ const handleVisibilityChange = async () => {
       <RouterView />
     </main>
 
-    <footer class="bottombar" />
+    <footer class="bottombar" :class="{ 'bottombar--mobile-nav': showAuthHeader }">
+      <MobileBottomNav v-if="showAuthHeader" />
+    </footer>
   </div>
 </template>
 

@@ -18,6 +18,7 @@ var LessonTypeCode;
     LessonTypeCode["PRACTICE"] = "practice";
     LessonTypeCode["LAB"] = "lab";
     LessonTypeCode["CREDIT"] = "credit";
+    LessonTypeCode["KR_DEFENSE"] = "kr_defense";
     LessonTypeCode["SPECIAL"] = "special";
 })(LessonTypeCode || (exports.LessonTypeCode = LessonTypeCode = {}));
 let LessonType = class LessonType {

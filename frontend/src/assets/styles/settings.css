@@ -1,0 +1,111 @@
+.settings-page,
+.settings-detail-page {
+  @apply min-h-[calc(100vh-180px)] flex justify-center items-center py-[40px] px-[20px];
+}
+
+.settings-detail-page {
+  @apply items-start;
+}
+
+.settings-page .settings-card,
+.settings-detail-page .settings-card {
+  @apply w-full max-w-[450px] bg-[#ececec] border border-[#4ea3d7] rounded-[18px] shadow-[0_6px_14px_rgba(0,0,0,0.15)] flex flex-col relative z-[2];
+}
+
+.settings-page .settings-card {
+  @apply min-h-[320px] items-center gap-[36px] p-[48px] px-[42px];
+}
+
+.settings-detail-page .settings-card {
+  @apply max-w-[720px] py-[40px] px-[48px];
+}
+
+.settings-page .settings-title {
+  @apply text-[26px] font-medium m-0 text-center;
+}
+
+.settings-page .settings-actions {
+  @apply flex flex-col gap-[20px] w-full;
+}
+
+.settings-page .settings-btn {
+  @apply w-full min-h-[52px] border-0 rounded-[14px] bg-[#4ea3d7] text-white text-[15px] cursor-pointer transition-[transform,background-color] duration-[200ms] px-[20px] py-[12px];
+}
+
+.settings-page .settings-btn:hover {
+  @apply bg-[#3f96cb] translate-y-[-2px];
+}
+
+.settings-page .settings-btn--optional {
+  @apply bg-[#ececec] text-[#24313f] border border-[#4ea3d7];
+}
+
+.settings-page .settings-btn--optional:hover {
+  @apply bg-[#e0e0e0];
+}
+
+.settings-page .settings-btn__label {
+  @apply block font-medium;
+}
+
+.settings-page .settings-btn__hint {
+  @apply block mt-[4px] text-[12px] opacity-[0.75] font-normal;
+}
+
+.settings-detail-page .card-header {
+  @apply grid items-center gap-x-[12px] gap-y-[12px] mb-[32px];
+  grid-template-columns: 40px 1fr 40px;
+}
+
+.settings-detail-page .back-btn {
+  @apply w-[40px] h-[40px] min-w-[40px] max-w-[40px] p-0 border-0 rounded-[10px] bg-[#4ea3d7] flex items-center justify-center cursor-pointer transition-colors duration-[200ms] shrink-0;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.settings-detail-page .back-btn:hover {
+  @apply bg-[#3f96cb];
+}
+
+.settings-detail-page .card-title {
+  @apply m-0 text-[24px] font-semibold text-[#101215] text-center min-w-0;
+  grid-column: 2;
+  grid-row: 1;
+}
+
+@media (max-width: 768px) {
+  .settings-detail-page .settings-card {
+    @apply py-[32px] px-[24px];
+  }
+
+  .settings-detail-page .card-title {
+    @apply text-[20px];
+  }
+}
+
+@media (max-width: 480px) {
+  .settings-detail-page {
+    @apply py-[24px] px-[16px];
+  }
+
+  .settings-detail-page .settings-card {
+    @apply py-[24px] px-[16px];
+  }
+
+  .settings-detail-page .card-header {
+    grid-template-columns: 38px 1fr 38px;
+    gap: 10px;
+  }
+
+  .settings-detail-page .back-btn {
+    @apply w-[38px] h-[38px] min-w-[38px] max-w-[38px];
+  }
+
+  .settings-detail-page .card-title {
+    @apply text-[18px];
+  }
+}
+
+.settings-detail-page .settings-placeholder {
+  @apply m-0 text-center text-[16px] text-[#5f6975] py-[48px];
+}

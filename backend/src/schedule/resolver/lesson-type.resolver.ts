@@ -11,12 +11,17 @@ export class LessonTypeResolver {
         private readonly lessonTypesRepository: Repository<LessonType>,
     ) {}
 
+    private isKrDefenseLessonType(value: string): boolean {
+        return value.includes('защ') && value.includes('кр');
+    }
+
     private mapRawToCode(raw: string): LessonTypeCode {
         const value = raw.trim().toLowerCase();
 
         if (value.startsWith('лек')) return LessonTypeCode.LECTURE;
         if (value.startsWith('практ')) return LessonTypeCode.PRACTICE;
         if (value.startsWith('лаб')) return LessonTypeCode.LAB;
+        if (this.isKrDefenseLessonType(value)) return LessonTypeCode.KR_DEFENSE;
         if (value.includes('зач')) return LessonTypeCode.CREDIT;
         if (value.includes('куратор') || value === 'особое' || value === 'особенное') {
             return LessonTypeCode.SPECIAL;
@@ -35,6 +40,7 @@ export class LessonTypeResolver {
             case LessonTypeCode.PRACTICE: return 'Практика';
             case LessonTypeCode.LAB: return 'Лаб. раб.';
             case LessonTypeCode.CREDIT: return 'Зачёт';
+            case LessonTypeCode.KR_DEFENSE: return 'Защита КР';
             case LessonTypeCode.SPECIAL: return 'Особое';
             default: return raw.trim();
         }

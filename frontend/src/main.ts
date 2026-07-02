@@ -7,6 +7,7 @@ import './assets/styles/admin.css'
 import './assets/styles/not-found.css'
 import './assets/styles/schedule.css'
 import './assets/styles/notifications.css'
+import './assets/styles/settings.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

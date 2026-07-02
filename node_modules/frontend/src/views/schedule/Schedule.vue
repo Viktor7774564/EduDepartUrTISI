@@ -2024,7 +2024,7 @@ onUnmounted(() => {
 
             <div class="legend-item">
               <span class="box exam"></span>
-              Зачёт
+              Зачёт/защита КР
             </div>
 
             <div class="legend-item">

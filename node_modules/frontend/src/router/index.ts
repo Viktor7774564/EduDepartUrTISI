@@ -38,6 +38,28 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),
+      children: [
+        {
+          path: 'password',
+          name: 'settings-password',
+          component: () => import('../views/settings/SettingsChangePasswordView.vue'),
+        },
+        {
+          path: 'sessions',
+          name: 'settings-sessions',
+          component: () => import('../views/settings/SettingsSessionsView.vue'),
+        },
+        {
+          path: 'theme',
+          name: 'settings-theme',
+          component: () => import('../views/settings/SettingsThemeView.vue'),
+        },
+        {
+          path: 'start-page',
+          name: 'settings-start-page',
+          component: () => import('../views/settings/SettingsStartPageView.vue'),
+        },
+      ],
     },
     {
       path: '/education-department/schedule-upload',

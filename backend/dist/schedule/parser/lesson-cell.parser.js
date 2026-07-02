@@ -24,6 +24,9 @@ function parseSubgroupNumber(value) {
     }
     return null;
 }
+function isKrDefenseLessonType(value) {
+    return value.includes('защ') && value.includes('кр');
+}
 function normalizeLessonType(raw) {
     const value = raw.trim().replace(/;$/, '').toLowerCase();
     if (value.startsWith('лек'))
@@ -32,6 +35,8 @@ function normalizeLessonType(raw) {
         return 'Практика';
     if (value.startsWith('лаб'))
         return 'Лаб. раб.';
+    if (isKrDefenseLessonType(value))
+        return 'Защита КР';
     if (value.includes('зач'))
         return 'Зачет';
     return raw.trim().replace(/;$/, '');

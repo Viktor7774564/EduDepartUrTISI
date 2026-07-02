@@ -59,6 +59,11 @@ const MONTHS = {
     jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
     jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
 };
+const RUSSIAN_MONTHS = {
+    янв: 0, фев: 1, мар: 2, апр: 3, май: 4, мая: 4,
+    июн: 5, июл: 6, авг: 7, сен: 8, окт: 9, ноя: 10, дек: 11,
+};
+const RUSSIAN_WEEK_DATE_PATTERN = /^(\d{1,2})\.\s*(янв|фев|мар|апр|ма[йя]|июн|июл|авг|сен|окт|ноя|дек)\.?$/i;
 const BLOCK_WIDTH = 14;
 const PAIR_TIMES = {
     1: { startTime: '08:30', endTime: '10:00' },
@@ -90,9 +95,14 @@ function isDayName(value) {
 function getDayOfWeek(value) {
     return DAY_NAMES[value.toUpperCase()];
 }
+function isRussianWeekDate(value) {
+    return RUSSIAN_WEEK_DATE_PATTERN.test(value.trim());
+}
 function isWeekDate(value) {
     const trimmed = value.trim();
-    return /^\d{1,2}-[A-Za-z]{3}$/.test(trimmed) || /^\d{5,6}$/.test(trimmed);
+    return /^\d{1,2}-[A-Za-z]{3}$/.test(trimmed)
+        || /^\d{5,6}$/.test(trimmed)
+        || isRussianWeekDate(trimmed);
 }
 function isAudHeader(value) {
     return /^АУД\.?$/i.test(value.trim());
@@ -141,12 +151,42 @@ function parseExcelSerialDate(value) {
     }
     return new Date(parsed.y, parsed.m - 1, parsed.d);
 }
+function resolveWeekDateYear(month, period) {
+    let year = period?.start.getFullYear() ?? new Date().getFullYear();
+    if (!period && month >= 0 && month <= 5) {
+        year += 1;
+    }
+    if (period && month < period.start.getMonth() && month >= 0 && month <= 5) {
+        year = period.end.getFullYear();
+    }
+    return year;
+}
+function parseRussianWeekDate(value, period = null) {
+    const match = value.trim().match(RUSSIAN_WEEK_DATE_PATTERN);
+    if (!match) {
+        return null;
+    }
+    const day = Number(match[1]);
+    const monthKey = match[2].toLowerCase().slice(0, 3);
+    const month = RUSSIAN_MONTHS[monthKey];
+    if (month === undefined) {
+        return null;
+    }
+    const year = resolveWeekDateYear(month, period);
+    const date = new Date(year, month, day);
+    date.setHours(0, 0, 0, 0);
+    return date;
+}
 function parseWeekDate(value, period = null) {
     const trimmed = value.trim();
     const serialDate = parseExcelSerialDate(trimmed);
     if (serialDate) {
         serialDate.setHours(0, 0, 0, 0);
         return serialDate;
+    }
+    const russianDate = parseRussianWeekDate(trimmed, period);
+    if (russianDate) {
+        return russianDate;
     }
     const match = trimmed.match(/^(\d{1,2})-([A-Za-z]{3})$/);
     if (!match) {
@@ -157,10 +197,7 @@ function parseWeekDate(value, period = null) {
     if (month === undefined) {
         return null;
     }
-    let year = period?.start.getFullYear() ?? new Date().getFullYear();
-    if (!period && month >= 0 && month <= 5) {
-        year += 1;
-    }
+    const year = resolveWeekDateYear(month, period);
     const date = new Date(year, month, day);
     date.setHours(0, 0, 0, 0);
     return date;
