@@ -23,8 +23,8 @@ const consultation_service_1 = require("./consultation.service");
 const consultation_entity_1 = require("./entities/consultation.entity");
 const schedule_entity_1 = require("./entities/schedule.entity");
 const schedule_item_entity_1 = require("./entities/schedule-item.entity");
-const schedule_upload_entity_1 = require("./entities/schedule-upload.entity");
 const schedule_preholiday_day_entity_1 = require("./entities/schedule-preholiday-day.entity");
+const schedule_upload_entity_1 = require("./entities/schedule-upload.entity");
 const room_entity_1 = require("./entities/room.entity");
 const lesson_type_entity_1 = require("./entities/lesson-type.entity");
 const education_department_guard_1 = require("./guards/education-department.guard");
@@ -58,8 +58,8 @@ exports.ScheduleModule = ScheduleModule = __decorate([
             typeorm_1.TypeOrmModule.forFeature([
                 schedule_entity_1.Schedule,
                 schedule_item_entity_1.ScheduleItem,
-                schedule_upload_entity_1.ScheduleUpload,
                 schedule_preholiday_day_entity_1.SchedulePreholidayDay,
+                schedule_upload_entity_1.ScheduleUpload,
                 room_entity_1.Room,
                 lesson_type_entity_1.LessonType,
                 consultation_entity_1.Consultation,

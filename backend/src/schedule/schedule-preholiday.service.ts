@@ -25,6 +25,7 @@ export class SchedulePreholidayService {
         }
 
         const dottedMatch = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+
         if (dottedMatch) {
             return `${dottedMatch[3]}-${dottedMatch[2]}-${dottedMatch[1]}`;
         }
@@ -64,29 +65,23 @@ export class SchedulePreholidayService {
             });
 
             if (!existing) {
-                // Использование create + save — это правильно и безопасно
                 await this.preholidayDaysRepository.save(
                     this.preholidayDaysRepository.create({ date }),
                 );
                 shouldNotifyUsers = true;
             }
         } else {
-            // Удаление по условию тоже написано верно
             await this.preholidayDaysRepository.delete({ date });
         }
 
-        // Получаем актуальный список ОДИН раз
         const preholidayDays = await this.listPreholidayDays();
 
-        // Теперь уведомление точно вызовется
         this.scheduleNotifier.notifyPreholidayDaysUpdated(preholidayDays);
 
         if (shouldNotifyUsers) {
             await this.notificationsService.notifyPreholidayDayCreated(date);
         }
 
-        // Возвращаем результат в самом конце
         return preholidayDays;
     }
-
 }

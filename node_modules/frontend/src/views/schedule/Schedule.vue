@@ -5,7 +5,6 @@ import { useAuthStore } from '@/stores/auth'
 import { hasScheduleManageAccess } from '@/utils/educationDepartmentAccess'
 import {
   fetchGroupSchedule,
-  fetchPreholidayDays,
   fetchRoomSchedule,
   fetchScheduleTeachers,
   fetchTeacherSchedule,
@@ -23,7 +22,6 @@ import {
   fetchScheduleTransferRecommendations,
   getScheduleAdminErrorMessage,
   type ScheduleTransferRecommendation,
-  updatePreholidayDay,
   updateScheduleItem,
 } from '@/api/scheduleAdmin'
 import editIcon from '@/assets/edit.svg'
@@ -87,9 +85,6 @@ const connectScheduleLiveUpdates = () => {
     onScheduleChanged: () => {
       reloadScheduleSoon()
     },
-    onPreholidayDaysUpdated: ({ preholidayDays }) => {
-      preholidayDayKeys.value = normalizePreholidayDayKeys(preholidayDays)
-    },
     onConnectError: () => {
       console.warn('Не удалось подключиться к live-обновлениям расписания')
     },
@@ -127,14 +122,6 @@ const saturdayTimeSlots: TimeSlot[] = [
   { pairNumber: 6, startTime: '17:10', endTime: '18:40' },
 ]
 
-//Предпраздничный день
-const preholidayTimeSlots: TimeSlot[] = [
-  { pairNumber: 1, startTime: '08:30', endTime: '10:00' },
-  { pairNumber: 2, startTime: '10:15', endTime: '11:45' },
-  { pairNumber: 3, startTime: '12:00', endTime: '13:30' },
-  { pairNumber: 4, startTime: '13:45', endTime: '14:45', matchingStartTimes: ['13:45', '14:15'] },
-  { pairNumber: 5, startTime: '15:00', endTime: '16:00', matchingStartTimes: ['15:00', '16:00'] },
-]
 const times = weekdayTimeSlots.map((slot) => slot.startTime)
 
 const PAIR_END_TIMES: Record<string, string> = {
@@ -211,8 +198,6 @@ const schedulePeriodMeta = ref<SchedulePeriodMeta>({
 })
 const isLoadingSchedule = ref(false)
 const scheduleLoadError = ref<string | null>(null)
-const preholidayDayKeys = ref<string[]>([])
-const isSavingPreholidayDay = ref(false)
 const consultationTeachers = ref<string[]>([])
 
 const isMenuVisible = ref(false)
@@ -673,92 +658,8 @@ const isHolidayDayInWeek = (day: string, weekKey = currentWeekKey.value): boolea
 
 const isHolidayDay = (day: string): boolean => isHolidayDayInWeek(day)
 
-const getPreholidayDayKey = (day: string, weekKey = currentWeekKey.value): string | null => {
-  const date = getDateForDayInWeek(day, weekKey)
-
-  if (!date) {
-    return null
-  }
-
-  return formatFullDate(date)
-}
-
-const normalizePreholidayDayKeys = (values: string[]): string[] => {
-  const normalizedKeys = values
-    .filter((value): value is string => typeof value === 'string')
-    .map((value) => {
-      const legacyParts = value.split('|')
-      const legacyDate = legacyParts[3]
-
-      if (legacyDate && /^\d{2}\.\d{2}\.\d{4}$/.test(legacyDate)) {
-        return legacyDate
-      }
-
-      const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-      if (isoMatch) {
-        return `${isoMatch[3]}.${isoMatch[2]}.${isoMatch[1]}`
-      }
-
-      return value
-    })
-    .filter((value) => /^\d{2}\.\d{2}\.\d{4}$/.test(value))
-
-  return Array.from(new Set(normalizedKeys))
-}
-
-const loadPreholidayDays = async () => {
-  try {
-    preholidayDayKeys.value = normalizePreholidayDayKeys(await fetchPreholidayDays())
-  } catch {
-    preholidayDayKeys.value = []
-  }
-}
-
-const isPreholidayDay = (day: string, weekKey = currentWeekKey.value): boolean => {
-  const key = getPreholidayDayKey(day, weekKey)
-
-  return Boolean(key && preholidayDayKeys.value.includes(key))
-}
-
-const togglePreholidayDay = async (day: string) => {
-  if (!canManagePairs.value || isSavingPreholidayDay.value) {
-    return
-  }
-
-  const key = getPreholidayDayKey(day)
-
-  if (!key) {
-    return
-  }
-
-  const previousKeys = preholidayDayKeys.value
-  const shouldMarkAsPreholiday = !preholidayDayKeys.value.includes(key)
-
-  preholidayDayKeys.value = shouldMarkAsPreholiday
-    ? [...preholidayDayKeys.value, key]
-    : preholidayDayKeys.value.filter((value) => value !== key)
-
-  isSavingPreholidayDay.value = true
-
-  try {
-    preholidayDayKeys.value = normalizePreholidayDayKeys(
-      await updatePreholidayDay(key, shouldMarkAsPreholiday),
-    )
-  } catch {
-    preholidayDayKeys.value = previousKeys
-    alert('Не удалось сохранить предпраздничный день')
-  } finally {
-    isSavingPreholidayDay.value = false
-  }
-}
-
-const getDaySlot = (day: string, rowIndex: number): TimeSlot | null => {
-  if (isPreholidayDay(day)) {
-    return preholidayTimeSlots[rowIndex] ?? null
-  }
-
-  return weekdayTimeSlots[rowIndex] ?? null
-}
+const getDaySlot = (day: string, rowIndex: number): TimeSlot | null =>
+  weekdayTimeSlots[rowIndex] ?? null
 
 const isEmptySchedule = computed(() => {
   if (scheduleType.value === 'consults' && firstValue.value) {
@@ -945,19 +846,10 @@ const closeEditModal = () => {
 
 const formatTimeSlotValue = (slot: TimeSlot): string => `${slot.startTime} - ${slot.endTime}`
 
-const getTimeSlotsForDay = (day: string, weekKey = currentWeekKey.value): TimeSlot[] => {
-  if (isPreholidayDay(day, weekKey)) {
-    return preholidayTimeSlots
-  }
+const getTimeSlotsForDay = (day: string): TimeSlot[] =>
+  day === saturdayDay ? saturdayTimeSlots : weekdayTimeSlots
 
-  return day === saturdayDay
-    ? saturdayTimeSlots
-    : weekdayTimeSlots
-}
-
-const transferTimeSlots = computed(() =>
-  getTimeSlotsForDay(transferForm.value.day, transferForm.value.weekKey || currentWeekKey.value),
-)
+const transferTimeSlots = computed(() => getTimeSlotsForDay(transferForm.value.day))
 
 const editTimeSlots = computed(() => getTimeSlotsForDay(editForm.value.day))
 
@@ -969,7 +861,7 @@ const findDisplaySlotForLesson = (lesson: CellLesson): TimeSlot | null => {
 
 const visibleTransferRecommendations = computed(() =>
   transferRecommendations.value.filter((recommendation) =>
-    getTimeSlotsForDay(recommendation.day, transferForm.value.weekKey).some((slot) =>
+    getTimeSlotsForDay(recommendation.day).some((slot) =>
       slot.startTime === recommendation.startTime && slot.endTime === recommendation.endTime,
     ),
   ),
@@ -1719,10 +1611,7 @@ const nextWeek = () => {
   }
 }
 
-const getSaturdaySlot = (rowIndex: number) =>
-  isPreholidayDay(saturdayDay)
-    ? preholidayTimeSlots[rowIndex] ?? null
-    : saturdayTimeSlots[rowIndex] ?? null
+const getSaturdaySlot = (rowIndex: number) => saturdayTimeSlots[rowIndex] ?? null
 
 const getSlotStartTimes = (slot: TimeSlot): string[] =>
   slot.matchingStartTimes ?? [slot.startTime]
@@ -1915,7 +1804,6 @@ const syncMobileLayout = (queryList: MediaQueryList | MediaQueryListEvent) => {
 }
 
 onMounted(() => {
-  void loadPreholidayDays()
   connectScheduleLiveUpdates()
   document.addEventListener('click', closeMenu as EventListener)
 
@@ -2043,7 +1931,6 @@ onUnmounted(() => {
                 class="header-day"
                 :class="{
                   'header-day--holiday': isHolidayDay(day),
-                  'header-day--preholiday': isPreholidayDay(day),
                 }"
             >
               <span class="header-day__name">{{ day }}</span>
@@ -2053,18 +1940,6 @@ onUnmounted(() => {
               <span v-if="getHolidayNameForDay(day)" class="header-day__holiday">
                 {{ getHolidayNameForDay(day) }}
               </span>
-              <span v-if="isPreholidayDay(day)" class="header-day__holiday">
-                Предпраздничный
-              </span>
-              <button
-                  v-if="canManagePairs"
-                  type="button"
-                  class="preholiday-toggle"
-                  :disabled="isSavingPreholidayDay"
-                  @click.stop="togglePreholidayDay(day)"
-              >
-                {{ isPreholidayDay(day) ? 'Обычный' : 'Предпраздн.' }}
-              </button>
             </div>
 
             <div class="saturday-time-header">
@@ -2074,7 +1949,6 @@ onUnmounted(() => {
                 class="header-day"
                 :class="{
                   'header-day--holiday': isHolidayDay(saturdayDay),
-                  'header-day--preholiday': isPreholidayDay(saturdayDay),
                 }"
             >
               <span class="header-day__name">{{ saturdayDay }}</span>
@@ -2084,18 +1958,6 @@ onUnmounted(() => {
               <span v-if="getHolidayNameForDay(saturdayDay)" class="header-day__holiday">
                 {{ getHolidayNameForDay(saturdayDay) }}
               </span>
-              <span v-if="isPreholidayDay(saturdayDay)" class="header-day__holiday">
-                Предпраздничный
-              </span>
-              <button
-                  v-if="canManagePairs"
-                  type="button"
-                  class="preholiday-toggle"
-                  :disabled="isSavingPreholidayDay"
-                  @click.stop="togglePreholidayDay(saturdayDay)"
-              >
-                {{ isPreholidayDay(saturdayDay) ? 'Обычный' : 'Предпраздн.' }}
-              </button>
             </div>
           </div>
 
@@ -2110,7 +1972,6 @@ onUnmounted(() => {
                     :class="{
                       'cell--parallel': isParallelSlot(day, daySlot),
                       'cell--holiday': isHolidayDay(day),
-                      'cell--preholiday': isPreholidayDay(day),
                     }"
                     @click.stop="
                       handleCellTap(
@@ -2125,10 +1986,6 @@ onUnmounted(() => {
                       showEmptyContextMenu($event, day, daySlot.startTime, daySlot.endTime)
                     "
                 >
-                  <div v-if="isPreholidayDay(day)" class="cell-slot-time">
-                    {{ daySlot.startTime }} - {{ daySlot.endTime }}
-                  </div>
-
                   <div
                       v-for="lesson in getLessonsForSlot(day, daySlot)"
                       :key="`${lesson.group}-${lesson.id}`"
@@ -2155,7 +2012,6 @@ onUnmounted(() => {
                     :class="{
                       'cell--parallel': isParallelSlot(saturdayDay, saturdaySlot),
                       'cell--holiday': isHolidayDay(saturdayDay),
-                      'cell--preholiday': isPreholidayDay(saturdayDay),
                     }"
                     @click.stop="
                       handleCellTap(

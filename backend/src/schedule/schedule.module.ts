@@ -16,8 +16,8 @@ import { ConsultationService } from './consultation.service';
 import { Consultation } from './entities/consultation.entity';
 import { Schedule } from './entities/schedule.entity';
 import { ScheduleItem } from './entities/schedule-item.entity';
-import { ScheduleUpload } from './entities/schedule-upload.entity';
 import { SchedulePreholidayDay } from './entities/schedule-preholiday-day.entity';
+import { ScheduleUpload } from './entities/schedule-upload.entity';
 import { Room } from './entities/room.entity';
 import { LessonType } from './entities/lesson-type.entity';
 import { EducationDepartmentGuard } from './guards/education-department.guard';
@@ -52,8 +52,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
         TypeOrmModule.forFeature([
             Schedule,
             ScheduleItem,
-            ScheduleUpload,
             SchedulePreholidayDay,
+            ScheduleUpload,
             Room,
             LessonType,
             Consultation,
