@@ -141,6 +141,7 @@ export class DepartmentsService {
 
         return departments
             .filter((department) => department.shortName?.trim())
+            .filter((department) => !this.isStaffDepartment(department))
             .map((department) => this.mapDepartment(department));
     }
 
@@ -149,7 +150,7 @@ export class DepartmentsService {
             where: { id: departmentId },
         });
 
-        if (!department?.shortName?.trim()) {
+        if (!department?.shortName?.trim() || this.isStaffDepartment(department)) {
             throw new BadRequestException('Выберите кафедру из списка');
         }
 

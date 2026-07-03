@@ -115,13 +115,14 @@ let DepartmentsService = class DepartmentsService {
         });
         return departments
             .filter((department) => department.shortName?.trim())
+            .filter((department) => !this.isStaffDepartment(department))
             .map((department) => this.mapDepartment(department));
     }
     async resolveTeacherDepartmentId(departmentId) {
         const department = await this.departmentRepository.findOne({
             where: { id: departmentId },
         });
-        if (!department?.shortName?.trim()) {
+        if (!department?.shortName?.trim() || this.isStaffDepartment(department)) {
             throw new common_1.BadRequestException('Выберите кафедру из списка');
         }
         return department;

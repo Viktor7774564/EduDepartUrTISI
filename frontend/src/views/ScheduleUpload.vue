@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageFrame from '@/components/PageFrame.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -13,7 +13,9 @@ import {
   uploadScheduleFile,
   type ScheduleUploadItem,
 } from '@/api/scheduleUpload'
+import { fetchScheduleGroups, type ScheduleGroupInfo } from '@/api/schedule'
 import {
+  getGroupFaculty,
   studentFacultySelectOptions,
 } from '@/views/schedule/scheduleOptions'
 
@@ -35,14 +37,182 @@ const submitMessage = ref<{
 } | null>(null)
 const expandedWarningId = ref<number | null>(null)
 const deletingId = ref<number | null>(null)
+const knownGroups = ref<ScheduleGroupInfo[]>([])
+const groupSearchQuery = ref('')
+const isGroupDropdownOpen = ref(false)
+const uploadsSearchQuery = ref('')
+const dragCounter = ref(0)
+const isDraggingOver = computed(() => dragCounter.value > 0)
+const goBack = () => router.push({ name: 'home' })
+
+const ACCEPTED_EXTENSIONS = ['.xlsx', '.xls']
+const ACCEPTED_MIME_TYPES = [
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+]
+
+const groupSuggestions = computed(() => {
+  if (!selectedFaculty.value) {
+    return []
+  }
+
+  const fromApi = knownGroups.value.map((g) => g.groupName)
+  const fromUploads = uploads.value
+      .map((u) => u.groupName)
+      .filter((name): name is string => Boolean(name))
+
+  const unique = [...new Set([...fromApi, ...fromUploads])]
+      .filter((name) => {
+        const faculty =
+            knownGroups.value.find((g) => g.groupName === name)?.facultyName
+            ?? getGroupFaculty(name)
+        return faculty === selectedFaculty.value
+      })
+      .sort((a, b) => a.localeCompare(b, 'ru', { numeric: true }))
+
+  const query = groupSearchQuery.value.trim().toLowerCase()
+  if (!query) {
+    return unique
+  }
+
+  return unique.filter((name) => name.toLowerCase().includes(query))
+})
+
+const filteredUploads = computed(() => {
+  const query = uploadsSearchQuery.value.trim().toLowerCase()
+  if (!query) {
+    return uploads.value
+  }
+
+  return uploads.value.filter((upload) =>
+      (upload.groupName?.toLowerCase().includes(query))
+      || (upload.facultyName?.toLowerCase().includes(query))
+      || upload.originalFileName.toLowerCase().includes(query),
+  )
+})
+
+async function loadKnownGroups() {
+  try {
+    knownGroups.value = await fetchScheduleGroups()
+  } catch {
+    knownGroups.value = []
+  }
+}
+
+function closeGroupDropdown(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  if (!target.closest('.group-search-wrap')) {
+    isGroupDropdownOpen.value = false
+  }
+}
+
+function isExcelFile(file: File): boolean {
+  const name = file.name.toLowerCase()
+  return ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext))
+    || ACCEPTED_MIME_TYPES.includes(file.type)
+}
+
+function resetDragState() {
+  dragCounter.value = 0
+}
+
+function onDocumentDragEnter(event: DragEvent) {
+  if (!event.dataTransfer?.types.includes('Files')) {
+    return
+  }
+
+  event.preventDefault()
+  dragCounter.value += 1
+}
+
+function onDocumentDragLeave(event: DragEvent) {
+  if (!event.dataTransfer?.types.includes('Files')) {
+    return
+  }
+
+  event.preventDefault()
+  dragCounter.value = Math.max(0, dragCounter.value - 1)
+}
+
+function onDocumentDragOver(event: DragEvent) {
+  if (!event.dataTransfer?.types.includes('Files')) {
+    return
+  }
+
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'copy'
+}
+
+function syncFileInput(file: File) {
+  const fileInput = document.getElementById('schedule-file') as HTMLInputElement | null
+  if (!fileInput) {
+    return
+  }
+
+  const dataTransfer = new DataTransfer()
+  dataTransfer.items.add(file)
+  fileInput.files = dataTransfer.files
+}
+
+function assignSelectedFile(file: File) {
+  if (!isExcelFile(file)) {
+    submitMessage.value = {
+      type: 'error',
+      text: 'Можно загрузить только Excel-файл (.xlsx, .xls)',
+    }
+    return
+  }
+
+  if (!canSelectFile.value) {
+    submitMessage.value = {
+      type: 'error',
+      text: 'Сначала выберите факультет и группу',
+    }
+    return
+  }
+
+  selectedFile.value = file
+  submitMessage.value = null
+  syncFileInput(file)
+}
+
+function onDocumentDrop(event: DragEvent) {
+  if (!event.dataTransfer?.types.includes('Files')) {
+    return
+  }
+
+  event.preventDefault()
+  resetDragState()
+
+  const file = event.dataTransfer.files?.[0]
+  if (file) {
+    assignSelectedFile(file)
+  }
+}
 
 onMounted(async () => {
+  document.addEventListener('click', closeGroupDropdown)
+  document.addEventListener('dragenter', onDocumentDragEnter)
+  document.addEventListener('dragleave', onDocumentDragLeave)
+  document.addEventListener('dragover', onDocumentDragOver)
+  document.addEventListener('drop', onDocumentDrop)
+  document.addEventListener('dragend', resetDragState)
+
   if (!authStore.isAuthenticated || !hasScheduleManageAccess(authStore.currentUser)) {
     await router.replace(getErrorRoute('403', 'У вас нет доступа к загрузке расписания'))
     return
   }
 
-  await loadUploads()
+  await Promise.all([loadUploads(), loadKnownGroups()])
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeGroupDropdown)
+  document.removeEventListener('dragenter', onDocumentDragEnter)
+  document.removeEventListener('dragleave', onDocumentDragLeave)
+  document.removeEventListener('dragover', onDocumentDragOver)
+  document.removeEventListener('drop', onDocumentDrop)
+  document.removeEventListener('dragend', resetDragState)
 })
 
 const selectedFileName = computed(() => {
@@ -60,6 +230,8 @@ watch(selectedFaculty, () => {
   selectedGroup.value = ''
   selectedFile.value = null
   submitMessage.value = null
+  groupSearchQuery.value = ''
+  isGroupDropdownOpen.value = false
 
   const fileInput = document.getElementById('schedule-file') as HTMLInputElement | null
   if (fileInput) {
@@ -138,6 +310,17 @@ function getErrorPayload(data: unknown): {
   return payload
 }
 
+function selectGroup(name: string) {
+  selectedGroup.value = name
+  groupSearchQuery.value = name
+  isGroupDropdownOpen.value = false
+}
+
+function onGroupInput() {
+  selectedGroup.value = groupSearchQuery.value
+  isGroupDropdownOpen.value = true
+}
+
 async function loadUploads() {
   isLoading.value = true
   loadError.value = null
@@ -153,7 +336,19 @@ async function loadUploads() {
 
 function onFileSelected(event: Event) {
   const input = event.target as HTMLInputElement
-  selectedFile.value = input.files?.[0] ?? null
+  const file = input.files?.[0] ?? null
+
+  if (file && !isExcelFile(file)) {
+    selectedFile.value = null
+    input.value = ''
+    submitMessage.value = {
+      type: 'error',
+      text: 'Можно загрузить только Excel-файл (.xlsx, .xls)',
+    }
+    return
+  }
+
+  selectedFile.value = file
   submitMessage.value = null
 }
 
@@ -246,7 +441,6 @@ async function handleDelete(id: number) {
   }
 }
 
-const goBack = () => router.push({ name: 'home' })
 
 const toggleUploadWarnings = (id: number) => {
   expandedWarningId.value = expandedWarningId.value === id ? null : id
@@ -255,6 +449,44 @@ const toggleUploadWarnings = (id: number) => {
 
 <template>
   <PageFrame>
+    <Teleport to="body">
+      <div
+        v-if="isDraggingOver"
+        class="schedule-drop-overlay"
+        aria-hidden="true"
+      >
+        <div class="schedule-drop-overlay__panel">
+          <svg
+            class="schedule-drop-overlay__icon"
+            width="56"
+            height="56"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M12 16V8M12 8L9 11M12 8L15 11"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <p class="schedule-drop-overlay__title">Отпустите файл для загрузки</p>
+          <p class="schedule-drop-overlay__hint">
+            {{ canSelectFile ? 'Excel (.xlsx, .xls)' : 'Сначала выберите факультет и группу' }}
+          </p>
+        </div>
+      </div>
+    </Teleport>
+
     <section class="admin-edit-page schedule-upload-page">
       <div class="admin-card">
         <div class="card-header">
@@ -320,18 +552,43 @@ const toggleUploadWarnings = (id: number) => {
                 </select>
               </div>
 
-              <div class="form-group">
+              <div class="form-group group-search-wrap">
                 <label for="schedule-group" class="form-label">
                   Группа <span class="required">*</span>
                 </label>
+
                 <input
                   id="schedule-group"
-                  v-model="selectedGroup"
-                  type="text"
+                  v-model="groupSearchQuery"
+                  type="search"
                   class="form-input"
-                  placeholder="Например, ПЕ-31б или 381"
+                  placeholder="Начните вводить группу"
+                  autocomplete="off"
                   :disabled="!selectedFaculty || isSubmitting"
+                  @input="onGroupInput"
+                  @focus="isGroupDropdownOpen = true"
                 />
+
+                <ul
+                  v-if="isGroupDropdownOpen && selectedFaculty && groupSuggestions.length > 0"
+                  class="group-suggestions"
+                >
+                  <li
+                    v-for="group in groupSuggestions"
+                    :key="group"
+                  >
+                    <button type="button" @click.stop="selectGroup(group)">
+                      {{ group }}
+                    </button>
+                  </li>
+                </ul>
+
+                <p
+                  v-else-if="isGroupDropdownOpen && selectedFaculty && groupSearchQuery.trim() && groupSuggestions.length === 0"
+                  class="group-suggestions-empty"
+                >
+                  Группа не найдена — можно ввести новую вручную
+                </p>
               </div>
             </div>
 
@@ -340,15 +597,29 @@ const toggleUploadWarnings = (id: number) => {
                 <label for="schedule-file" class="form-label">
                   Файл Excel <span class="required">*</span>
                 </label>
-                <input
-                  id="schedule-file"
-                  type="file"
-                  accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                  class="form-input"
-                  :disabled="!canSelectFile || isSubmitting"
-                  @change="onFileSelected"
-                />
-                <span class="file-name-hint">{{ selectedFileName }}</span>
+                <label
+                  class="file-drop-zone"
+                  :class="{
+                    'is-disabled': !canSelectFile || isSubmitting,
+                    'has-file': Boolean(selectedFile),
+                  }"
+                  for="schedule-file"
+                >
+                  <input
+                    id="schedule-file"
+                    type="file"
+                    accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                    class="file-drop-zone__input"
+                    :disabled="!canSelectFile || isSubmitting"
+                    @change="onFileSelected"
+                  />
+                  <span class="file-drop-zone__title">
+                    {{ selectedFile ? selectedFile.name : 'Выберите или перетащите Excel-файл' }}
+                  </span>
+                  <span class="file-drop-zone__hint">
+                    {{ canSelectFile ? 'Нажмите или перетащите файл сюда' : selectedFileName }}
+                  </span>
+                </label>
               </div>
             </div>
 
@@ -369,7 +640,15 @@ const toggleUploadWarnings = (id: number) => {
             Пока нет загруженных файлов
           </p>
 
-          <div v-else class="users-table uploads-table">
+          <template v-else>
+            <input
+              v-model="uploadsSearchQuery"
+              class="users-search uploads-search"
+              type="search"
+              placeholder="Поиск по группе, факультету или файлу"
+            >
+
+            <div class="users-table uploads-table">
             <div class="table-header">
               <span class="col-faculty">Факультет</span>
               <span class="col-name">Группа / файл</span>
@@ -378,7 +657,11 @@ const toggleUploadWarnings = (id: number) => {
               <span class="col-actions">Действия</span>
             </div>
 
-            <div v-for="upload in uploads" :key="upload.id" class="table-row">
+            <p v-if="filteredUploads.length === 0" class="uploads-state">
+              По запросу ничего не найдено
+            </p>
+
+            <div v-for="upload in filteredUploads" :key="upload.id" class="table-row">
               <span class="col-faculty" data-label="Факультет">{{ upload.facultyName ?? '—' }}</span>
               <span class="col-name" data-label="Группа / файл">
                 <strong v-if="upload.groupName">{{ upload.groupName }}</strong>
@@ -426,7 +709,8 @@ const toggleUploadWarnings = (id: number) => {
                 </button>
               </span>
             </div>
-          </div>
+            </div>
+          </template>
         </div>
       </div>
     </section>
@@ -438,14 +722,143 @@ const toggleUploadWarnings = (id: number) => {
   margin: -16px 0 24px;
 }
 
-.file-name-hint {
-  display: block;
-  margin-top: 8px;
-  font-size: 13px;
+.schedule-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(16, 18, 21, 0.55);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+.schedule-drop-overlay__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: min(420px, 100%);
+  padding: 36px 28px;
+  border: 2px dashed #4ea3d7;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+  text-align: center;
+}
+
+:global(.dark) .schedule-drop-overlay__panel {
+  background: rgba(30, 34, 40, 0.96);
+  border-color: #6bb5e0;
+}
+
+.schedule-drop-overlay__icon {
+  color: #4ea3d7;
+}
+
+:global(.dark) .schedule-drop-overlay__icon {
+  color: #6bb5e0;
+}
+
+.schedule-drop-overlay__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #101215;
+}
+
+:global(.dark) .schedule-drop-overlay__title {
+  color: #f0f4f7;
+}
+
+.schedule-drop-overlay__hint {
+  margin: 0;
+  font-size: 14px;
   color: #5f6770;
 }
 
-:global(.dark) .file-name-hint {
+:global(.dark) .schedule-drop-overlay__hint {
+  color: #9aa3ad;
+}
+
+.file-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 120px;
+  padding: 20px 16px;
+  border: 2px dashed #c5d3df;
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+:global(.dark) .file-drop-zone {
+  border-color: #3a424d;
+  background: #1a1f25;
+}
+
+.file-drop-zone:hover:not(.is-disabled) {
+  border-color: #4ea3d7;
+  background: #eef6fc;
+}
+
+:global(.dark) .file-drop-zone:hover:not(.is-disabled) {
+  border-color: #6bb5e0;
+  background: #222830;
+}
+
+.file-drop-zone.has-file:not(.is-disabled) {
+  border-color: #4ea3d7;
+  background: #eef6fc;
+}
+
+:global(.dark) .file-drop-zone.has-file:not(.is-disabled) {
+  border-color: #6bb5e0;
+  background: #222830;
+}
+
+.file-drop-zone.is-disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.file-drop-zone__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.file-drop-zone__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #24313f;
+  text-align: center;
+  word-break: break-word;
+}
+
+:global(.dark) .file-drop-zone__title {
+  color: #d5dde6;
+}
+
+.file-drop-zone__hint {
+  font-size: 13px;
+  color: #5f6770;
+  text-align: center;
+}
+
+:global(.dark) .file-drop-zone__hint {
   color: #9aa3ad;
 }
 
@@ -576,6 +989,78 @@ const toggleUploadWarnings = (id: number) => {
   white-space: nowrap;
 }
 
+.group-search-wrap {
+  position: relative;
+}
+
+.group-suggestions {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #d8dee4;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+:global(.dark) .group-suggestions {
+  background: #1e242b;
+  border-color: #3a424c;
+}
+
+.group-suggestions button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.group-suggestions button:hover {
+  background: #f3f5f7;
+}
+
+:global(.dark) .group-suggestions button:hover {
+  background: #2a3139;
+}
+
+.group-suggestions-empty {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #5f6770;
+  background: #fff;
+  border: 1px solid #d8dee4;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+:global(.dark) .group-suggestions-empty {
+  color: #9aa3ad;
+  background: #1e242b;
+  border-color: #3a424c;
+}
+
+.uploads-search {
+  margin-bottom: 16px;
+}
+
 @media (max-width: 768px) {
   .schedule-upload-page.admin-edit-page {
     padding: 16px 10px;
@@ -637,7 +1122,13 @@ const toggleUploadWarnings = (id: number) => {
     word-break: break-word;
   }
 
-  .schedule-upload-page .file-name-hint {
+  .schedule-upload-page .file-drop-zone {
+    min-height: 108px;
+    padding: 16px 12px;
+  }
+
+  .schedule-upload-page .file-drop-zone__title,
+  .schedule-upload-page .file-drop-zone__hint {
     font-size: 12px;
     line-height: 1.4;
     word-break: break-word;
