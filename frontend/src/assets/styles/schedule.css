@@ -537,6 +537,27 @@
   @apply block mb-[8px] font-normal italic;
 }
 
+.schedule-page .modal-info-room-line {
+  @apply inline-flex items-center gap-[8px];
+}
+
+.schedule-page .roman-room-hint-btn {
+  @apply inline-flex items-center justify-center w-[22px] h-[22px] p-0 border-0 bg-transparent cursor-pointer text-[#5f6975] dark:text-[#9aa3ad] transition-colors duration-[200ms];
+}
+
+.schedule-page .roman-room-hint-btn:hover,
+.schedule-page .roman-room-hint-btn[aria-expanded='true'] {
+  @apply text-[#4ea3d7];
+}
+
+.schedule-page .roman-room-hint-icon {
+  @apply block shrink-0;
+}
+
+.schedule-page .roman-room-hint {
+  @apply block mt-[10px] py-[10px] px-[12px] rounded-[8px] text-[14px] leading-[1.4] text-[#5f6975] dark:text-[#9aa3ad] bg-[#f4f7fa] dark:bg-[#252a31] border border-[#d7e0e9] dark:border-[#3a424d];
+}
+
 .schedule-page .edit-form {
   @apply flex flex-col gap-[20px] mb-[24px];
 }

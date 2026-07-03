@@ -55,6 +55,7 @@ import {
   normalizeLessonTypeForForm,
   parseGroupNames,
   parseRoomForForm,
+  getRomanRoomHint,
   resolveLessonGroups,
 } from './scheduleOptions'
 import type { Socket } from 'socket.io-client'
@@ -198,6 +199,7 @@ type CellLesson = DisplayScheduleItem & {
 }
 
 const selectedLesson = ref<CellLesson | null>(null)
+const isRomanRoomHintOpen = ref(false)
 const editingLesson = ref<CellLesson | null>(null)
 const currentWeekIndex = ref(0)
 const selectedWeekKey = ref<string | null>(null)
@@ -830,11 +832,21 @@ const openModal = async (lesson: CellLesson) => {
     group: groups.join(', '),
     linkedGroups: groups,
   }
+  isRomanRoomHintOpen.value = false
 }
 
 const closeModal = () => {
   selectedLesson.value = null
+  isRomanRoomHintOpen.value = false
 }
+
+const selectedRomanRoomHint = computed(() => {
+  if (!selectedLesson.value) {
+    return null
+  }
+
+  return getRomanRoomHint(selectedLesson.value.room)
+})
 
 const resolveDefaultTeacherName = (): string => {
   if (scheduleType.value === 'teachers') {
@@ -2332,7 +2344,46 @@ onUnmounted(() => {
 
               <p>
                 <strong>Аудитория:</strong>
-                {{ selectedLesson.room }}
+                <span class="modal-info-room-line">
+                  {{ selectedLesson.room }}
+                  <button
+                      v-if="selectedRomanRoomHint"
+                      type="button"
+                      class="roman-room-hint-btn"
+                      :aria-expanded="isRomanRoomHintOpen"
+                      aria-label="Где находится аудитория"
+                      @click="isRomanRoomHintOpen = !isRomanRoomHintOpen"
+                  >
+                    <svg
+                        class="roman-room-hint-icon"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                    >
+                      <path
+                          d="M12 17V16.9929M9.13721 9C9.51949 7.84083 10.6566 7 11.9999 7C12.3506 7 12.6872 7.05731 13 7.16262M11.9998 14.8571C11.9998 11.6429 14.9998 12.3571 14.9998 9.85714C14.9998 9.55851 14.9516 9.27058 14.8624 9M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </span>
+                <span
+                    v-if="selectedRomanRoomHint && isRomanRoomHintOpen"
+                    class="roman-room-hint"
+                >
+                  <template v-if="selectedRomanRoomHint.location">
+                    {{ selectedRomanRoomHint.location }}
+                  </template>
+                  <template v-else>
+                    Корпус: {{ selectedRomanRoomHint.building }}
+                  </template>
+                </span>
               </p>
 
               <p>

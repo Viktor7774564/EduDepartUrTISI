@@ -262,7 +262,7 @@ export const SPORTS_HALL_ROOM_LABEL = 'С/З, Т/З' as const
 
 export const BUILDING_OPTIONS = [
   'УК1',
-  'УК4',
+  'УК3',
   'УК5',
   SPORTS_HALL_BUILDING,
   DISTANCE_BUILDING,
@@ -356,6 +356,86 @@ export function isRomanRoom(room: string): boolean {
   }
 
   return isRomanRoomUk3(normalized) || isRomanRoomUk5(normalized)
+}
+
+export type RomanRoomKey = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI' | 'VII' | 'VIII'
+
+export interface RomanRoomInfo {
+  building: 'УК3' | 'УК5'
+  location: string
+}
+
+/** Подсказки по расположению римских аудиторий.*/
+export const ROMAN_ROOM_HINTS: Record<RomanRoomKey, RomanRoomInfo> = {
+  I: { building: 'УК5', location: 'Она находится после общаги' },
+  II: { building: 'УК3', location: 'Она находится в 3-м корпусе (после библиотеки), на первом этаже. ' +
+        'Чтобы дойти до неё, вам нужно спуститься по первой лестнице со второго этажа на первый, повернуть налево и идти до конца коридора. ' +
+        'Затем поверните направо: там будет дверь, за ней — ещё один коридор, в конце которого и находится аудитория' },
+  III: { building: 'УК5', location: 'Она находится в 5-м корпусе (там находится деканат). ' +
+        'Чтобы дойти до неё, идите со стороны первого корпуса по коридору. ' +
+        'Не доходя до холла, поверните в коридор слева. ' +
+        'Войдите в дверь, поверните направо и по левой стороне увидите помещение, в котором и находится аудитория' },
+  IV: { building: 'УК5', location: 'Она находится в 5-м корпусе (там находится деканат). ' +
+        'Чтобы дойти до неё, идите со стороны первого корпуса по коридору. ' +
+        'Не доходя до холла, поверните в коридор слева. ' +
+        'Войдите в дверь, поверните направо и по левой стороне увидите помещение, в котором и находится аудитория' },
+  V: { building: 'УК3', location: 'Она находится в 3-м корпусе (после библиотеки), на четвертом этаже.' },
+  VI: { building: 'УК3', location: 'Она находится в 3-м корпусе (после библиотеки), на четвертом этаже.' },
+  VII: { building: 'УК3', location: 'Она находится в 3-м корпусе (после библиотеки), на третьем этаже.' },
+  VIII: { building: 'УК3', location: 'Она находится в 3-м корпусе (после библиотеки), на третьем этаже.' },
+}
+
+const ROMAN_ROOM_KEYS: RomanRoomKey[] = ['VIII', 'VII', 'III', 'IV', 'VI', 'II', 'V', 'I']
+
+const ROMAN_NUMERIC_ALIASES: Record<string, RomanRoomKey> = {
+  '1': 'I',
+  '2': 'II',
+  '3': 'III',
+  '4': 'IV',
+  '5': 'V',
+  '6': 'VI',
+  '7': 'VII',
+  '8': 'VIII',
+}
+
+export function resolveRomanRoomKey(room: string): RomanRoomKey | null {
+  const { room: roomPart } = parseRoomForForm(room)
+  const normalized = roomPart.trim().toUpperCase()
+
+  if (!normalized) {
+    return null
+  }
+
+  const isRoman = isRomanRoomUk3(normalized) || isRomanRoomUk5(normalized)
+
+  if (!isRoman) {
+    return null
+  }
+
+  for (const key of ROMAN_ROOM_KEYS) {
+    if (normalized === key || normalized.startsWith(`${key} `)) {
+      return key
+    }
+  }
+
+  const numericMatch = normalized.match(/^(\d+)/)
+  const numericKey = numericMatch?.[1]
+
+  if (numericKey) {
+    return ROMAN_NUMERIC_ALIASES[numericKey] ?? null
+  }
+
+  return null
+}
+
+export function getRomanRoomHint(room: string): (RomanRoomInfo & { key: RomanRoomKey }) | null {
+  const key = resolveRomanRoomKey(room)
+
+  if (!key) {
+    return null
+  }
+
+  return { key, ...ROMAN_ROOM_HINTS[key] }
 }
 
 function isKrDefenseLessonType(value: string): boolean {
