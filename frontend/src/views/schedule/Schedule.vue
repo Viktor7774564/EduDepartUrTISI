@@ -72,8 +72,10 @@ const confirmDialog = useConfirmDialogStore()
 let scheduleSocket: Socket | null = null
 let scheduleReloadTimer: ReturnType<typeof setTimeout> | null = null
 let editPreviewTimer: ReturnType<typeof setTimeout> | null = null
+let transferPreviewTimer: ReturnType<typeof setTimeout> | null = null
 let scheduleLoadGeneration = 0
 let editPreviewGeneration = 0
+let transferPreviewGeneration = 0
 
 const reloadScheduleSoon = () => {
   if (scheduleReloadTimer) {
@@ -238,6 +240,10 @@ const isTransferSaving = ref(false)
 const isLoadingTransferRecommendations = ref(false)
 const transferRecommendationError = ref<string | null>(null)
 const transferRecommendations = ref<ScheduleTransferRecommendation[]>([])
+const isLoadingTransferPreview = ref(false)
+const transferPreviewError = ref<string | null>(null)
+const transferPreviewConflicts = ref<string[]>([])
+const transferPreviewRecommendations = ref<ScheduleTransferRecommendation[]>([])
 const isLoadingEditPreview = ref(false)
 const editPreviewError = ref<string | null>(null)
 const editPreviewConflicts = ref<string[]>([])
@@ -1028,7 +1034,16 @@ const visibleEditPreviewRecommendations = computed(() =>
   ),
 )
 
+const visibleTransferPreviewRecommendations = computed(() =>
+  transferPreviewRecommendations.value.filter((recommendation) =>
+    transferTimeSlots.value.some((slot) =>
+      slot.startTime === recommendation.startTime && slot.endTime === recommendation.endTime,
+    ),
+  ),
+)
+
 const hasEditPreviewConflicts = computed(() => editPreviewConflicts.value.length > 0)
+const hasTransferPreviewConflicts = computed(() => transferPreviewConflicts.value.length > 0)
 
 const buildEditPreviewPayload = () => {
   const timeParts = editForm.value.time.split('-').map((part) => part.trim())
@@ -1071,6 +1086,108 @@ const resetEditPreviewState = () => {
   editPreviewError.value = null
   editPreviewConflicts.value = []
   editPreviewRecommendations.value = []
+}
+
+const buildTransferPreviewPayload = () => {
+  const dayOfWeek = DAY_TO_NUMBER[transferForm.value.day]
+  const timeParts = transferForm.value.time.split('-').map((part) => part.trim())
+  const startTime = timeParts[0] ?? ''
+  const endTime = timeParts[1] ?? ''
+  const transferWeekStart = resolveWeekStartDate(transferForm.value.weekKey)
+  const weekStart = transferWeekStart
+    ? formatFullDate(transferWeekStart)
+    : transferringLesson.value?.weekStart ?? resolveWeekStartForSave()
+  const room = formatRoomForApi(transferForm.value.building, transferForm.value.room)
+
+  if (
+    !dayOfWeek
+    || !startTime
+    || !endTime
+    || !weekStart
+    || isHolidayDayInWeek(transferForm.value.day, transferForm.value.weekKey)
+    || isPastWeek(transferForm.value.weekKey)
+  ) {
+    return null
+  }
+
+  return {
+    dayOfWeek,
+    startTime,
+    endTime,
+    weekStart,
+    room,
+  }
+}
+
+const resetTransferPreviewState = () => {
+  isLoadingTransferPreview.value = false
+  transferPreviewError.value = null
+  transferPreviewConflicts.value = []
+  transferPreviewRecommendations.value = []
+}
+
+const loadTransferPreview = async () => {
+  const lesson = transferringLesson.value
+
+  if (!lesson || !isTransferModalVisible.value) {
+    resetTransferPreviewState()
+    return
+  }
+
+  const payload = buildTransferPreviewPayload()
+
+  if (!payload) {
+    resetTransferPreviewState()
+    return
+  }
+
+  const generation = ++transferPreviewGeneration
+  isLoadingTransferPreview.value = true
+  transferPreviewError.value = null
+
+  try {
+    const preview = await previewScheduleItemChanges(lesson.id, payload)
+
+    if (
+      generation !== transferPreviewGeneration
+      || !isTransferModalVisible.value
+      || transferringLesson.value?.id !== lesson.id
+    ) {
+      return
+    }
+
+    transferPreviewConflicts.value = preview.conflicts
+    transferPreviewRecommendations.value = preview.recommendations
+  } catch {
+    if (
+      generation === transferPreviewGeneration
+      && isTransferModalVisible.value
+      && transferringLesson.value?.id === lesson.id
+    ) {
+      transferPreviewConflicts.value = []
+      transferPreviewRecommendations.value = []
+      transferPreviewError.value = 'Не удалось проверить конфликты'
+    }
+  } finally {
+    if (
+      generation === transferPreviewGeneration
+      && isTransferModalVisible.value
+      && transferringLesson.value?.id === lesson.id
+    ) {
+      isLoadingTransferPreview.value = false
+    }
+  }
+}
+
+const scheduleTransferPreviewSoon = () => {
+  if (transferPreviewTimer) {
+    clearTimeout(transferPreviewTimer)
+  }
+
+  transferPreviewTimer = setTimeout(() => {
+    transferPreviewTimer = null
+    void loadTransferPreview()
+  }, 350)
 }
 
 const loadEditPreview = async () => {
@@ -1234,6 +1351,26 @@ watch(
 
 watch(
   () => [
+    isTransferModalVisible.value,
+    transferringLesson.value?.id,
+    transferForm.value.weekKey,
+    transferForm.value.day,
+    transferForm.value.time,
+    transferForm.value.building,
+    transferForm.value.room,
+  ],
+  () => {
+    if (!isTransferModalVisible.value || !transferringLesson.value) {
+      resetTransferPreviewState()
+      return
+    }
+
+    scheduleTransferPreviewSoon()
+  },
+)
+
+watch(
+  () => [
     isEditModalVisible.value,
     editingLesson.value?.id,
     isCreatingLesson.value,
@@ -1289,6 +1426,12 @@ const closeTransferModal = () => {
   isLoadingTransferRecommendations.value = false
   transferRecommendationError.value = null
   transferRecommendations.value = []
+  resetTransferPreviewState()
+
+  if (transferPreviewTimer) {
+    clearTimeout(transferPreviewTimer)
+    transferPreviewTimer = null
+  }
 }
 
 const saveTransfer = async () => {
@@ -1318,6 +1461,15 @@ const saveTransfer = async () => {
 
   if (isPastWeek(transferForm.value.weekKey)) {
     await confirmDialog.alert('Нельзя перенести пару на прошедшую неделю')
+    return
+  }
+
+  if (hasTransferPreviewConflicts.value) {
+    await confirmDialog.alert({
+      title: 'Конфликт в расписании',
+      message: 'Невозможно перенести пару с текущими параметрами.',
+      details: transferPreviewConflicts.value,
+    })
     return
   }
 
@@ -2692,6 +2844,71 @@ onUnmounted(() => {
               </div>
             </div>
 
+            <div class="transfer-recommendations edit-preview">
+              <div class="transfer-recommendations__head">
+                <h3>Проверка конфликтов</h3>
+                <span v-if="isLoadingTransferPreview">Проверяем...</span>
+              </div>
+
+              <p v-if="transferPreviewError" class="form-hint form-hint--danger">
+                {{ transferPreviewError }}
+              </p>
+
+              <div v-else-if="hasTransferPreviewConflicts" class="edit-preview__conflicts">
+                <p class="form-hint form-hint--danger">
+                  С текущими параметрами перенести пару нельзя:
+                </p>
+                <ul class="edit-preview__conflicts-list">
+                  <li
+                      v-for="(conflict, index) in transferPreviewConflicts"
+                      :key="`${index}-${conflict}`"
+                  >
+                    {{ conflict }}
+                  </li>
+                </ul>
+              </div>
+
+              <p
+                  v-else-if="!isLoadingTransferPreview && buildTransferPreviewPayload()"
+                  class="form-hint"
+              >
+                Конфликтов не обнаружено.
+              </p>
+
+              <div
+                  v-if="hasTransferPreviewConflicts && visibleTransferPreviewRecommendations.length > 0"
+                  class="transfer-recommendations__list"
+              >
+                <p class="form-hint">Можно перенести пару:</p>
+                <button
+                    v-for="(recommendation, index) in visibleTransferPreviewRecommendations"
+                    :key="`transfer-preview-${recommendation.day}-${recommendation.startTime}-${recommendation.endTime}`"
+                    type="button"
+                    class="transfer-recommendation"
+                    :class="{
+                      'transfer-recommendation--selected':
+                        transferForm.day === recommendation.day
+                        && transferForm.time === `${recommendation.startTime} - ${recommendation.endTime}`,
+                    }"
+                    @click="applyTransferRecommendation(recommendation)"
+                >
+                  <span class="transfer-recommendation__title">
+                    {{ index === 0 ? 'Лучший вариант: ' : '' }}{{ recommendation.label }}
+                  </span>
+                  <span class="transfer-recommendation__reasons">
+                    {{ recommendation.reasons.join(', ') }}
+                  </span>
+                </button>
+              </div>
+
+              <p
+                  v-else-if="hasTransferPreviewConflicts && !isLoadingTransferPreview"
+                  class="form-hint"
+              >
+                Для выбранных параметров нет свободных вариантов переноса без конфликтов.
+              </p>
+            </div>
+
             <div class="transfer-recommendations">
               <div class="transfer-recommendations__head">
                 <h3>Рекомендуемые варианты</h3>
@@ -2742,7 +2959,7 @@ onUnmounted(() => {
               <button
                   type="button"
                   class="btn btn-primary"
-                  :disabled="isTransferSaving || isHolidayDayInWeek(transferForm.day, transferForm.weekKey) || isPastWeek(transferForm.weekKey)"
+                  :disabled="isTransferSaving || isLoadingTransferPreview || hasTransferPreviewConflicts || isHolidayDayInWeek(transferForm.day, transferForm.weekKey) || isPastWeek(transferForm.weekKey)"
                   @click="saveTransfer"
               >
                 {{ isTransferSaving ? 'Перенос...' : 'Перенести' }}

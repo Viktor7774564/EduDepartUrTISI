@@ -27,6 +27,8 @@ const excel_grid_parser_1 = require("./parser/excel-grid.parser");
 const schedule_conflict_validator_1 = require("./parser/schedule-conflict.validator");
 const schedule_import_service_1 = require("./schedule-import.service");
 const schedule_item_mapper_1 = require("./schedule-item.mapper");
+const notifications_service_1 = require("../notifications/notifications.service");
+const schedule_notifier_service_1 = require("./schedule-notifier.service");
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set([
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -51,12 +53,16 @@ let ScheduleUploadService = class ScheduleUploadService {
     itemsRepository;
     schedulesRepository;
     scheduleImportService;
+    notificationsService;
+    scheduleNotifier;
     schedulesDir = (0, storage_1.getSchedulesDir)();
-    constructor(uploadsRepository, itemsRepository, schedulesRepository, scheduleImportService) {
+    constructor(uploadsRepository, itemsRepository, schedulesRepository, scheduleImportService, notificationsService, scheduleNotifier) {
         this.uploadsRepository = uploadsRepository;
         this.itemsRepository = itemsRepository;
         this.schedulesRepository = schedulesRepository;
         this.scheduleImportService = scheduleImportService;
+        this.notificationsService = notificationsService;
+        this.scheduleNotifier = scheduleNotifier;
     }
     async onModuleInit() {
         await (0, promises_1.mkdir)(this.schedulesDir, { recursive: true });
@@ -374,6 +380,15 @@ let ScheduleUploadService = class ScheduleUploadService {
         if (!uploadWithUser) {
             throw new common_1.NotFoundException('Загруженный файл не найден');
         }
+        this.scheduleNotifier.notifyScheduleChanged('schedule-uploaded');
+        await this.notificationsService.notifyScheduleUploaded({
+            groupName: parsed.groupName,
+            periodStart: parsed.periodStart,
+            periodEnd: parsed.periodEnd,
+            lessonsCount: savedUpload.lessonsCount,
+            isReplacement: obsoleteUploads.length > 0,
+            uploadId: savedUpload.id,
+        });
         return this.toResponse(uploadWithUser);
     }
     async deleteUpload(id, uploadedById) {
@@ -403,6 +418,8 @@ exports.ScheduleUploadService = ScheduleUploadService = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        schedule_import_service_1.ScheduleImportService])
+        schedule_import_service_1.ScheduleImportService,
+        notifications_service_1.NotificationsService,
+        schedule_notifier_service_1.ScheduleNotifierService])
 ], ScheduleUploadService);
 //# sourceMappingURL=schedule-upload.service.js.map

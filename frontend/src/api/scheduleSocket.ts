@@ -9,6 +9,7 @@ export type ScheduleChangedPayload = {
         | 'item-disabled'
         | 'item-deleted'
         | 'preholiday-updated'
+        | 'schedule-uploaded'
 }
 
 export type PreholidayDaysUpdatedPayload = {

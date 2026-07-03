@@ -24,6 +24,8 @@ import {
 } from './parser/schedule-conflict.validator';
 import { ScheduleImportService } from './schedule-import.service';
 import { mapItemToLessonSlot } from './schedule-item.mapper';
+import { NotificationsService } from '../notifications/notifications.service';
+import { ScheduleNotifierService } from './schedule-notifier.service';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
@@ -84,6 +86,8 @@ export class ScheduleUploadService implements OnModuleInit {
         @InjectRepository(Schedule)
         private readonly schedulesRepository: Repository<Schedule>,
         private readonly scheduleImportService: ScheduleImportService,
+        private readonly notificationsService: NotificationsService,
+        private readonly scheduleNotifier: ScheduleNotifierService,
     ) {}
 
     async onModuleInit() {
@@ -548,6 +552,17 @@ export class ScheduleUploadService implements OnModuleInit {
         if (!uploadWithUser) {
             throw new NotFoundException('Загруженный файл не найден');
         }
+
+        this.scheduleNotifier.notifyScheduleChanged('schedule-uploaded');
+
+        await this.notificationsService.notifyScheduleUploaded({
+            groupName: parsed.groupName,
+            periodStart: parsed.periodStart!,
+            periodEnd: parsed.periodEnd!,
+            lessonsCount: savedUpload.lessonsCount,
+            isReplacement: obsoleteUploads.length > 0,
+            uploadId: savedUpload.id,
+        });
 
         return this.toResponse(uploadWithUser);
     }

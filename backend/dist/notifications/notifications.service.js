@@ -69,6 +69,39 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
     async markAllAsRead(userId) {
         await this.notificationsRepository.update({ userId, isRead: false }, { isRead: true });
     }
+    async notifyScheduleUploaded(params) {
+        try {
+            const students = await this.findStudentsByGroupName(params.groupName, null);
+            if (students.length === 0) {
+                this.logger.warn(`Schedule upload notification has no recipients: group=${params.groupName}, uploadId=${params.uploadId}`);
+                return;
+            }
+            const title = params.isReplacement ? 'Обновлено расписание' : 'Загружено расписание';
+            const message = this.buildScheduleUploadMessage(params);
+            const notifications = await this.notificationsRepository.save(students.map((student) => this.notificationsRepository.create({
+                userId: student.id,
+                type: notification_entity_1.NotificationType.SCHEDULE,
+                title,
+                message,
+                payload: {
+                    action: 'schedule-uploaded',
+                    groupName: params.groupName.trim(),
+                    periodStart: params.periodStart,
+                    periodEnd: params.periodEnd,
+                    lessonsCount: params.lessonsCount,
+                    isReplacement: params.isReplacement,
+                    uploadId: params.uploadId,
+                },
+            })));
+            for (const notification of notifications) {
+                this.notificationsGateway.sendToUser(notification.userId, notification);
+                void this.pushNotificationsService.sendToUser(notification.userId, notification);
+            }
+        }
+        catch (error) {
+            this.logger.error(`Failed to send schedule upload notifications: uploadId=${params.uploadId}`, error instanceof Error ? error.stack : String(error));
+        }
+    }
     async notifyPreholidayDayCreated(date) {
         const recipients = await this.usersRepository.find({
             where: { isActive: true },
@@ -228,6 +261,28 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             return 'Сегодня предпраздничный день, пары сокращены.';
         }
         return `${formattedDate} предпраздничный день, пары сокращены.`;
+    }
+    buildScheduleUploadMessage(params) {
+        const group = params.groupName.trim();
+        const period = `с ${params.periodStart} по ${params.periodEnd}`;
+        const lessonsPart = params.lessonsCount > 0
+            ? ` Загружено ${params.lessonsCount} ${this.formatLessonsCountLabel(params.lessonsCount)}.`
+            : '';
+        if (params.isReplacement) {
+            return `Для группы ${group} обновлено расписание за период ${period}.${lessonsPart}`;
+        }
+        return `Для группы ${group} загружено расписание за период ${period}.${lessonsPart}`;
+    }
+    formatLessonsCountLabel(count) {
+        const mod10 = count % 10;
+        const mod100 = count % 100;
+        if (mod10 === 1 && mod100 !== 11) {
+            return 'занятие';
+        }
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+            return 'занятия';
+        }
+        return 'занятий';
     }
     buildScheduleMessage(action, item, previousItem, audience = 'student') {
         const base = this.formatLessonSummary(item);

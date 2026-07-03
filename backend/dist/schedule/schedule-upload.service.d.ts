@@ -4,6 +4,8 @@ import { ScheduleParseStatus, ScheduleUpload } from './entities/schedule-upload.
 import { Schedule, ScheduleType } from './entities/schedule.entity';
 import { ScheduleItem } from './entities/schedule-item.entity';
 import { ScheduleImportService } from './schedule-import.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { ScheduleNotifierService } from './schedule-notifier.service';
 export interface ScheduleUploadResponse {
     id: number;
     scheduleType: ScheduleType;
@@ -32,8 +34,10 @@ export declare class ScheduleUploadService implements OnModuleInit {
     private readonly itemsRepository;
     private readonly schedulesRepository;
     private readonly scheduleImportService;
+    private readonly notificationsService;
+    private readonly scheduleNotifier;
     private readonly schedulesDir;
-    constructor(uploadsRepository: Repository<ScheduleUpload>, itemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>, scheduleImportService: ScheduleImportService);
+    constructor(uploadsRepository: Repository<ScheduleUpload>, itemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>, scheduleImportService: ScheduleImportService, notificationsService: NotificationsService, scheduleNotifier: ScheduleNotifierService);
     onModuleInit(): Promise<void>;
     private assertValidUpload;
     private parseScheduleType;

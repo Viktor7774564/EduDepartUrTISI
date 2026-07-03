@@ -16,6 +16,7 @@ export type ScheduleChangedPayload = {
         | 'item-disabled'
         | 'item-deleted'
         | 'preholiday-updated'
+        | 'schedule-uploaded'
 }
 
 @Injectable()

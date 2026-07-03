@@ -32,6 +32,14 @@ export declare class NotificationsService {
     listForUser(userId: number): Promise<Notification[]>;
     markAsRead(userId: number, id: number): Promise<void>;
     markAllAsRead(userId: number): Promise<void>;
+    notifyScheduleUploaded(params: {
+        groupName: string;
+        periodStart: string;
+        periodEnd: string;
+        lessonsCount: number;
+        isReplacement: boolean;
+        uploadId: number;
+    }): Promise<void>;
     notifyPreholidayDayCreated(date: string): Promise<void>;
     notifyScheduleItemChanged(action: ScheduleNotificationAction, item: ScheduleItem, previousItem?: ScheduleItemNotificationSnapshot): Promise<void>;
     createScheduleItemSnapshot(item: ScheduleItem): ScheduleItemNotificationSnapshot;
@@ -41,6 +49,8 @@ export declare class NotificationsService {
     private normalizeGroupName;
     private getScheduleTitle;
     private buildPreholidayMessage;
+    private buildScheduleUploadMessage;
+    private formatLessonsCountLabel;
     private buildScheduleMessage;
     private buildCreatedScheduleMessage;
     private getScheduleChanges;
