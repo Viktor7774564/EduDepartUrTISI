@@ -12,6 +12,7 @@ import { unregisterPushSubscription } from '@/api/pushNotifications'
 import { useNotificationsStore } from '@/stores/notifications'
 import { hasScheduleManageAccess } from '@/utils/educationDepartmentAccess'
 import MobileBottomNav from '@/components/MobileBottomNav.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const notificationsStore = useNotificationsStore()
 
@@ -289,6 +290,8 @@ const handleVisibilityChange = async () => {
     <footer class="bottombar" :class="{ 'bottombar--mobile-nav': showAuthHeader }">
       <MobileBottomNav v-if="showAuthHeader" />
     </footer>
+
+    <ConfirmDialog />
   </div>
 </template>
 

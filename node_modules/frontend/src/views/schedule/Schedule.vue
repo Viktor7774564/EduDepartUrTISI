@@ -2,6 +2,7 @@
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useConfirmDialogStore } from '@/stores/confirmDialog'
 import { hasScheduleManageAccess } from '@/utils/educationDepartmentAccess'
 import {
   fetchGroupSchedule,
@@ -21,7 +22,7 @@ import {
   disableScheduleItem,
   fetchScheduleItemLinkedGroups,
   fetchScheduleTransferRecommendations,
-  getScheduleAdminErrorMessage,
+  showScheduleAdminError,
   type ScheduleTransferRecommendation,
   updatePreholidayDay,
   updateScheduleItem,
@@ -64,6 +65,7 @@ import PageFrame from "@/components/PageFrame.vue";
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const confirmDialog = useConfirmDialogStore()
 
 let scheduleSocket: Socket | null = null
 let scheduleReloadTimer: ReturnType<typeof setTimeout> | null = null
@@ -731,8 +733,23 @@ const togglePreholidayDay = async (day: string) => {
     return
   }
 
-  const previousKeys = preholidayDayKeys.value
   const shouldMarkAsPreholiday = !preholidayDayKeys.value.includes(key)
+  const dateLabel = getDayDateLabel(day)
+  const dayLabel = dateLabel ? `${day} (${dateLabel})` : day
+
+  const confirmed = await confirmDialog.confirm({
+    message: shouldMarkAsPreholiday
+      ? `Отметить ${dayLabel} как предпраздничный день? Пары в этот день будут по сокращённому расписанию.`
+      : `Снять отметку «предпраздничный» с ${dayLabel}?`,
+    confirmText: shouldMarkAsPreholiday ? 'Отметить' : 'Снять',
+    variant: shouldMarkAsPreholiday ? 'default' : 'danger',
+  })
+
+  if (!confirmed) {
+    return
+  }
+
+  const previousKeys = preholidayDayKeys.value
 
   preholidayDayKeys.value = shouldMarkAsPreholiday
     ? [...preholidayDayKeys.value, key]
@@ -746,7 +763,7 @@ const togglePreholidayDay = async (day: string) => {
     )
   } catch {
     preholidayDayKeys.value = previousKeys
-    alert('Не удалось сохранить предпраздничный день')
+    await confirmDialog.alert('Не удалось сохранить предпраздничный день')
   } finally {
     isSavingPreholidayDay.value = false
   }
@@ -1110,17 +1127,17 @@ const saveTransfer = async () => {
   const room = formatRoomForApi(transferForm.value.building, transferForm.value.room)
 
   if (!dayOfWeek || !startTime || !endTime || !weekStart) {
-    alert('Выберите день и время для переноса')
+    await confirmDialog.alert('Выберите день и время для переноса')
     return
   }
 
   if (isHolidayDayInWeek(transferForm.value.day, transferForm.value.weekKey)) {
-    alert('Нельзя перенести пару на праздничный день')
+    await confirmDialog.alert('Нельзя перенести пару на праздничный день')
     return
   }
 
   if (isPastWeek(transferForm.value.weekKey)) {
-    alert('Нельзя перенести пару на прошедшую неделю')
+    await confirmDialog.alert('Нельзя перенести пару на прошедшую неделю')
     return
   }
 
@@ -1137,7 +1154,7 @@ const saveTransfer = async () => {
     await refreshSchedulePreservingView()
     closeTransferModal()
   } catch (error) {
-    alert(getScheduleAdminErrorMessage(error))
+    await showScheduleAdminError(error)
   } finally {
     isTransferSaving.value = false
   }
@@ -1225,17 +1242,17 @@ const saveEdit = async () => {
         || !editForm.value.name.trim()
         || !editForm.value.type.trim()
     ) {
-      alert('Заполните все обязательные поля: название, тип, день, время, группа')
+      await confirmDialog.alert('Заполните все обязательные поля: название, тип, день, время, группа')
       return
     }
 
     if (groupNames.length > 1 && !isMultiGroupLessonType(editForm.value.type)) {
-      alert('Несколько групп можно указать только для лекций и занятий типа «Особое»')
+      await confirmDialog.alert('Несколько групп можно указать только для лекций и занятий типа «Особое»')
       return
     }
 
     if (isCreatingLesson.value && isHolidayDay(editForm.value.day)) {
-      alert('В праздничный день нельзя добавить пару')
+      await confirmDialog.alert('В праздничный день нельзя добавить пару')
       return
     }
 
@@ -1293,7 +1310,7 @@ const saveEdit = async () => {
       await refreshSchedulePreservingView()
       closeEditModal()
     } catch (error) {
-      alert(getScheduleAdminErrorMessage(error))
+      await showScheduleAdminError(error)
     } finally {
       isSaving.value = false
     }
@@ -1303,7 +1320,7 @@ const saveEdit = async () => {
 
   const departmentId = Number(firstValue.value)
   if (!departmentId) {
-    alert('Не удалось определить кафедру')
+    await confirmDialog.alert('Не удалось определить кафедру')
     return
   }
 
@@ -1318,12 +1335,12 @@ const saveEdit = async () => {
       : undefined
 
   if (!weekStart || !dayOfWeek || !startTime || !endTime) {
-    alert('Заполните все обязательные поля')
+    await confirmDialog.alert('Заполните все обязательные поля')
     return
   }
 
   if (!editForm.value.teacher.trim()) {
-    alert('Выберите преподавателя')
+    await confirmDialog.alert('Выберите преподавателя')
     return
   }
 
@@ -1366,7 +1383,7 @@ const saveEdit = async () => {
     await refreshSchedulePreservingView()
     closeEditModal()
   } catch {
-    alert('Не удалось сохранить консультацию')
+    await confirmDialog.alert('Не удалось сохранить консультацию')
   }
 }
 
@@ -1417,7 +1434,7 @@ const handleLessonTap = (lesson: CellLesson, event: MouseEvent) => {
   openModal(lesson)
 }
 
-const handleCellTap = (
+const handleCellTap = async (
     day: string,
     time: string,
     lessons: CellLesson[],
@@ -1433,7 +1450,7 @@ const handleCellTap = (
   }
 
   if (isHolidayDay(day)) {
-    alert('В праздничный день нельзя добавить пару')
+    await confirmDialog.alert('В праздничный день нельзя добавить пару')
     return
   }
 
@@ -1473,15 +1490,19 @@ const cancelLesson = async () => {
   const linkedGroupsLabel = lesson.groups.length > 1
     ? lesson.groups.join(', ')
     : null
-  const isConfirmed = window.confirm(
-      scheduleType.value === 'consults'
-        ? `Удалить консультацию "${lesson.subject}"?`
-        : isLectureLessonType(lesson.type)
-          ? linkedGroupsLabel
-            ? `Отменить лекцию "${lesson.subject}" для групп ${linkedGroupsLabel}?`
-            : `Отменить лекцию "${lesson.subject}" для всех параллельных групп?`
-          : `Отменить пару "${lesson.subject}"?`,
-  )
+  const confirmMessage = scheduleType.value === 'consults'
+    ? `Удалить консультацию «${lesson.subject}»?`
+    : isLectureLessonType(lesson.type)
+      ? linkedGroupsLabel
+        ? `Отменить лекцию «${lesson.subject}» для групп ${linkedGroupsLabel}?`
+        : `Отменить лекцию «${lesson.subject}» для всех параллельных групп?`
+      : `Отменить пару «${lesson.subject}»?`
+
+  const isConfirmed = await confirmDialog.confirm({
+    message: confirmMessage,
+    confirmText: 'Отменить',
+    variant: 'danger',
+  })
 
   if (!isConfirmed) {
     return
@@ -1492,14 +1513,14 @@ const cancelLesson = async () => {
       await deleteConsultation(contextLesson.value.id)
       await refreshSchedulePreservingView()
     } catch {
-      alert('Не удалось удалить консультацию')
+      await confirmDialog.alert('Не удалось удалить консультацию')
     }
   } else {
     try {
       await disableScheduleItem(contextLesson.value.id)
       await refreshSchedulePreservingView()
     } catch (error) {
-      alert(getScheduleAdminErrorMessage(error))
+      await showScheduleAdminError(error)
     }
   }
 
@@ -1512,7 +1533,7 @@ const emptyCellData = ref<{
   endTime?: string
 } | null>(null)
 
-const showEmptyContextMenu = (
+const showEmptyContextMenu = async (
     event: MouseEvent,
     day: string,
     time: string,
@@ -1525,7 +1546,7 @@ const showEmptyContextMenu = (
   event.preventDefault()
 
   if (isHolidayDay(day)) {
-    alert('В праздничный день нельзя добавить пару')
+    await confirmDialog.alert('В праздничный день нельзя добавить пару')
     return
   }
 
