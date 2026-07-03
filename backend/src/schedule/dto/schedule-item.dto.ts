@@ -119,3 +119,52 @@ export interface ScheduleTransferRecommendationDto {
     label: string;
     reasons: string[];
 }
+
+export class ScheduleItemPreviewDto {
+    @IsOptional()
+    @IsString()
+    @IsNotEmpty()
+    subject?: string;
+
+    @IsOptional()
+    @IsString()
+    @IsNotEmpty()
+    lessonType?: string;
+
+    @IsOptional()
+    @IsString()
+    teacherName?: string;
+
+    @IsOptional()
+    @IsString()
+    room?: string;
+
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    @Max(7)
+    dayOfWeek?: number;
+
+    @IsOptional()
+    @IsString()
+    startTime?: string;
+
+    @IsOptional()
+    @IsString()
+    endTime?: string;
+
+    @IsOptional()
+    @IsString()
+    weekStart?: string;
+
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    @Max(2)
+    subgroup?: number | null;
+}
+
+export interface ScheduleItemPreviewResultDto {
+    conflicts: string[];
+    recommendations: ScheduleTransferRecommendationDto[];
+}

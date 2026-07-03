@@ -26,6 +26,7 @@ const schedule_item_entity_1 = require("./entities/schedule-item.entity");
 const schedule_preholiday_day_entity_1 = require("./entities/schedule-preholiday-day.entity");
 const schedule_item_mapper_1 = require("./schedule-item.mapper");
 const schedule_slot_utils_1 = require("./parser/schedule-slot.utils");
+const lesson_cell_parser_1 = require("./parser/lesson-cell.parser");
 const group_parallel_utils_1 = require("./parser/group-parallel.utils");
 const schedule_conflict_validator_1 = require("./parser/schedule-conflict.validator");
 const lesson_type_entity_1 = require("./entities/lesson-type.entity");
@@ -367,9 +368,126 @@ let ScheduleAdminService = class ScheduleAdminService {
             startTime: dto.startTime ?? item.startTime,
             endTime: dto.endTime ?? item.endTime,
             weekStart: dto.weekStart ?? (0, schedule_slot_utils_1.normalizeWeekStart)(String(item.weekStart)),
-            comment: dto.comment !== undefined
+            comment: 'comment' in dto && dto.comment !== undefined
                 ? (dto.comment?.trim() || null)
                 : undefined,
+        };
+    }
+    buildLessonSlotFromFields(item, fields) {
+        const groupName = item.schedule?.group?.name ?? '';
+        const room = fields.room?.trim() || null;
+        return {
+            groupName,
+            dayOfWeek: fields.dayOfWeek,
+            startTime: (0, schedule_slot_utils_1.normalizeTime)(fields.startTime),
+            endTime: (0, schedule_slot_utils_1.normalizeTime)(fields.endTime),
+            weekStart: (0, schedule_slot_utils_1.normalizeWeekStart)(fields.weekStart),
+            subgroup: fields.subgroup,
+            isDistance: (0, lesson_cell_parser_1.isDistanceRoom)(room),
+            isSameCellParallel: item.isSameCellParallel,
+            isSharedMultiHall: (0, lesson_cell_parser_1.isSharedMultiHallRoom)(room),
+            subject: fields.subject,
+            lessonType: fields.lessonType,
+            teacherPosition: item.teacherPosition ?? '',
+            teacherName: fields.teacherName,
+            room,
+        };
+    }
+    buildTransferRecommendations(sourceSlot, linkedSlots, existingLessons, preholidayDayKeys, targetWeekStart) {
+        const recommendations = [];
+        for (const [dayOfWeekValue, dayLabel] of Object.entries(DAY_LABELS)) {
+            const dayOfWeek = Number(dayOfWeekValue);
+            const dateKey = this.getDateKey(targetWeekStart, dayOfWeek);
+            const isPreholidayDay = Boolean(dateKey && preholidayDayKeys.has(dateKey));
+            if (this.isPublicHoliday(targetWeekStart, dayOfWeek)) {
+                continue;
+            }
+            for (const slot of this.getRecommendationSlots(targetWeekStart, dayOfWeek, preholidayDayKeys)) {
+                const candidates = linkedSlots.map((linkedSlot) => this.buildCandidateSlot(linkedSlot, targetWeekStart, dayOfWeek, slot.startTime, slot.endTime));
+                const isOriginalSlot = candidates.some((candidate) => sourceSlot.weekStart === candidate.weekStart
+                    && sourceSlot.dayOfWeek === candidate.dayOfWeek
+                    && sourceSlot.startTime === candidate.startTime);
+                if (isOriginalSlot) {
+                    continue;
+                }
+                const hasConflict = candidates.some((candidate) => (0, schedule_conflict_validator_1.validateScheduleConflicts)([candidate], existingLessons).length > 0);
+                if (hasConflict) {
+                    continue;
+                }
+                const candidate = candidates.find((entry) => entry.groupName === sourceSlot.groupName)
+                    ?? candidates[0];
+                const { score, reasons } = this.scoreRecommendation(candidate, sourceSlot, existingLessons);
+                const recommendationReasons = isPreholidayDay
+                    ? [...reasons, 'предпраздничный день (короткие пары)']
+                    : reasons;
+                recommendations.push({
+                    weekStart: targetWeekStart,
+                    dayOfWeek,
+                    day: dayLabel,
+                    startTime: candidate.startTime,
+                    endTime: candidate.endTime,
+                    label: `${dayLabel}, ${candidate.startTime} - ${candidate.endTime}`,
+                    reasons: recommendationReasons,
+                    score,
+                });
+            }
+        }
+        return recommendations
+            .sort((left, right) => {
+            if (right.score !== left.score) {
+                return right.score - left.score;
+            }
+            if (left.dayOfWeek !== right.dayOfWeek) {
+                return left.dayOfWeek - right.dayOfWeek;
+            }
+            return left.startTime.localeCompare(right.startTime);
+        })
+            .slice(0, 5)
+            .map((recommendation) => ({
+            weekStart: recommendation.weekStart,
+            dayOfWeek: recommendation.dayOfWeek,
+            day: recommendation.day,
+            startTime: recommendation.startTime,
+            endTime: recommendation.endTime,
+            label: recommendation.label,
+            reasons: recommendation.reasons,
+        }));
+    }
+    async previewItemChanges(id, dto) {
+        const item = await this.loadItemWithRelations(id);
+        const linkedItems = await this.findLinkedLectureItems(item);
+        const linkedItemIds = linkedItems.map((entry) => entry.id);
+        const existingLessons = await this.loadActiveLessonSlots(linkedItemIds);
+        const conflictMessages = [];
+        for (const linkedItem of linkedItems) {
+            const slotFields = this.buildUpdateSlotFields(linkedItem, dto);
+            const proposedSlot = this.buildLessonSlotFromFields(linkedItem, slotFields);
+            const conflicts = (0, schedule_conflict_validator_1.validateScheduleConflicts)([proposedSlot], existingLessons);
+            conflictMessages.push(...conflicts.map((conflict) => conflict.message));
+        }
+        const uniqueConflicts = [...new Set(conflictMessages)];
+        if (uniqueConflicts.length === 0) {
+            return {
+                conflicts: [],
+                recommendations: [],
+            };
+        }
+        const sourceItem = linkedItems.find((entry) => entry.id === id) ?? item;
+        const sourceFields = this.buildUpdateSlotFields(sourceItem, dto);
+        const sourceSlot = this.buildLessonSlotFromFields(sourceItem, sourceFields);
+        const targetWeekStart = (0, schedule_slot_utils_1.normalizeWeekStart)(sourceFields.weekStart);
+        if (this.isWeekInPast(targetWeekStart)) {
+            return {
+                conflicts: uniqueConflicts,
+                recommendations: [],
+            };
+        }
+        const linkedSlots = linkedItems.map((linkedItem) => this.buildLessonSlotFromFields(linkedItem, this.buildUpdateSlotFields(linkedItem, dto)));
+        const preholidayDayKeys = await this.loadPreholidayDayKeys(targetWeekStart);
+        const recommendations = this.buildTransferRecommendations(sourceSlot, linkedSlots, existingLessons, preholidayDayKeys, targetWeekStart);
+        return {
+            conflicts: uniqueConflicts,
+            recommendations,
         };
     }
     parseRecommendationDate(weekStart, dayOfWeek) {
@@ -593,64 +711,7 @@ let ScheduleAdminService = class ScheduleAdminService {
         }
         const existingLessons = await this.loadActiveLessonSlots(linkedItemIds);
         const preholidayDayKeys = await this.loadPreholidayDayKeys(targetWeekStart);
-        const recommendations = [];
-        for (const [dayOfWeekValue, dayLabel] of Object.entries(DAY_LABELS)) {
-            const dayOfWeek = Number(dayOfWeekValue);
-            const dateKey = this.getDateKey(targetWeekStart, dayOfWeek);
-            const isPreholidayDay = Boolean(dateKey && preholidayDayKeys.has(dateKey));
-            if (this.isPublicHoliday(targetWeekStart, dayOfWeek)) {
-                continue;
-            }
-            for (const slot of this.getRecommendationSlots(targetWeekStart, dayOfWeek, preholidayDayKeys)) {
-                const candidates = linkedSlots.map((linkedSlot) => this.buildCandidateSlot(linkedSlot, targetWeekStart, dayOfWeek, slot.startTime, slot.endTime));
-                const isOriginalSlot = candidates.some((candidate) => sourceSlot.weekStart === candidate.weekStart
-                    && sourceSlot.dayOfWeek === candidate.dayOfWeek
-                    && sourceSlot.startTime === candidate.startTime);
-                if (isOriginalSlot) {
-                    continue;
-                }
-                const hasConflict = candidates.some((candidate) => (0, schedule_conflict_validator_1.validateScheduleConflicts)([candidate], existingLessons).length > 0);
-                if (hasConflict) {
-                    continue;
-                }
-                const candidate = candidates.find((entry) => entry.groupName === sourceSlot.groupName)
-                    ?? candidates[0];
-                const { score, reasons } = this.scoreRecommendation(candidate, sourceSlot, existingLessons);
-                const recommendationReasons = isPreholidayDay
-                    ? [...reasons, 'предпраздничный день (короткие пары)']
-                    : reasons;
-                recommendations.push({
-                    weekStart: targetWeekStart,
-                    dayOfWeek,
-                    day: dayLabel,
-                    startTime: candidate.startTime,
-                    endTime: candidate.endTime,
-                    label: `${dayLabel}, ${candidate.startTime} - ${candidate.endTime}`,
-                    reasons: recommendationReasons,
-                    score,
-                });
-            }
-        }
-        return recommendations
-            .sort((left, right) => {
-            if (right.score !== left.score) {
-                return right.score - left.score;
-            }
-            if (left.dayOfWeek !== right.dayOfWeek) {
-                return left.dayOfWeek - right.dayOfWeek;
-            }
-            return left.startTime.localeCompare(right.startTime);
-        })
-            .slice(0, 5)
-            .map((recommendation) => ({
-            weekStart: recommendation.weekStart,
-            dayOfWeek: recommendation.dayOfWeek,
-            day: recommendation.day,
-            startTime: recommendation.startTime,
-            endTime: recommendation.endTime,
-            label: recommendation.label,
-            reasons: recommendation.reasons,
-        }));
+        return this.buildTransferRecommendations(sourceSlot, linkedSlots, existingLessons, preholidayDayKeys, targetWeekStart);
     }
     async getLinkedGroupNames(id) {
         const item = await this.loadItemWithRelations(id);

@@ -3,7 +3,7 @@ import { Group } from '../academic/entities/group.entity';
 import { Direction } from '../academic/entities/direction.entity';
 import { Subject } from '../academic/entities/subject.entity';
 import { Subgroup } from '../academic/entities/subgroup.entity';
-import { CreateScheduleItemDto, ScheduleTransferRecommendationDto, UpdateScheduleItemDto } from './dto/schedule-item.dto';
+import { CreateScheduleItemDto, ScheduleItemPreviewDto, ScheduleItemPreviewResultDto, ScheduleTransferRecommendationDto, UpdateScheduleItemDto } from './dto/schedule-item.dto';
 import { Schedule } from './entities/schedule.entity';
 import { ScheduleItem } from './entities/schedule-item.entity';
 import { SchedulePreholidayDay } from './entities/schedule-preholiday-day.entity';
@@ -43,6 +43,9 @@ export declare class ScheduleAdminService {
     private assertNoConflicts;
     private findLinkedLectureItems;
     private buildUpdateSlotFields;
+    private buildLessonSlotFromFields;
+    private buildTransferRecommendations;
+    previewItemChanges(id: number, dto: ScheduleItemPreviewDto): Promise<ScheduleItemPreviewResultDto>;
     private parseRecommendationDate;
     private isPublicHoliday;
     private isWeekInPast;

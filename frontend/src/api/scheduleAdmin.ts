@@ -40,6 +40,23 @@ export interface ScheduleTransferRecommendation {
   reasons: string[]
 }
 
+export interface ScheduleItemPreviewPayload {
+  subject?: string
+  lessonType?: string
+  teacherName?: string
+  room?: string
+  dayOfWeek?: number
+  startTime?: string
+  endTime?: string
+  weekStart?: string
+  subgroup?: number | null
+}
+
+export interface ScheduleItemPreviewResult {
+  conflicts: string[]
+  recommendations: ScheduleTransferRecommendation[]
+}
+
 export async function fetchScheduleItemLinkedGroups(id: number): Promise<string[]> {
   const response = await api.get<string[]>(
     `/education-department/schedules/items/${id}/linked-groups`,
@@ -79,6 +96,18 @@ export async function fetchScheduleTransferRecommendations(
       params: weekStart ? { weekStart } : undefined,
     },
   )
+  return response.data
+}
+
+export async function previewScheduleItemChanges(
+  id: number,
+  payload: ScheduleItemPreviewPayload,
+): Promise<ScheduleItemPreviewResult> {
+  const response = await api.post<ScheduleItemPreviewResult>(
+    `/education-department/schedules/items/${id}/preview`,
+    payload,
+  )
+
   return response.data
 }
 

@@ -35,3 +35,18 @@ export interface ScheduleTransferRecommendationDto {
     label: string;
     reasons: string[];
 }
+export declare class ScheduleItemPreviewDto {
+    subject?: string;
+    lessonType?: string;
+    teacherName?: string;
+    room?: string;
+    dayOfWeek?: number;
+    startTime?: string;
+    endTime?: string;
+    weekStart?: string;
+    subgroup?: number | null;
+}
+export interface ScheduleItemPreviewResultDto {
+    conflicts: string[];
+    recommendations: ScheduleTransferRecommendationDto[];
+}

@@ -22,6 +22,7 @@ import {
   disableScheduleItem,
   fetchScheduleItemLinkedGroups,
   fetchScheduleTransferRecommendations,
+  previewScheduleItemChanges,
   showScheduleAdminError,
   type ScheduleTransferRecommendation,
   updatePreholidayDay,
@@ -70,7 +71,9 @@ const confirmDialog = useConfirmDialogStore()
 
 let scheduleSocket: Socket | null = null
 let scheduleReloadTimer: ReturnType<typeof setTimeout> | null = null
+let editPreviewTimer: ReturnType<typeof setTimeout> | null = null
 let scheduleLoadGeneration = 0
+let editPreviewGeneration = 0
 
 const reloadScheduleSoon = () => {
   if (scheduleReloadTimer) {
@@ -235,6 +238,10 @@ const isTransferSaving = ref(false)
 const isLoadingTransferRecommendations = ref(false)
 const transferRecommendationError = ref<string | null>(null)
 const transferRecommendations = ref<ScheduleTransferRecommendation[]>([])
+const isLoadingEditPreview = ref(false)
+const editPreviewError = ref<string | null>(null)
+const editPreviewConflicts = ref<string[]>([])
+const editPreviewRecommendations = ref<ScheduleTransferRecommendation[]>([])
 const editSlotContext = ref<{
   weekLabel: string
   weekStart: string | null
@@ -970,6 +977,15 @@ const closeEditModal = () => {
   isCreatingLesson.value = false
   emptyCellData.value = null
   editSlotContext.value = null
+  isLoadingEditPreview.value = false
+  editPreviewError.value = null
+  editPreviewConflicts.value = []
+  editPreviewRecommendations.value = []
+
+  if (editPreviewTimer) {
+    clearTimeout(editPreviewTimer)
+    editPreviewTimer = null
+  }
 }
 
 const formatTimeSlotValue = (slot: TimeSlot): string => `${slot.startTime} - ${slot.endTime}`
@@ -1003,6 +1019,134 @@ const visibleTransferRecommendations = computed(() =>
     ),
   ),
 )
+
+const visibleEditPreviewRecommendations = computed(() =>
+  editPreviewRecommendations.value.filter((recommendation) =>
+    editTimeSlots.value.some((slot) =>
+      slot.startTime === recommendation.startTime && slot.endTime === recommendation.endTime,
+    ),
+  ),
+)
+
+const hasEditPreviewConflicts = computed(() => editPreviewConflicts.value.length > 0)
+
+const buildEditPreviewPayload = () => {
+  const timeParts = editForm.value.time.split('-').map((part) => part.trim())
+  const startTime = timeParts[0] ?? ''
+  const endTime = timeParts[1] ?? ''
+  const weekStart = resolveWeekStartForSave()
+  const dayOfWeek = DAY_TO_NUMBER[editForm.value.day]
+  const room = formatRoomForApi(editForm.value.building, editForm.value.room)
+  const subgroupValue = showSubgroupField.value && editForm.value.subgroup
+    ? Number(editForm.value.subgroup)
+    : null
+
+  if (
+    !editingLesson.value
+    || !weekStart
+    || !dayOfWeek
+    || !startTime
+    || !endTime
+    || !editForm.value.name.trim()
+    || !editForm.value.type.trim()
+  ) {
+    return null
+  }
+
+  return {
+    subject: editForm.value.name.trim(),
+    lessonType: editForm.value.type.trim(),
+    teacherName: editForm.value.teacher.trim() || undefined,
+    room,
+    dayOfWeek,
+    startTime,
+    endTime,
+    weekStart,
+    subgroup: subgroupValue,
+  }
+}
+
+const resetEditPreviewState = () => {
+  isLoadingEditPreview.value = false
+  editPreviewError.value = null
+  editPreviewConflicts.value = []
+  editPreviewRecommendations.value = []
+}
+
+const loadEditPreview = async () => {
+  const lesson = editingLesson.value
+
+  if (
+    !lesson
+    || !isEditModalVisible.value
+    || isCreatingLesson.value
+    || isConsultationSchedule.value
+    || !canManagePairs.value
+  ) {
+    resetEditPreviewState()
+    return
+  }
+
+  const payload = buildEditPreviewPayload()
+
+  if (!payload) {
+    resetEditPreviewState()
+    return
+  }
+
+  const generation = ++editPreviewGeneration
+  isLoadingEditPreview.value = true
+  editPreviewError.value = null
+
+  try {
+    const preview = await previewScheduleItemChanges(lesson.id, payload)
+
+    if (
+      generation !== editPreviewGeneration
+      || !isEditModalVisible.value
+      || editingLesson.value?.id !== lesson.id
+    ) {
+      return
+    }
+
+    editPreviewConflicts.value = preview.conflicts
+    editPreviewRecommendations.value = preview.recommendations
+  } catch {
+    if (
+      generation === editPreviewGeneration
+      && isEditModalVisible.value
+      && editingLesson.value?.id === lesson.id
+    ) {
+      editPreviewConflicts.value = []
+      editPreviewRecommendations.value = []
+      editPreviewError.value = 'Не удалось проверить конфликты'
+    }
+  } finally {
+    if (
+      generation === editPreviewGeneration
+      && isEditModalVisible.value
+      && editingLesson.value?.id === lesson.id
+    ) {
+      isLoadingEditPreview.value = false
+    }
+  }
+}
+
+const scheduleEditPreviewSoon = () => {
+  if (editPreviewTimer) {
+    clearTimeout(editPreviewTimer)
+  }
+
+  editPreviewTimer = setTimeout(() => {
+    editPreviewTimer = null
+    void loadEditPreview()
+  }, 350)
+}
+
+const applyEditPreviewRecommendation = (recommendation: ScheduleTransferRecommendation) => {
+  editForm.value.day = recommendation.day
+  editForm.value.time = `${recommendation.startTime} - ${recommendation.endTime}`
+}
 
 const resolveTransferWeekStartForRecommendations = (): string | null => {
   const transferWeekStart = resolveWeekStartDate(transferForm.value.weekKey)
@@ -1085,6 +1229,30 @@ watch(
     }
 
     void loadTransferRecommendations()
+  },
+)
+
+watch(
+  () => [
+    isEditModalVisible.value,
+    editingLesson.value?.id,
+    isCreatingLesson.value,
+    editForm.value.day,
+    editForm.value.time,
+    editForm.value.building,
+    editForm.value.room,
+    editForm.value.teacher,
+    editForm.value.subgroup,
+    editForm.value.name,
+    editForm.value.type,
+  ],
+  () => {
+    if (!isEditModalVisible.value || isCreatingLesson.value || !editingLesson.value) {
+      resetEditPreviewState()
+      return
+    }
+
+    scheduleEditPreviewSoon()
   },
 )
 
@@ -1965,6 +2133,10 @@ onUnmounted(() => {
     clearTimeout(scheduleReloadTimer)
   }
 
+  if (editPreviewTimer) {
+    clearTimeout(editPreviewTimer)
+  }
+
   scheduleSocket?.removeAllListeners()
   scheduleSocket?.disconnect()
   scheduleSocket = null
@@ -2246,53 +2418,56 @@ onUnmounted(() => {
         </p>
       </div>
     </section>
-
-    <div
-        v-if="isMenuVisible && isMobileLayout"
-        class="context-menu-overlay"
-        @click="closeMenu"
-    />
-
-    <ul
-        v-if="isMenuVisible"
-        class="context-menu"
-        :style="contextMenuStyle"
-    >
-      <!-- Если слот пустой -->
-      <template v-if="!contextLesson">
-
-        <li v-if="canManagePairs || (canEdit && isConsultationSchedule)" @click="commandAddLesson">
-          {{ isConsultationSchedule ? 'Добавить консультацию' : 'Добавить пару' }}
-        </li>
-
-      </template>
-
-      <!-- Если есть пара -->
-      <template v-else>
-
-        <li @click="viewLesson">
-          Просмотр
-        </li>
-
-        <li v-if="canManagePairs || canEdit" @click="EditLesson">
-          Внести изменения
-        </li>
-
-        <li v-if="canManagePairs" @click="transferLesson">
-          Перенести пару
-        </li>
-
-        <li v-if="canManagePairs || canEdit" @click="cancelLesson">
-          {{ isConsultationSchedule ? 'Удалить консультацию' : 'Отменить пару' }}
-        </li>
-
-      </template>
-
-      <li @click="closeMenu">
-        Отмена
-      </li>
-    </ul>
   </PageFrame>
+
+  <Teleport to="body">
+    <template v-if="isMenuVisible">
+      <div
+          v-if="isMobileLayout"
+          class="context-menu-overlay"
+          @click.self="closeMenu()"
+      />
+
+      <ul
+          class="context-menu"
+          :style="contextMenuStyle"
+      >
+        <!-- Если слот пустой -->
+        <template v-if="!contextLesson">
+
+          <li v-if="canManagePairs || (canEdit && isConsultationSchedule)" @click="commandAddLesson">
+            {{ isConsultationSchedule ? 'Добавить консультацию' : 'Добавить пару' }}
+          </li>
+
+        </template>
+
+        <!-- Если есть пара -->
+        <template v-else>
+
+          <li @click="viewLesson">
+            Просмотр
+          </li>
+
+          <li v-if="canManagePairs || canEdit" @click="EditLesson">
+            Внести изменения
+          </li>
+
+          <li v-if="canManagePairs" @click="transferLesson">
+            Перенести пару
+          </li>
+
+          <li v-if="canManagePairs || canEdit" @click="cancelLesson">
+            {{ isConsultationSchedule ? 'Удалить консультацию' : 'Отменить пару' }}
+          </li>
+
+        </template>
+
+        <li @click="closeMenu()">
+          Отмена
+        </li>
+      </ul>
+    </template>
+  </Teleport>
 
   <Teleport to="body">
     <div
@@ -2762,6 +2937,74 @@ onUnmounted(() => {
               </div>
             </div>
 
+            <div
+                v-if="canManagePairs && !isCreatingLesson && !isConsultationSchedule"
+                class="transfer-recommendations edit-preview"
+            >
+              <div class="transfer-recommendations__head">
+                <h3>Проверка конфликтов</h3>
+                <span v-if="isLoadingEditPreview">Проверяем...</span>
+              </div>
+
+              <p v-if="editPreviewError" class="form-hint form-hint--danger">
+                {{ editPreviewError }}
+              </p>
+
+              <div v-else-if="hasEditPreviewConflicts" class="edit-preview__conflicts">
+                <p class="form-hint form-hint--danger">
+                  С текущими параметрами сохранить пару нельзя:
+                </p>
+                <ul class="edit-preview__conflicts-list">
+                  <li
+                      v-for="(conflict, index) in editPreviewConflicts"
+                      :key="`${index}-${conflict}`"
+                  >
+                    {{ conflict }}
+                  </li>
+                </ul>
+              </div>
+
+              <p
+                  v-else-if="!isLoadingEditPreview && buildEditPreviewPayload()"
+                  class="form-hint"
+              >
+                Конфликтов не обнаружено.
+              </p>
+
+              <div
+                  v-if="hasEditPreviewConflicts && visibleEditPreviewRecommendations.length > 0"
+                  class="transfer-recommendations__list"
+              >
+                <p class="form-hint">Можно перенести пару:</p>
+                <button
+                    v-for="(recommendation, index) in visibleEditPreviewRecommendations"
+                    :key="`edit-${recommendation.day}-${recommendation.startTime}-${recommendation.endTime}`"
+                    type="button"
+                    class="transfer-recommendation"
+                    :class="{
+                      'transfer-recommendation--selected':
+                        editForm.day === recommendation.day
+                        && editForm.time === `${recommendation.startTime} - ${recommendation.endTime}`,
+                    }"
+                    @click="applyEditPreviewRecommendation(recommendation)"
+                >
+                  <span class="transfer-recommendation__title">
+                    {{ index === 0 ? 'Лучший вариант: ' : '' }}{{ recommendation.label }}
+                  </span>
+                  <span class="transfer-recommendation__reasons">
+                    {{ recommendation.reasons.join(', ') }}
+                  </span>
+                </button>
+              </div>
+
+              <p
+                  v-else-if="hasEditPreviewConflicts && !isLoadingEditPreview"
+                  class="form-hint"
+              >
+                Для выбранных параметров нет свободных вариантов переноса без конфликтов.
+              </p>
+            </div>
+
             <div class="edit-actions">
               <button type="button" class="btn btn-secondary" @click="closeEditModal">
                 Отмена
@@ -2769,7 +3012,7 @@ onUnmounted(() => {
               <button
                   type="button"
                   class="btn btn-primary"
-                  :disabled="isSaving"
+                  :disabled="isSaving || hasEditPreviewConflicts"
                   @click="saveEdit"
               >
                 {{ isSaving ? 'Сохранение...' : 'Сохранить' }}

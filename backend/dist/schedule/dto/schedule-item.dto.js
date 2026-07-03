@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ScheduleTransferRecommendationQueryDto = exports.UpdateScheduleItemDto = exports.CreateScheduleItemDto = void 0;
+exports.ScheduleItemPreviewDto = exports.ScheduleTransferRecommendationQueryDto = exports.UpdateScheduleItemDto = exports.CreateScheduleItemDto = void 0;
 const class_validator_1 = require("class-validator");
 class CreateScheduleItemDto {
     groupName;
@@ -161,4 +161,67 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], ScheduleTransferRecommendationQueryDto.prototype, "weekStart", void 0);
+class ScheduleItemPreviewDto {
+    subject;
+    lessonType;
+    teacherName;
+    room;
+    dayOfWeek;
+    startTime;
+    endTime;
+    weekStart;
+    subgroup;
+}
+exports.ScheduleItemPreviewDto = ScheduleItemPreviewDto;
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], ScheduleItemPreviewDto.prototype, "subject", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], ScheduleItemPreviewDto.prototype, "lessonType", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ScheduleItemPreviewDto.prototype, "teacherName", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ScheduleItemPreviewDto.prototype, "room", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(7),
+    __metadata("design:type", Number)
+], ScheduleItemPreviewDto.prototype, "dayOfWeek", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ScheduleItemPreviewDto.prototype, "startTime", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ScheduleItemPreviewDto.prototype, "endTime", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ScheduleItemPreviewDto.prototype, "weekStart", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(2),
+    __metadata("design:type", Object)
+], ScheduleItemPreviewDto.prototype, "subgroup", void 0);
 //# sourceMappingURL=schedule-item.dto.js.map

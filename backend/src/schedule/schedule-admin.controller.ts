@@ -14,6 +14,8 @@ import {
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import {
     CreateScheduleItemDto,
+    ScheduleItemPreviewDto,
+    ScheduleItemPreviewResultDto,
     ScheduleTransferRecommendationDto,
     ScheduleTransferRecommendationQueryDto,
     UpdateScheduleItemDto,
@@ -40,6 +42,14 @@ export class ScheduleAdminController {
         @Query() query: ScheduleTransferRecommendationQueryDto,
     ): Promise<ScheduleTransferRecommendationDto[]> {
         return this.scheduleAdminService.getTransferRecommendations(id, query.weekStart);
+    }
+
+    @Post(':id/preview')
+    previewItemChanges(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: ScheduleItemPreviewDto,
+    ): Promise<ScheduleItemPreviewResultDto> {
+        return this.scheduleAdminService.previewItemChanges(id, dto);
     }
 
     @Get(':id/linked-groups')

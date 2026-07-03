@@ -638,6 +638,14 @@
   @apply block mt-[4px] text-[12px] leading-[1.35] text-[#5f6975] dark:text-[#9aa3ad];
 }
 
+.schedule-page .edit-preview__conflicts-list {
+  @apply m-0 pl-[18px] text-[13px] leading-[1.45] text-[#c43636];
+}
+
+.schedule-page .edit-preview__conflicts-list li + li {
+  @apply mt-[6px];
+}
+
 .schedule-page .edit-actions {
   @apply flex gap-[16px] justify-end pt-[20px] border-t border-[#d7e0e9] dark:border-[#3a424d];
 }
@@ -1021,7 +1029,7 @@
 }
 
 .context-menu {
-  @apply fixed min-w-[220px] py-[6px] m-0 list-none bg-white dark:bg-[#252a31] border border-[#d9dfe5] dark:border-[#3a424d] rounded-[12px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.36)] z-[3000];
+  @apply fixed min-w-[220px] py-[6px] m-0 list-none bg-white dark:bg-[#252a31] border border-[#d9dfe5] dark:border-[#3a424d] rounded-[12px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.36)] z-[5001];
 }
 
 .context-menu li {
@@ -1034,16 +1042,25 @@
 
 @media (max-width: 640px) {
   .context-menu-overlay {
-    @apply fixed inset-0 z-[2999] bg-[rgba(0,0,0,0.28)] dark:bg-[rgba(0,0,0,0.5)];
+    @apply fixed inset-0 z-[5000] bg-[rgba(0,0,0,0.28)] dark:bg-[rgba(0,0,0,0.5)];
   }
 
   .context-menu {
-    @apply left-0 right-0 bottom-0 top-auto w-full min-w-0 max-w-none max-h-[70vh] overflow-y-auto px-[12px] pt-[10px] rounded-t-[18px] rounded-b-none shadow-[0_-10px_30px_rgba(0,0,0,0.18)] dark:shadow-[0_-10px_30px_rgba(0,0,0,0.36)] bg-white dark:bg-[#1e2228];
-    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    @apply left-0 right-0 top-auto w-full min-w-0 max-w-none overflow-y-auto px-[12px] pt-[10px] rounded-t-[18px] rounded-b-none shadow-[0_-10px_30px_rgba(0,0,0,0.18)] dark:shadow-[0_-10px_30px_rgba(0,0,0,0.36)] bg-white dark:bg-[#1e2228];
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    max-height: min(
+      70vh,
+      calc(100dvh - 56px - env(safe-area-inset-bottom, 0px) - 16px)
+    );
+    padding-bottom: 12px;
     transform: none !important;
   }
 
   .context-menu li {
     @apply py-[14px] text-[15px] rounded-[10px];
+  }
+
+  .context-menu li:last-child {
+    @apply mt-[4px] font-semibold text-center bg-[#f5f8fb] dark:bg-[#2a3038];
   }
 }
