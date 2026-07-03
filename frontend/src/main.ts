@@ -11,6 +11,7 @@ import './assets/styles/not-found.css'
 import './assets/styles/schedule.css'
 import './assets/styles/notifications.css'
 import './assets/styles/settings.css'
+import './assets/styles/confirm-dialog.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

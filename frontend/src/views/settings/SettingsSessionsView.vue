@@ -4,9 +4,11 @@ import { useRouter } from 'vue-router'
 import SettingsSectionLayout from '@/components/SettingsSectionLayout.vue'
 import { fetchUserSessions, revokeUserSession, type UserSession } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { useConfirmDialogStore } from '@/stores/confirmDialog'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const confirmDialog = useConfirmDialogStore()
 
 const sessions = ref<UserSession[]>([])
 const isLoading = ref(true)
@@ -47,7 +49,13 @@ const revokeSession = async (session: UserSession) => {
     ? 'Завершить текущую сессию? Вы будете перенаправлены на страницу входа.'
     : 'Завершить эту сессию на другом устройстве?'
 
-  if (!window.confirm(message)) {
+  const confirmed = await confirmDialog.confirm({
+    message,
+    confirmText: 'Завершить',
+    variant: session.isCurrent ? 'danger' : 'default',
+  })
+
+  if (!confirmed) {
     return
   }
 

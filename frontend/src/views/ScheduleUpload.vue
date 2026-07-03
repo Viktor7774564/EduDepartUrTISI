@@ -14,6 +14,7 @@ import {
   type ScheduleUploadItem,
 } from '@/api/scheduleUpload'
 import { fetchScheduleGroups, type ScheduleGroupInfo } from '@/api/schedule'
+import { useConfirmDialogStore } from '@/stores/confirmDialog'
 import {
   getGroupFaculty,
   studentFacultySelectOptions,
@@ -21,6 +22,7 @@ import {
 
 const router = useRouter()
 const authStore = useAuthStore()
+const confirmDialog = useConfirmDialogStore()
 
 const uploads = ref<ScheduleUploadItem[]>([])
 const selectedFaculty = ref('')
@@ -422,7 +424,13 @@ async function handleUpload() {
 }
 
 async function handleDelete(id: number) {
-  if (!window.confirm('Удалить загруженный файл?')) {
+  const confirmed = await confirmDialog.confirm({
+    message: 'Удалить загруженный файл?',
+    confirmText: 'Удалить',
+    variant: 'danger',
+  })
+
+  if (!confirmed) {
     return
   }
 

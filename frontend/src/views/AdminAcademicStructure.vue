@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageFrame from '@/components/PageFrame.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useConfirmDialogStore } from '@/stores/confirmDialog'
 import { getErrorRoute } from '@/config/errorPages'
 import {
   createAcademicDirection,
@@ -27,6 +28,7 @@ type TabId = 'teacher' | 'staff' | 'groups'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const confirmDialog = useConfirmDialogStore()
 
 const activeTab = ref<TabId>('teacher')
 const overview = ref<AcademicStructureOverview | null>(null)
@@ -196,7 +198,11 @@ async function deleteDepartment(department: AcademicDepartment) {
   }
 
   const label = department.type === 'teacher' ? 'кафедру' : 'отдел'
-  const confirmed = window.confirm(`Удалить ${label} «${department.name}»?`)
+  const confirmed = await confirmDialog.confirm({
+    message: `Удалить ${label} «${department.name}»?`,
+    confirmText: 'Удалить',
+    variant: 'danger',
+  })
 
   if (!confirmed) {
     return
@@ -220,7 +226,11 @@ async function deleteGroup(group: AcademicGroup) {
     return
   }
 
-  const confirmed = window.confirm(`Удалить группу ${group.name}?`)
+  const confirmed = await confirmDialog.confirm({
+    message: `Удалить группу ${group.name}?`,
+    confirmText: 'Удалить',
+    variant: 'danger',
+  })
 
   if (!confirmed) {
     return
@@ -244,7 +254,11 @@ async function deleteDirection(direction: AcademicDirection) {
     return
   }
 
-  const confirmed = window.confirm(`Удалить направление «${direction.name}»?`)
+  const confirmed = await confirmDialog.confirm({
+    message: `Удалить направление «${direction.name}»?`,
+    confirmText: 'Удалить',
+    variant: 'danger',
+  })
 
   if (!confirmed) {
     return
@@ -276,9 +290,10 @@ async function mergeDirection(sourceDirection: AcademicDirection) {
     return
   }
 
-  const confirmed = window.confirm(
-      `Объединить «${sourceDirection.name}» с «${target.name}»? Группы и студенты будут перенесены.`,
-  )
+  const confirmed = await confirmDialog.confirm({
+    message: `Объединить «${sourceDirection.name}» с «${target.name}»? Группы и студенты будут перенесены.`,
+    confirmText: 'Объединить',
+  })
 
   if (!confirmed) {
     return

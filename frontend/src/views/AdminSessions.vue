@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAdminSessionsStore } from '@/stores/adminSessions'
+import { useConfirmDialogStore } from '@/stores/confirmDialog'
 import { getErrorRoute } from '@/config/errorPages'
 import PageFrame from '@/components/PageFrame.vue'
 import type { UserRole } from '@/stores/auth'
@@ -10,6 +11,7 @@ import type { UserRole } from '@/stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 const sessionsStore = useAdminSessionsStore()
+const confirmDialog = useConfirmDialogStore()
 
 const revokingSessionId = ref<number | null>(null)
 const pageError = ref('')
@@ -74,9 +76,11 @@ const goBack = async () => {
 }
 
 const revokeSession = async (sessionId: number, login: string) => {
-  const confirmed = window.confirm(
-      `Завершить сессию пользователя ${login}?`,
-  )
+  const confirmed = await confirmDialog.confirm({
+    message: `Завершить сессию пользователя ${login}?`,
+    confirmText: 'Завершить',
+    variant: 'danger',
+  })
 
   if (!confirmed) {
     return

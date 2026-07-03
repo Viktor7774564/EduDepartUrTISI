@@ -1,6 +1,7 @@
 import api from '@/api/client'
 import type { DisplayScheduleItem } from '@/views/schedule/scheduleOptions'
 import axios from 'axios'
+import { useConfirmDialogStore } from '@/stores/confirmDialog'
 
 export interface CreateScheduleItemPayload {
   groupName: string
@@ -101,46 +102,80 @@ export async function updatePreholidayDay(
   return response.data
 }
 
-export function getScheduleAdminErrorMessage(error: unknown): string {
+type ScheduleAdminErrorPayload = {
+  message?: unknown
+  errors?: string[]
+}
+
+function readScheduleAdminErrorPayload(error: unknown): {
+  message: string
+  details?: string[]
+} {
   if (!axios.isAxiosError(error)) {
-    return 'Не удалось выполнить операцию'
+    return { message: 'Не удалось выполнить операцию' }
   }
 
   const data = error.response?.data
 
-  if (data && typeof data === 'object') {
-    const payload = data as {
-      message?: unknown
-      errors?: string[]
-    }
+  if (!data || typeof data !== 'object') {
+    return { message: 'Не удалось выполнить операцию' }
+  }
 
-    if (Array.isArray(payload.errors) && payload.errors.length > 0) {
-      return payload.errors.join('\n')
-    }
+  const payload = data as ScheduleAdminErrorPayload
 
-    if (
-      payload.message
-      && typeof payload.message === 'object'
-      && !Array.isArray(payload.message)
-    ) {
-      const nested = payload.message as {
-        message?: unknown
-        errors?: string[]
-      }
+  if (
+    payload.message
+    && typeof payload.message === 'object'
+    && !Array.isArray(payload.message)
+  ) {
+    const nested = payload.message as ScheduleAdminErrorPayload
 
-      if (Array.isArray(nested.errors) && nested.errors.length > 0) {
-        return nested.errors.join('\n')
-      }
-
-      if (typeof nested.message === 'string') {
-        return nested.message
+    if (Array.isArray(nested.errors) && nested.errors.length > 0) {
+      return {
+        message: typeof nested.message === 'string'
+          ? nested.message
+          : 'Не удалось выполнить операцию',
+        details: nested.errors,
       }
     }
 
-    if (typeof payload.message === 'string') {
-      return payload.message
+    if (typeof nested.message === 'string') {
+      return { message: nested.message }
     }
   }
 
-  return 'Не удалось выполнить операцию'
+  if (Array.isArray(payload.errors) && payload.errors.length > 0) {
+    return {
+      message: typeof payload.message === 'string'
+        ? payload.message
+        : 'Не удалось выполнить операцию',
+      details: payload.errors,
+    }
+  }
+
+  if (typeof payload.message === 'string') {
+    return { message: payload.message }
+  }
+
+  return { message: 'Не удалось выполнить операцию' }
+}
+
+export function getScheduleAdminErrorMessage(error: unknown): string {
+  const { message, details } = readScheduleAdminErrorPayload(error)
+
+  if (details?.length) {
+    return [message, ...details].join('\n')
+  }
+
+  return message
+}
+
+export async function showScheduleAdminError(error: unknown): Promise<void> {
+  const { message, details } = readScheduleAdminErrorPayload(error)
+
+  await useConfirmDialogStore().alert({
+    title: details?.length ? 'Конфликт в расписании' : 'Ошибка',
+    message,
+    details,
+  })
 }

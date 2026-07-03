@@ -5,6 +5,7 @@ import PageFrame from '@/components/PageFrame.vue'
 import editIcon from '@/assets/edit.svg'
 import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
+import { useConfirmDialogStore } from '@/stores/confirmDialog'
 import { getErrorRoute } from '@/config/errorPages'
 import type { AdminUser } from '@/api/admin'
 import type { UserRole } from '@/stores/auth'
@@ -48,6 +49,7 @@ const filteredUsers = computed(() => {
 const router = useRouter()
 const authStore = useAuthStore()
 const usersStore = useUsersStore()
+const confirmDialog = useConfirmDialogStore()
 
 const deletingUserId = ref<number | null>(null)
 const pageError = ref('')
@@ -99,9 +101,11 @@ const deleteUser = async (user: AdminUser) => {
     return
   }
 
-  const confirmed = window.confirm(
-      `Удалить пользователя ${user.login}? Это действие нельзя отменить.`,
-  )
+  const confirmed = await confirmDialog.confirm({
+    message: `Удалить пользователя ${user.login}? Это действие нельзя отменить.`,
+    confirmText: 'Удалить',
+    variant: 'danger',
+  })
 
   if (!confirmed) {
     return
