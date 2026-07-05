@@ -4,12 +4,6 @@ exports.isLocalNetworkOrigin = isLocalNetworkOrigin;
 exports.isAllowedCorsOrigin = isAllowedCorsOrigin;
 exports.getLocalIpAddresses = getLocalIpAddresses;
 const node_os_1 = require("node:os");
-const NGROK_HOST_SUFFIXES = [
-    '.ngrok-free.dev',
-    '.ngrok-free.app',
-    '.ngrok.io',
-    '.ngrok.app',
-];
 function parseOriginHostname(origin) {
     try {
         return new URL(origin).hostname;
@@ -17,9 +11,6 @@ function parseOriginHostname(origin) {
     catch {
         return null;
     }
-}
-function isNgrokHostname(hostname) {
-    return NGROK_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
 }
 function getExtraAllowedOrigins() {
     const raw = process.env.CORS_EXTRA_ORIGINS?.trim();
@@ -58,10 +49,6 @@ function isAllowedCorsOrigin(origin) {
         return true;
     }
     if (isLocalNetworkOrigin(origin)) {
-        return true;
-    }
-    const hostname = parseOriginHostname(origin);
-    if (hostname && isNgrokHostname(hostname)) {
         return true;
     }
     return getExtraAllowedOrigins().includes(origin);

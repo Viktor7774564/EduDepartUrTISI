@@ -11,6 +11,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminAcademicService } from './admin-academic.service';
 import { AdminGuard } from './guards/admin.guard';
+import { UsersSeedService } from '../database/users-seed.service';
 import { RolesSeedService } from './roles-seed.service';
 
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
@@ -56,6 +57,12 @@ import { Subgroup } from '../academic/entities/subgroup.entity';
         ]),
     ],
     controllers: [AdminController],
-    providers: [AdminService, AdminAcademicService, AdminGuard, RolesSeedService],
+    providers: [
+        AdminService,
+        AdminAcademicService,
+        AdminGuard,
+        RolesSeedService,
+        UsersSeedService,
+    ],
 })
 export class AdminModule {}

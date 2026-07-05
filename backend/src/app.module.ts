@@ -36,7 +36,7 @@ import { NotificationsModule} from './notifications/notifications.module';
 
                 autoLoadEntities: true,
 
-                synchronize: true,
+                synchronize: false,
             }),
 
             dataSourceFactory: async (options) => {

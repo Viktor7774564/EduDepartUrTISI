@@ -95,12 +95,6 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-    allowedHosts: [
-      '.ngrok-free.dev',
-      '.ngrok-free.app',
-      '.ngrok.io',
-      '.ngrok.app',
-    ],
     proxy: {
       '/auth': backendProxy,
       '/admin': adminProxy,

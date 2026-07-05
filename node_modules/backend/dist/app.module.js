@@ -40,7 +40,7 @@ exports.AppModule = AppModule = __decorate([
                     password: config.getOrThrow('DB_PASSWORD'),
                     database: config.getOrThrow('DB_DATABASE'),
                     autoLoadEntities: true,
-                    synchronize: true,
+                    synchronize: false,
                 }),
                 dataSourceFactory: async (options) => {
                     if (!options) {

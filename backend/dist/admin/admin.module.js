@@ -18,6 +18,7 @@ const admin_controller_1 = require("./admin.controller");
 const admin_service_1 = require("./admin.service");
 const admin_academic_service_1 = require("./admin-academic.service");
 const admin_guard_1 = require("./guards/admin.guard");
+const users_seed_service_1 = require("../database/users-seed.service");
 const roles_seed_service_1 = require("./roles-seed.service");
 const refresh_token_entity_1 = require("../auth/entities/refresh-token.entity");
 const consultation_notification_preference_entity_1 = require("../notifications/consultation-notification-preference.entity");
@@ -65,7 +66,13 @@ exports.AdminModule = AdminModule = __decorate([
             ]),
         ],
         controllers: [admin_controller_1.AdminController],
-        providers: [admin_service_1.AdminService, admin_academic_service_1.AdminAcademicService, admin_guard_1.AdminGuard, roles_seed_service_1.RolesSeedService],
+        providers: [
+            admin_service_1.AdminService,
+            admin_academic_service_1.AdminAcademicService,
+            admin_guard_1.AdminGuard,
+            roles_seed_service_1.RolesSeedService,
+            users_seed_service_1.UsersSeedService,
+        ],
     })
 ], AdminModule);
 //# sourceMappingURL=admin.module.js.map

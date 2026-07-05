@@ -16,6 +16,7 @@ exports.DepartmentsSeedService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const staff_departments_constants_1 = require("../database/seeds/staff-departments.constants");
 const department_entity_1 = require("./entities/department.entity");
 const teacher_departments_constants_1 = require("./teacher-departments.constants");
 let DepartmentsSeedService = class DepartmentsSeedService {
@@ -24,6 +25,10 @@ let DepartmentsSeedService = class DepartmentsSeedService {
         this.departmentRepository = departmentRepository;
     }
     async onModuleInit() {
+        await this.seedTeacherDepartments();
+        await this.seedStaffDepartments();
+    }
+    async seedTeacherDepartments() {
         for (const item of teacher_departments_constants_1.TEACHER_DEPARTMENTS) {
             const existing = await this.departmentRepository.findOne({
                 where: { shortName: item.shortName },
@@ -38,6 +43,20 @@ let DepartmentsSeedService = class DepartmentsSeedService {
             await this.departmentRepository.save({
                 shortName: item.shortName,
                 name: item.name,
+            });
+        }
+    }
+    async seedStaffDepartments() {
+        for (const item of staff_departments_constants_1.STAFF_DEPARTMENTS) {
+            const existing = await this.departmentRepository.findOne({
+                where: { name: item.name },
+            });
+            if (existing) {
+                continue;
+            }
+            await this.departmentRepository.save({
+                name: item.name,
+                shortName: null,
             });
         }
     }
