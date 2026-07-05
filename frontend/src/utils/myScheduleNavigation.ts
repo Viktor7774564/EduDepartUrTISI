@@ -1,4 +1,4 @@
-import type { RouteLocationRaw } from 'vue-router'
+import type { LocationQuery, RouteLocationRaw } from 'vue-router'
 import type { AuthUser } from '@/stores/auth'
 import { getGroupFaculty } from '@/views/schedule/scheduleOptions'
 
@@ -48,7 +48,7 @@ export function getMyScheduleRoute(user: AuthUser | null | undefined): RouteLoca
 export function isMyScheduleActive(
   routeName: string | symbol | null | undefined,
   routeParams: Record<string, string | string[] | undefined>,
-  routeQuery: Record<string, string | string[] | null | undefined>,
+  routeQuery: LocationQuery,
   user: AuthUser | null | undefined,
 ): boolean {
   if (routeName !== 'schedule-view' || !user) {

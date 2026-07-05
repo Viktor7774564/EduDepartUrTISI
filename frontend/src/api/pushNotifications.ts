@@ -121,7 +121,7 @@ async function getBrowserPushSubscription(): Promise<PushSubscription | null> {
     return null
   }
 
-  await registration.ready
+  await navigator.serviceWorker.ready
 
   return registration.pushManager.getSubscription()
 }
@@ -163,7 +163,7 @@ async function createBrowserPushSubscription(publicKey: string): Promise<PushSub
     throw new Error('Service worker is not available')
   }
 
-  await registration.ready
+  await navigator.serviceWorker.ready
 
   let subscription = await registration.pushManager.getSubscription()
 

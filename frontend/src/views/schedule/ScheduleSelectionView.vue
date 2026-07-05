@@ -410,39 +410,15 @@ onBeforeUnmount(() => {
                 </button>
 
                 <div v-if="isFirstOpen" class="picker-panel" @click.stop>
-                  <template v-for="option in studentFacultyOptions" :key="option.label">
-                    <button
-                      v-if="'value' in option"
-                      class="picker-option"
-                      type="button"
-                      @click="selectFirst(String(option.value))"
-                    >
-                      {{ option.label }}
-                    </button>
-
-                    <div v-else class="picker-group">
-                      <button
-                        class="picker-option group-toggle"
-                        type="button"
-                        @click="isFacultyGroupOpen = !isFacultyGroupOpen"
-                      >
-                        <span>{{ option.label }}</span>
-                        <span class="picker-arrow small" :class="{ open: isFacultyGroupOpen }">▲</span>
-                      </button>
-
-                      <div v-if="isFacultyGroupOpen" class="picker-subgroup">
-                        <button
-                          v-for="nestedOption in option.options"
-                          :key="nestedOption.value"
-                          class="picker-option nested"
-                          type="button"
-                          @click="selectFirst(nestedOption.value)"
-                        >
-                          {{ nestedOption.label }}
-                        </button>
-                      </div>
-                    </div>
-                  </template>
+                  <button
+                    v-for="option in studentFacultyOptions"
+                    :key="option.value"
+                    class="picker-option"
+                    type="button"
+                    @click="selectFirst(option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
                 </div>
               </div>
             </template>

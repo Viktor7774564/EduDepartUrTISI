@@ -51,6 +51,23 @@ const openLink = (url: string) => {
   window.open(url, '_blank')
 }
 
+const leftDecor = [
+  { id: 'left-top-right', className: 'left-top-right', rotate: 3 },
+  { id: 'left-mid-left', className: 'left-mid-left', rotate: -32 },
+  { id: 'left-mid-right', className: 'left-mid-right', rotate: -18 },
+  { id: 'left-bottom-left', className: 'left-bottom-left', rotate: 24 },
+  { id: 'left-bottom-right', className: 'left-bottom-right', rotate: -12 },
+]
+
+const rightDecor = [
+  { id: 'right-top-right', className: 'right-top-right', rotate: 31 },
+  { id: 'right-top-left', className: 'right-top-left', rotate: -22 },
+  { id: 'right-mid-right', className: 'right-mid-right', rotate: 14 },
+  { id: 'right-mid-left', className: 'right-mid-left', rotate: -28 },
+  { id: 'right-bottom-center', className: 'right-bottom-center', rotate: 34 },
+  { id: 'right-bottom-right', className: 'right-bottom-right', rotate: -10 },
+]
+
 // const demoAccountsText = computed(() =>   // можно закомментировать
 //   mockUsers.map((user) => `${user.login} / ${user.password}`).join(' | '),
 // )
