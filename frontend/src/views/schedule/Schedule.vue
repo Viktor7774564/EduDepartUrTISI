@@ -63,6 +63,7 @@ import type { Socket } from 'socket.io-client'
 import { connectScheduleSocket } from '@/api/scheduleSocket'
 import { canManageConsultations } from '@/utils/consultationAccess'
 import PageFrame from "@/components/PageFrame.vue";
+import { usePageTitle } from '@/composables/usePageTitle'
 
 const route = useRoute()
 const router = useRouter()
@@ -824,6 +825,8 @@ const pageTitle = computed(() => {
 
   return 'Расписание'
 })
+
+usePageTitle(pageTitle)
 
 const openModal = async (lesson: CellLesson) => {
   let groups = resolveLessonGroups(lesson)

@@ -3,10 +3,12 @@
   @apply min-h-[calc(100vh-180px)] flex items-center justify-center gap-[38px] p-[24px];
 }
 
-.error-page-main img,
-.not-found-main img {
-  width: min(560px, 20vw);
-  height: auto;
+.error-page-code {
+  @apply m-0 font-bold leading-none text-[#4ea3d7] dark:text-[#6bb8e8];
+  font-size: clamp(120px, 18vw, 220px);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  user-select: none;
 }
 
 .error-page-main h1,
@@ -30,9 +32,8 @@
     text-align: center;
   }
 
-  .error-page-main img,
-  .not-found-main img {
-    width: min(460px, 90vw);
+  .error-page-code {
+    font-size: clamp(96px, 28vw, 180px);
   }
 
   .error-page-main h1,

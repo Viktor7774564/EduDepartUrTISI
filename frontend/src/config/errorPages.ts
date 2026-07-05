@@ -1,16 +1,10 @@
-import illustration404 from '@/assets/errors/404.svg'
-import illustration403 from '@/assets/errors/403.svg'
-import illustration500 from '@/assets/errors/500.svg'
-import illustrationDefault from '@/assets/errors/default.svg'
-
 export type ErrorCode = '404' | '403' | '500' | 'default'
 
 export type ErrorPageConfig = {
   code: ErrorCode
   title: string
   description: string
-  illustration: string
-  illustrationAlt: string
+  displayCode: string
   actionLabel: string
   actionTo: string
 }
@@ -19,32 +13,28 @@ const ERROR_PAGES: Record<ErrorCode, Omit<ErrorPageConfig, 'code'>> = {
   '404': {
     title: 'Упс! Страница не найдена',
     description: 'Запрашиваемая страница не существует или была перемещена.',
-    illustration: illustration404,
-    illustrationAlt: 'Страница не найдена',
+    displayCode: '404',
     actionLabel: 'Вернуться на главную',
     actionTo: '/',
   },
   '403': {
     title: 'Доступ запрещён',
     description: 'У вас нет прав для просмотра этой страницы.',
-    illustration: illustration403,
-    illustrationAlt: 'Доступ запрещён',
+    displayCode: '403',
     actionLabel: 'Вернуться на главную',
     actionTo: '/',
   },
   '500': {
     title: 'Ошибка сервера',
     description: 'Что-то пошло не так на сервере. Попробуйте обновить страницу позже.',
-    illustration: illustration500,
-    illustrationAlt: 'Ошибка сервера',
+    displayCode: '500',
     actionLabel: 'Вернуться на главную',
     actionTo: '/',
   },
   default: {
     title: 'Что-то пошло не так',
     description: 'Произошла непредвиденная ошибка. Попробуйте вернуться на главную.',
-    illustration: illustrationDefault,
-    illustrationAlt: 'Ошибка',
+    displayCode: '!',
     actionLabel: 'Вернуться на главную',
     actionTo: '/',
   },

@@ -21,7 +21,7 @@ const page = computed(() => {
 <template>
   <PageFrame>
     <main class="error-page-main">
-      <img :src="page.illustration" :alt="page.illustrationAlt" />
+      <p class="error-page-code" aria-hidden="true">{{ page.displayCode }}</p>
 
       <section>
         <h1>{{ page.title }}</h1>

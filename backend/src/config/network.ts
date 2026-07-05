@@ -1,22 +1,11 @@
 import { networkInterfaces } from 'node:os';
 
-const NGROK_HOST_SUFFIXES = [
-    '.ngrok-free.dev',
-    '.ngrok-free.app',
-    '.ngrok.io',
-    '.ngrok.app',
-];
-
 function parseOriginHostname(origin: string): string | null {
     try {
         return new URL(origin).hostname;
     } catch {
         return null;
     }
-}
-
-function isNgrokHostname(hostname: string): boolean {
-    return NGROK_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
 }
 
 function getExtraAllowedOrigins(): string[] {
@@ -68,12 +57,6 @@ export function isAllowedCorsOrigin(origin?: string): boolean {
     }
 
     if (isLocalNetworkOrigin(origin)) {
-        return true;
-    }
-
-    const hostname = parseOriginHostname(origin);
-
-    if (hostname && isNgrokHostname(hostname)) {
         return true;
     }
 
