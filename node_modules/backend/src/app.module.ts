@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { DataSource, DataSourceOptions } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
-import { migrateRoleEnumBeforeSync } from './database/role-enum-migration';
+import { buildDatabaseConnectionOptions } from './database/typeorm.config';
 
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -17,7 +17,7 @@ import { NotificationsModule} from './notifications/notifications.module';
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
-            envFilePath: '.env',
+            envFilePath: ['.env', '.env.example'],
         }),
 
         TypeOrmModule.forRootAsync({
@@ -25,18 +25,14 @@ import { NotificationsModule} from './notifications/notifications.module';
             inject: [ConfigService],
 
             useFactory: (config: ConfigService) => ({
-                type: 'postgres',
-
-                host: config.getOrThrow<string>('DB_HOST'),
-                port: parseInt(config.getOrThrow<string>('DB_PORT'), 10),
-
-                username: config.getOrThrow<string>('DB_USERNAME'),
-                password: config.getOrThrow<string>('DB_PASSWORD'),
-                database: config.getOrThrow<string>('DB_DATABASE'),
-
+                ...buildDatabaseConnectionOptions({
+                    DB_HOST: config.getOrThrow<string>('DB_HOST'),
+                    DB_PORT: config.getOrThrow<string>('DB_PORT'),
+                    DB_USERNAME: config.getOrThrow<string>('DB_USERNAME'),
+                    DB_PASSWORD: config.getOrThrow<string>('DB_PASSWORD'),
+                    DB_DATABASE: config.getOrThrow<string>('DB_DATABASE'),
+                }),
                 autoLoadEntities: true,
-
-                synchronize: false,
             }),
 
             dataSourceFactory: async (options) => {
@@ -44,11 +40,7 @@ import { NotificationsModule} from './notifications/notifications.module';
                     throw new Error('TypeORM data source options are not configured');
                 }
 
-                const dataSourceOptions = options as DataSourceOptions;
-
-                await migrateRoleEnumBeforeSync(dataSourceOptions);
-
-                const dataSource = new DataSource(dataSourceOptions);
+                const dataSource = new DataSource(options);
 
                 return dataSource.initialize();
             },

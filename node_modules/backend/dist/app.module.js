@@ -11,7 +11,7 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("typeorm");
 const typeorm_2 = require("@nestjs/typeorm");
 const config_1 = require("@nestjs/config");
-const role_enum_migration_1 = require("./database/role-enum-migration");
+const typeorm_config_1 = require("./database/typeorm.config");
 const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const schedule_module_1 = require("./schedule/schedule.module");
@@ -27,28 +27,26 @@ exports.AppModule = AppModule = __decorate([
         imports: [
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
-                envFilePath: '.env',
+                envFilePath: ['.env', '.env.example'],
             }),
             typeorm_2.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
                 inject: [config_1.ConfigService],
                 useFactory: (config) => ({
-                    type: 'postgres',
-                    host: config.getOrThrow('DB_HOST'),
-                    port: parseInt(config.getOrThrow('DB_PORT'), 10),
-                    username: config.getOrThrow('DB_USERNAME'),
-                    password: config.getOrThrow('DB_PASSWORD'),
-                    database: config.getOrThrow('DB_DATABASE'),
+                    ...(0, typeorm_config_1.buildDatabaseConnectionOptions)({
+                        DB_HOST: config.getOrThrow('DB_HOST'),
+                        DB_PORT: config.getOrThrow('DB_PORT'),
+                        DB_USERNAME: config.getOrThrow('DB_USERNAME'),
+                        DB_PASSWORD: config.getOrThrow('DB_PASSWORD'),
+                        DB_DATABASE: config.getOrThrow('DB_DATABASE'),
+                    }),
                     autoLoadEntities: true,
-                    synchronize: false,
                 }),
                 dataSourceFactory: async (options) => {
                     if (!options) {
                         throw new Error('TypeORM data source options are not configured');
                     }
-                    const dataSourceOptions = options;
-                    await (0, role_enum_migration_1.migrateRoleEnumBeforeSync)(dataSourceOptions);
-                    const dataSource = new typeorm_1.DataSource(dataSourceOptions);
+                    const dataSource = new typeorm_1.DataSource(options);
                     return dataSource.initialize();
                 },
             }),

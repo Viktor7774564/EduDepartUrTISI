@@ -302,6 +302,28 @@ const openSchedule = async () => {
   })
 }
 
+const CODE_WALL_ROW_COUNT = 12
+
+function generateBinaryByte(seed: number): string {
+  let value = (seed * 2654435761) >>> 0
+  value = ((value >> 16) ^ value) * 0x45d9f3b >>> 0
+  value = ((value >> 16) ^ value) * 0x45d9f3b >>> 0
+  value = (value >> 16) ^ value
+
+  return (value & 0xff).toString(2).padStart(8, '0')
+}
+
+const codeWallLines = Array.from({ length: CODE_WALL_ROW_COUNT }, (_, index) => {
+  const repeatCount = 2 + Math.floor(index / 3)
+
+  return Array.from({ length: repeatCount }, (_, blockIndex) => {
+    const left = generateBinaryByte(index * 5 + blockIndex * 2 + 3)
+    const right = generateBinaryByte(index * 5 + blockIndex * 2 + 29)
+
+    return `${left} ${right}`
+  }).join('  ')
+})
+
 onMounted(() => {
   document.addEventListener('click', closeDropdownsOnOutside)
   void loadUploadedGroups()
@@ -319,8 +341,46 @@ onBeforeUnmount(() => {
   <PageFrame>
     <section class="selection-page">
       <div class="triangle-side" aria-hidden="true">
+        <svg class="triangle-side-shape" preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <linearGradient id="selection-triangle-gradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" class="triangle-gradient-stop-top" />
+              <stop offset="100%" class="triangle-gradient-stop-bottom" />
+            </linearGradient>
+            <clipPath id="selection-triangle-clip" clipPathUnits="objectBoundingBox">
+              <polygon points="0.44,0 1,0 1,1 0,1" />
+            </clipPath>
+            <clipPath id="selection-triangle-clip-tablet" clipPathUnits="objectBoundingBox">
+              <polygon points="0.58,0 1,0 1,1 0.1,1" />
+            </clipPath>
+          </defs>
+          <polygon
+            class="triangle-side-shape-desktop"
+            points="44,0 100,0 100,100 0,100"
+            fill="url(#selection-triangle-gradient)"
+          />
+          <polygon
+            class="triangle-side-shape-tablet"
+            points="58,0 100,0 100,100 10,100"
+            fill="url(#selection-triangle-gradient)"
+          />
+        </svg>
         <div class="code-wall">
-          <span v-for="index in 12" :key="index">00110010 11000101</span>
+          <span
+            v-for="(line, index) in codeWallLines"
+            :key="index"
+            class="code-wall-line"
+          >
+            <span
+              v-for="(char, charIndex) in line"
+              :key="charIndex"
+              class="code-wall-char"
+              :class="{
+                'code-wall-char--one': char === '1',
+                'code-wall-char--zero': char === '0',
+              }"
+            >{{ char }}</span>
+          </span>
         </div>
       </div>
 

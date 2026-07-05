@@ -4,11 +4,55 @@
   overflow-y: visible;
 }
 
+.page-frame:has(.selection-page) {
+  @apply flex flex-col;
+}
+
+.page-frame:has(.selection-page) .frame-content {
+  @apply flex flex-1 flex-col min-h-0;
+}
+
+.page-frame:has(.selection-page) .selection-page {
+  @apply flex-1;
+  --selection-triangle-top: #3a4049;
+  --selection-triangle-bottom: #2d3138;
+  --code-wall-zero: rgba(89, 180, 239, 0.22);
+  --code-wall-one: rgba(89, 180, 239, 0.62);
+  --code-wall-gap: rgba(89, 180, 239, 0.14);
+}
+
+.dark .page-frame:has(.selection-page) .selection-page {
+  --selection-triangle-top: #1c2229;
+  --selection-triangle-bottom: #121820;
+  --code-wall-zero: rgba(120, 196, 255, 0.16);
+  --code-wall-one: rgba(137, 214, 255, 0.78);
+  --code-wall-gap: rgba(120, 196, 255, 0.1);
+}
+
 .selection-page .triangle-side {
-  @apply absolute top-0 right-0 bottom-0 overflow-hidden;
+  @apply absolute top-0 overflow-hidden;
+  right: -24px;
+  bottom: 0;
   width: min(50vw, 820px);
-  background: linear-gradient(180deg, #3a4049 0%, #2d3138 100%);
-  clip-path: polygon(44% 0, 100% 0, 100% 100%, 0 100%);
+  clip-path: url(#selection-triangle-clip);
+  -webkit-clip-path: url(#selection-triangle-clip);
+  transform: translateZ(0);
+}
+
+.selection-page .triangle-side-shape {
+  @apply absolute inset-0 block h-full w-full;
+}
+
+.selection-page .triangle-side-shape-tablet {
+  display: none;
+}
+
+.selection-page .triangle-gradient-stop-top {
+  stop-color: var(--selection-triangle-top);
+}
+
+.selection-page .triangle-gradient-stop-bottom {
+  stop-color: var(--selection-triangle-bottom);
 }
 
 .selection-page .hero-card {
@@ -153,12 +197,32 @@
 }
 
 .selection-page .code-wall {
-  @apply absolute flex flex-col justify-evenly items-stretch py-[20px] px-[24px] text-[rgba(89,180,239,0.48)] text-[clamp(42px,4.4vw,72px)] font-bold leading-[0.95] tracking-[0.03em] select-none;
-  inset: -2% -1% -2% -16%;
+  @apply absolute flex flex-col justify-between items-stretch font-bold leading-none tracking-[0.03em] select-none;
+  inset: 0;
+  padding: 0;
+  font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  font-size: clamp(30px, 3.6vw, 58px);
 }
 
-.selection-page .code-wall span {
-  @apply block w-full text-right whitespace-nowrap;
+.selection-page .code-wall-line {
+  @apply relative z-[1] flex min-h-0 flex-1 items-center justify-end overflow-hidden whitespace-nowrap;
+}
+
+.selection-page .code-wall-char--zero {
+  color: var(--code-wall-zero);
+}
+
+.selection-page .code-wall-char--one {
+  color: var(--code-wall-one);
+  text-shadow: 0 0 18px rgba(89, 180, 239, 0.18);
+}
+
+.selection-page .code-wall-char:not(.code-wall-char--zero):not(.code-wall-char--one) {
+  color: var(--code-wall-gap);
+}
+
+.dark .selection-page .code-wall-char--one {
+  text-shadow: 0 0 22px rgba(137, 214, 255, 0.28);
 }
 
 .schedule-page {
@@ -721,7 +785,17 @@
 @media (max-width: 1100px) {
   .selection-page .triangle-side {
     width: min(44vw, 420px);
-    clip-path: polygon(58% 0, 100% 0, 100% 100%, 10% 100%);
+    right: -24px;
+    clip-path: url(#selection-triangle-clip-tablet);
+    -webkit-clip-path: url(#selection-triangle-clip-tablet);
+  }
+
+  .selection-page .triangle-side-shape-desktop {
+    display: none;
+  }
+
+  .selection-page .triangle-side-shape-tablet {
+    display: block;
   }
 
   .selection-page .hero-card {
