@@ -64,6 +64,10 @@ import { connectScheduleSocket } from '@/api/scheduleSocket'
 import { canManageConsultations } from '@/utils/consultationAccess'
 import PageFrame from "@/components/PageFrame.vue";
 import { usePageTitle } from '@/composables/usePageTitle'
+import {
+  getOwnPersonalScheduleCache,
+  saveOwnPersonalScheduleCache,
+} from '@/utils/personalScheduleCache'
 
 const route = useRoute()
 const router = useRouter()
@@ -221,6 +225,7 @@ const schedulePeriodMeta = ref<SchedulePeriodMeta>({
 })
 const isLoadingSchedule = ref(false)
 const scheduleLoadError = ref<string | null>(null)
+const offlineScheduleNotice = ref<string | null>(null)
 const preholidayDayKeys = ref<string[]>([])
 const isSavingPreholidayDay = ref(false)
 const consultationTeachers = ref<string[]>([])
@@ -283,6 +288,33 @@ const applySchedulePeriodMeta = (meta?: Partial<SchedulePeriodMeta> | null) => {
   }
 }
 
+const formatCachedAt = (value: string): string => {
+  const parsed = new Date(value)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(parsed)
+}
+
+const applyOfflinePersonalSchedule = (cachedSchedule: ReturnType<typeof getOwnPersonalScheduleCache>) => {
+  if (!cachedSchedule) {
+    return false
+  }
+
+  studentWeeklySchedules.value = cachedSchedule.weeks
+  applySchedulePeriodMeta(cachedSchedule.meta)
+  offlineScheduleNotice.value = `Показана сохраненная копия "Моего расписания" от ${formatCachedAt(cachedSchedule.cachedAt)}.`
+  scheduleLoadError.value = null
+  return true
+}
+
 type LoadScheduleOptions = {
   silent?: boolean
 }
@@ -322,6 +354,14 @@ const loadSchedule = async (options: LoadScheduleOptions = {}) => {
       }
       studentWeeklySchedules.value = response.weeks
       applySchedulePeriodMeta(response)
+      offlineScheduleNotice.value = null
+      saveOwnPersonalScheduleCache(
+        authStore.currentUser,
+        scheduleType.value,
+        secondValue.value,
+        response.weeks,
+        response,
+      )
       return
     }
 
@@ -332,6 +372,14 @@ const loadSchedule = async (options: LoadScheduleOptions = {}) => {
       }
       studentWeeklySchedules.value = response.weeks
       applySchedulePeriodMeta(response)
+      offlineScheduleNotice.value = null
+      saveOwnPersonalScheduleCache(
+        authStore.currentUser,
+        scheduleType.value,
+        secondValue.value,
+        response.weeks,
+        response,
+      )
       return
     }
 
@@ -342,6 +390,7 @@ const loadSchedule = async (options: LoadScheduleOptions = {}) => {
       }
       studentWeeklySchedules.value = response.weeks
       applySchedulePeriodMeta(null)
+      offlineScheduleNotice.value = null
       return
     }
 
@@ -352,6 +401,7 @@ const loadSchedule = async (options: LoadScheduleOptions = {}) => {
       }
       studentWeeklySchedules.value = response.weeks
       applySchedulePeriodMeta(response)
+      offlineScheduleNotice.value = null
       return
     }
 
@@ -367,8 +417,18 @@ const loadSchedule = async (options: LoadScheduleOptions = {}) => {
     }
 
     if (!silent) {
+      if (
+        (scheduleType.value === 'students' || scheduleType.value === 'teachers')
+        && applyOfflinePersonalSchedule(
+          getOwnPersonalScheduleCache(authStore.currentUser, scheduleType.value, secondValue.value),
+        )
+      ) {
+        return
+      }
+
       studentWeeklySchedules.value = {}
       applySchedulePeriodMeta(null)
+      offlineScheduleNotice.value = null
 
       if (scheduleType.value !== 'consults') {
         scheduleLoadError.value = 'Не удалось загрузить расписание'
@@ -402,6 +462,7 @@ watch([scheduleType, firstValue, secondValue], () => {
   pendingWeekKeyToRestore.value = null
   selectedWeekKey.value = null
   hasLoadedScheduleOnce.value = false
+  offlineScheduleNotice.value = null
   void loadSchedule()
   void loadConsultationTeachers()
 }, { immediate: true })
@@ -2315,6 +2376,10 @@ onUnmounted(() => {
       </div>
 
       <template v-else-if="!isEmptySchedule">
+        <div v-if="offlineScheduleNotice" class="offline-notice" role="status">
+          {{ offlineScheduleNotice }}
+        </div>
+
         <div class="week-nav">
           <select v-model.number="currentWeekIndex" class="week-label week-select" aria-label="Выбрать неделю">
             <option

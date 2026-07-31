@@ -1,9 +1,29 @@
 import { fileURLToPath, URL } from 'node:url'
+import fs from 'node:fs'
+import path from 'node:path'
 
 import { defineConfig, type ProxyOptions } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 const BACKEND_URL = 'http://localhost:3000'
+
+// DEV-HTTPS-START: удалить этот блок перед продакшеном, если HTTPS будет на nginx/домене.
+const CERT_DIR = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../certs')
+const DEV_HTTPS_KEY = path.join(CERT_DIR, 'key.pem')
+const DEV_HTTPS_CERT = path.join(CERT_DIR, 'cert.pem')
+
+function loadDevHttpsOptions() {
+  if (!fs.existsSync(DEV_HTTPS_KEY) || !fs.existsSync(DEV_HTTPS_CERT)) {
+    return undefined
+  }
+
+  return {
+    key: fs.readFileSync(DEV_HTTPS_KEY),
+    cert: fs.readFileSync(DEV_HTTPS_CERT),
+  }
+}
+// DEV-HTTPS-END
 
 const backendProxy: ProxyOptions = {
   target: BACKEND_URL,
@@ -83,27 +103,45 @@ const adminProxy: ProxyOptions = {
   },
 }
 
-export default defineConfig({
-  plugins: [
-    vue(),
-  ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+export default defineConfig(({ mode }) => {
+  // DEV-HTTPS: удалить логику isHttpsMode/basicSsl перед продакшеном.
+  const isHttpsMode = mode === 'https'
+  const manualHttps = loadDevHttpsOptions()
+  const useFallbackSsl = isHttpsMode && !manualHttps
+  const plugins = [vue()]
+
+  if (useFallbackSsl) {
+    plugins.push(basicSsl())
+  }
+
+  return {
+    plugins,
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url))
+      },
     },
-  },
-  server: {
-    host: true,
-    port: 5173,
-    proxy: {
-      '/auth': backendProxy,
-      '/admin': adminProxy,
-      '/notifications': notificationsProxy,
-      '/schedules': backendWsProxy,
-      '/academic': backendProxy,
-      '/education-department/schedules': backendProxy,
-      '/uploads': backendProxy,
-      '/socket.io': backendWsProxy,
+    server: {
+      host: true,
+      port: 5173,
+      // DEV-HTTPS: удалить строку https перед продакшеном.
+      https: isHttpsMode ? (manualHttps ?? true) : undefined,
+      proxy: {
+        '/auth': backendProxy,
+        '/admin': adminProxy,
+        '/notifications': notificationsProxy,
+        '/schedules': backendWsProxy,
+        '/academic': backendProxy,
+        '/education-department/schedules': backendProxy,
+        '/uploads': backendProxy,
+        '/socket.io': backendWsProxy,
+      },
     },
-  },
+    // DEV-HTTPS: удалить блок preview перед продакшеном.
+    preview: {
+      host: true,
+      port: 5173,
+      https: isHttpsMode ? (manualHttps ?? true) : undefined,
+    },
+  }
 })

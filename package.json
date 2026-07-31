@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "npm run dev --workspace frontend",
     "dev:web": "npm run dev --workspace frontend",
+    "dev:https": "npm run dev:https --workspace frontend",
     "dev:api": "npm run start:dev --workspace backend",
+    "certs:generate": "node certs/generate-certs.mjs",
     "build": "npm run build --workspace frontend && npm run build --workspace backend",
     "build:web": "npm run build --workspace frontend",
     "build:api": "npm run build --workspace backend",

@@ -5,7 +5,7 @@ const node_path_1 = require("node:path");
 const dotenv_1 = require("dotenv");
 const pg_1 = require("pg");
 const backendRoot = (0, node_path_1.join)(__dirname, '..', '..');
-for (const envFile of ['.env', '.env.example']) {
+for (const envFile of ['.env']) {
     const envPath = (0, node_path_1.join)(backendRoot, envFile);
     if ((0, node_fs_1.existsSync)(envPath)) {
         (0, dotenv_1.config)({ path: envPath });

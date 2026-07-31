@@ -2,3 +2,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# DEV-HTTPS: локальные сертификаты (удалить папку certs/ перед продакшеном, если не нужна)
+certs/*.pem
+certs/openssl.cnf

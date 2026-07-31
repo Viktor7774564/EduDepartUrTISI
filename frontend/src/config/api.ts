@@ -18,7 +18,9 @@ export function getApiBaseUrl(): string {
       return origin
     }
 
-    return `http://${hostname}:${DEFAULT_API_PORT}`
+    const protocol = window.location.protocol === 'https:' ? 'https' : 'http'
+
+    return `${protocol}://${hostname}:${DEFAULT_API_PORT}`
   }
 
   return `http://localhost:${DEFAULT_API_PORT}`

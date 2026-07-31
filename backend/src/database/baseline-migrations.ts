@@ -12,7 +12,7 @@ import { Client } from 'pg';
 
 const backendRoot = join(__dirname, '..', '..');
 
-for (const envFile of ['.env', '.env.example']) {
+for (const envFile of ['.env']) {
     const envPath = join(backendRoot, envFile);
 
     if (existsSync(envPath)) {

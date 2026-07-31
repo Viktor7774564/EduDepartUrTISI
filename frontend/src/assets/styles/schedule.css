@@ -399,6 +399,10 @@
   @apply mx-[22px] mt-[12px] p-[10px_12px] rounded-[8px] border border-[#f0c14b] bg-[#fff8e1] dark:bg-[rgba(255,248,225,0.1)] text-[#5c4a00] dark:text-[#e8c547] text-[13px] leading-[1.4];
 }
 
+.schedule-page .offline-notice {
+  @apply max-w-[960px] mx-auto mb-[16px] p-[14px_18px] rounded-[12px] border border-[#2d90d2] bg-[#eef7ff] dark:bg-[rgba(45,144,210,0.14)] text-[#174566] dark:text-[#8fd0ff] text-[14px] leading-[1.45];
+}
+
 .schedule-page .lesson {
   @apply min-w-0 p-[8px] rounded-[8px] mb-[4px] cursor-pointer transition-transform duration-[200ms] ease-in-out overflow-hidden;
 }
@@ -915,6 +919,10 @@
   }
 
   .schedule-page .parallel-warning {
+    @apply mx-0 mb-[14px] p-[12px_14px] text-[13px];
+  }
+
+  .schedule-page .offline-notice {
     @apply mx-0 mb-[14px] p-[12px_14px] text-[13px];
   }
 
