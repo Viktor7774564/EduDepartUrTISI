@@ -1,0 +1,25 @@
+{
+  "name": "Расписание УрТИСИ",
+  "short_name": "УрТИСИ",
+  "description": "Расписание студентов, преподавателей, аудиторий и консультаций УрТИСИ с офлайн-доступом к личному расписанию.",
+  "lang": "ru",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#2d90d2",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
