@@ -90,13 +90,13 @@ function validateScheduleConflicts(lessons, existingLessons = []) {
                 continue;
             }
             if (first.groupName !== second.groupName) {
-                if (!first.isDistance && !second.isDistance && isSharedHall(first, second)) {
-                    continue;
-                }
                 if ((0, group_parallel_utils_1.areParallelGroups)(first.groupName, second.groupName)) {
                     continue;
                 }
-                if (!first.isDistance && !second.isDistance && hasSameRoom(first, second)) {
+                const sharedHall = !first.isDistance
+                    && !second.isDistance
+                    && isSharedHall(first, second);
+                if (!sharedHall && hasSameRoom(first, second)) {
                     conflicts.push({
                         message: formatCrossGroupConflict(first, second),
                         lessonA: first,

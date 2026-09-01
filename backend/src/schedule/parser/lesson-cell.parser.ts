@@ -280,16 +280,17 @@ export function isAuditoriumRoomLabel(room: string | null | undefined): boolean 
         .toUpperCase()
         .replace(/\s+/g, ' ')
         .replace(/,/g, ' ');
+    const collapsed = normalized.replace(/\s*\/\s*/g, '/');
 
     if (/^С\.?$/.test(normalized)) {
         return true;
     }
 
-    if (/\bС\s*\/\s*З\b/.test(normalized)) {
+    if (collapsed.includes('С/З')) {
         return true;
     }
 
-    if (/\bТ\s*\/\s*З\b/.test(normalized)) {
+    if (collapsed.includes('Т/З')) {
         return true;
     }
 

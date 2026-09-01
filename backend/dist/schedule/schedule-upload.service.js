@@ -15,7 +15,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScheduleUploadService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
-const node_crypto_1 = require("node:crypto");
 const promises_1 = require("node:fs/promises");
 const node_path_1 = require("node:path");
 const typeorm_2 = require("typeorm");
@@ -47,6 +46,18 @@ function decodeUploadedFilename(name) {
     catch {
         return name;
     }
+}
+function normalizeStoredFileName(originalFileName) {
+    const decoded = decodeUploadedFilename(originalFileName).trim();
+    const extension = (0, node_path_1.extname)(decoded);
+    const baseName = decoded.slice(0, decoded.length - extension.length).trim() || 'upload';
+    const safeBaseName = baseName
+        .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_')
+        .replace(/\s+/g, ' ')
+        .replace(/[. ]+$/g, '')
+        .trim() || 'upload';
+    const safeExtension = extension.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_');
+    return `${safeBaseName}${safeExtension}`;
 }
 let ScheduleUploadService = class ScheduleUploadService {
     uploadsRepository;
@@ -344,7 +355,7 @@ let ScheduleUploadService = class ScheduleUploadService {
                 lessonsFound: parsed.lessons.length,
             });
         }
-        const storedFileName = `${Date.now()}-${(0, node_crypto_1.randomBytes)(8).toString('hex')}${extension}`;
+        const storedFileName = normalizeStoredFileName(originalFileName);
         const filePath = (0, node_path_1.join)(this.schedulesDir, storedFileName);
         const fileUrl = `/uploads/schedules/${storedFileName}`;
         await (0, promises_1.writeFile)(filePath, file.buffer);

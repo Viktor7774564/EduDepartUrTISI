@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 
@@ -48,6 +47,20 @@ function decodeUploadedFilename(name: string): string {
     } catch {
         return name;
     }
+}
+
+function normalizeStoredFileName(originalFileName: string): string {
+    const decoded = decodeUploadedFilename(originalFileName).trim();
+    const extension = extname(decoded);
+    const baseName = decoded.slice(0, decoded.length - extension.length).trim() || 'upload';
+    const safeBaseName = baseName
+        .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_')
+        .replace(/\s+/g, ' ')
+        .replace(/[. ]+$/g, '')
+        .trim() || 'upload';
+    const safeExtension = extension.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_');
+
+    return `${safeBaseName}${safeExtension}`;
 }
 
 export interface ScheduleUploadResponse {
@@ -506,7 +519,7 @@ export class ScheduleUploadService implements OnModuleInit {
             });
         }
 
-        const storedFileName = `${Date.now()}-${randomBytes(8).toString('hex')}${extension}`;
+        const storedFileName = normalizeStoredFileName(originalFileName);
         const filePath = join(this.schedulesDir, storedFileName);
         const fileUrl = `/uploads/schedules/${storedFileName}`;
 
