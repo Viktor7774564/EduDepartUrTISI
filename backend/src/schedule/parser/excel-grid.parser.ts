@@ -1,7 +1,13 @@
 import * as XLSX from 'xlsx';
 
 import { extractGroupNameFromTitle } from './group-parallel.utils';
-import { isDistanceRoom, isSharedMultiHallRoom, parseLessonCell, splitRoomForSubgroups } from './lesson-cell.parser';
+import {
+    isDistanceRoom,
+    isIgnorableLessonCell,
+    isSharedMultiHallRoom,
+    parseLessonCell,
+    splitRoomForSubgroups,
+} from './lesson-cell.parser';
 import type { ScheduleLessonSlot } from './schedule-conflict.validator';
 
 const DAY_NAMES: Record<string, number> = {
@@ -416,6 +422,10 @@ function parseSheetGrid(
                     const weekStart = getWeekStartLabel(weekDate);
                     const parsedParts = parseLessonCell(lessonRaw);
                     if (parsedParts.length === 0) {
+                        if (isIgnorableLessonCell(lessonRaw)) {
+                            continue;
+                        }
+
                         warnings.push(`Не удалось разобрать ячейку: ${lessonRaw.slice(0, 80)}`);
                         continue;
                     }

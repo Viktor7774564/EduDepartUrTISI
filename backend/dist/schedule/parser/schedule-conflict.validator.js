@@ -96,7 +96,10 @@ function validateScheduleConflicts(lessons, existingLessons = []) {
                 const sharedHall = !first.isDistance
                     && !second.isDistance
                     && isSharedHall(first, second);
-                if (!sharedHall && hasSameRoom(first, second)) {
+                if (sharedHall) {
+                    continue;
+                }
+                if (hasSameRoom(first, second)) {
                     conflicts.push({
                         message: formatCrossGroupConflict(first, second),
                         lessonA: first,

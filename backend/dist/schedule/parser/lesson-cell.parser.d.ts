@@ -6,6 +6,7 @@ export interface ParsedLessonPart {
     teacherName: string;
     isSameCellParallel: boolean;
 }
+export declare function isIgnorableLessonCell(rawText: string | null | undefined): boolean;
 export declare function parseLessonCell(rawText: string): ParsedLessonPart[];
 export declare function isDistanceRoom(room: string | null | undefined): boolean;
 export declare function isAuditoriumRoomLabel(room: string | null | undefined): boolean;

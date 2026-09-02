@@ -375,6 +375,22 @@
   @apply border-[#8fc5ed] bg-[rgba(232,244,255,0.72)] dark:bg-[rgba(232,244,255,0.12)];
 }
 
+.schedule-page .cell--transfer-drop-target {
+  @apply outline outline-2 outline-offset-[-2px];
+}
+
+.schedule-page .cell--transfer-drop-valid {
+  @apply border-[#2e9f5b] bg-[rgba(46,159,91,0.16)] dark:bg-[rgba(46,159,91,0.18)] outline-[#2e9f5b];
+}
+
+.schedule-page .cell--transfer-drop-invalid {
+  @apply border-[#e15b64] bg-[rgba(225,91,100,0.15)] dark:bg-[rgba(225,91,100,0.14)] outline-[#e15b64];
+}
+
+.schedule-page .cell--transfer-drop-loading {
+  @apply outline-[#3c8ed9];
+}
+
 .schedule-page .cell--removed {
   @apply border-transparent bg-transparent pointer-events-none;
 }
@@ -405,6 +421,14 @@
 
 .schedule-page .lesson {
   @apply min-w-0 p-[8px] rounded-[8px] mb-[4px] cursor-pointer transition-transform duration-[200ms] ease-in-out overflow-hidden;
+}
+
+.schedule-page .lesson[draggable='true'] {
+  @apply cursor-grab;
+}
+
+.schedule-page .lesson[draggable='true']:active {
+  @apply cursor-grabbing;
 }
 
 .schedule-page .lesson:hover {

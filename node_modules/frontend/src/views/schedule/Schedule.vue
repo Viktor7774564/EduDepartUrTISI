@@ -24,6 +24,7 @@ import {
   fetchScheduleTransferRecommendations,
   previewScheduleItemChanges,
   showScheduleAdminError,
+  type ScheduleItemPreviewPayload,
   type ScheduleTransferRecommendation,
   updatePreholidayDay,
   updateScheduleItem,
@@ -78,9 +79,11 @@ let scheduleSocket: Socket | null = null
 let scheduleReloadTimer: ReturnType<typeof setTimeout> | null = null
 let editPreviewTimer: ReturnType<typeof setTimeout> | null = null
 let transferPreviewTimer: ReturnType<typeof setTimeout> | null = null
+let transferDragPreviewTimer: ReturnType<typeof setTimeout> | null = null
 let scheduleLoadGeneration = 0
 let editPreviewGeneration = 0
 let transferPreviewGeneration = 0
+let transferDragPreviewGeneration = 0
 
 const reloadScheduleSoon = () => {
   if (scheduleReloadTimer) {
@@ -278,6 +281,21 @@ const transferForm = ref({
   building: '',
   room: '',
 })
+
+type TransferTarget = {
+  weekKey: string
+  day: string
+  startTime: string
+  endTime: string
+  room: string | null
+}
+
+const draggedTransferLesson = ref<CellLesson | null>(null)
+const transferDragTarget = ref<TransferTarget | null>(null)
+const isLoadingTransferDragPreview = ref(false)
+const transferDragPreviewError = ref<string | null>(null)
+const transferDragPreviewConflicts = ref<string[]>([])
+const transferDragPreviewStatus = ref<'idle' | 'loading' | 'valid' | 'invalid' | 'error'>('idle')
 
 const applySchedulePeriodMeta = (meta?: Partial<SchedulePeriodMeta> | null) => {
   schedulePeriodMeta.value = {
@@ -1152,35 +1170,62 @@ const resetEditPreviewState = () => {
   editPreviewRecommendations.value = []
 }
 
-const buildTransferPreviewPayload = () => {
-  const dayOfWeek = DAY_TO_NUMBER[transferForm.value.day]
-  const timeParts = transferForm.value.time.split('-').map((part) => part.trim())
-  const startTime = timeParts[0] ?? ''
-  const endTime = timeParts[1] ?? ''
-  const transferWeekStart = resolveWeekStartDate(transferForm.value.weekKey)
-  const weekStart = transferWeekStart
+const getTransferWeekStartValue = (weekKey: string, fallbackWeekStart: string | null = null): string | null => {
+  const transferWeekStart = resolveWeekStartDate(weekKey)
+
+  return transferWeekStart
     ? formatFullDate(transferWeekStart)
-    : transferringLesson.value?.weekStart ?? resolveWeekStartForSave()
-  const room = formatRoomForApi(transferForm.value.building, transferForm.value.room)
+    : fallbackWeekStart ?? resolveWeekStartForSave()
+}
+
+const buildTransferPreviewPayloadForTarget = (
+  lesson: CellLesson,
+  target: TransferTarget,
+  room: string | null,
+): ScheduleItemPreviewPayload | null => {
+  const dayOfWeek = DAY_TO_NUMBER[target.day]
+  const weekStart = getTransferWeekStartValue(target.weekKey, lesson.weekStart ?? null)
 
   if (
     !dayOfWeek
-    || !startTime
-    || !endTime
+    || !target.startTime
+    || !target.endTime
     || !weekStart
-    || isHolidayDayInWeek(transferForm.value.day, transferForm.value.weekKey)
-    || isPastWeek(transferForm.value.weekKey)
+    || isHolidayDayInWeek(target.day, target.weekKey)
+    || isPastWeek(target.weekKey)
   ) {
     return null
   }
 
   return {
     dayOfWeek,
-    startTime,
-    endTime,
+    startTime: target.startTime,
+    endTime: target.endTime,
     weekStart,
-    room,
+    room: room ?? undefined,
   }
+}
+
+const buildTransferPreviewPayload = (): ScheduleItemPreviewPayload | null => {
+  const lesson = transferringLesson.value
+
+  if (!lesson) {
+    return null
+  }
+
+  const timeParts = transferForm.value.time.split('-').map((part) => part.trim())
+  const target: TransferTarget = {
+    weekKey: transferForm.value.weekKey,
+    day: transferForm.value.day,
+    startTime: timeParts[0] ?? '',
+    endTime: timeParts[1] ?? '',
+    room: transferForm.value.room.trim() || null,
+  }
+
+  return buildTransferPreviewPayloadForTarget(lesson, target, formatRoomForApi(
+    transferForm.value.building,
+    transferForm.value.room,
+  ) ?? null)
 }
 
 const resetTransferPreviewState = () => {
@@ -1252,6 +1297,90 @@ const scheduleTransferPreviewSoon = () => {
     transferPreviewTimer = null
     void loadTransferPreview()
   }, 350)
+}
+
+const resetTransferDragState = () => {
+  transferDragPreviewGeneration += 1
+  draggedTransferLesson.value = null
+  transferDragTarget.value = null
+  isLoadingTransferDragPreview.value = false
+  transferDragPreviewError.value = null
+  transferDragPreviewConflicts.value = []
+  transferDragPreviewStatus.value = 'idle'
+
+  if (transferDragPreviewTimer) {
+    clearTimeout(transferDragPreviewTimer)
+    transferDragPreviewTimer = null
+  }
+}
+
+const loadTransferDragPreview = async () => {
+  const lesson = draggedTransferLesson.value
+  const target = transferDragTarget.value
+
+  if (!lesson || !target) {
+    resetTransferDragState()
+    return
+  }
+
+  const payload = buildTransferPreviewPayloadForTarget(lesson, target, lesson.room?.trim() || null)
+
+  if (!payload) {
+    transferDragPreviewStatus.value = 'invalid'
+    transferDragPreviewConflicts.value = []
+    transferDragPreviewError.value = null
+    isLoadingTransferDragPreview.value = false
+    return
+  }
+
+  const generation = ++transferDragPreviewGeneration
+  isLoadingTransferDragPreview.value = true
+  transferDragPreviewError.value = null
+  transferDragPreviewStatus.value = 'loading'
+
+  try {
+    const preview = await previewScheduleItemChanges(lesson.id, payload)
+
+    if (
+      generation !== transferDragPreviewGeneration
+      || draggedTransferLesson.value?.id !== lesson.id
+      || transferDragTarget.value !== target
+    ) {
+      return
+    }
+
+    transferDragPreviewConflicts.value = preview.conflicts
+    transferDragPreviewStatus.value = preview.conflicts.length > 0 ? 'invalid' : 'valid'
+  } catch {
+    if (
+      generation === transferDragPreviewGeneration
+      && draggedTransferLesson.value?.id === lesson.id
+      && transferDragTarget.value === target
+    ) {
+      transferDragPreviewConflicts.value = []
+      transferDragPreviewError.value = 'Не удалось проверить перенос'
+      transferDragPreviewStatus.value = 'error'
+    }
+  } finally {
+    if (
+      generation === transferDragPreviewGeneration
+      && draggedTransferLesson.value?.id === lesson.id
+      && transferDragTarget.value === target
+    ) {
+      isLoadingTransferDragPreview.value = false
+    }
+  }
+}
+
+const scheduleTransferDragPreviewSoon = () => {
+  if (transferDragPreviewTimer) {
+    clearTimeout(transferDragPreviewTimer)
+  }
+
+  transferDragPreviewTimer = setTimeout(() => {
+    transferDragPreviewTimer = null
+    void loadTransferDragPreview()
+  }, 120)
 }
 
 const loadEditPreview = async () => {
@@ -1496,6 +1625,56 @@ const closeTransferModal = () => {
     clearTimeout(transferPreviewTimer)
     transferPreviewTimer = null
   }
+
+  resetTransferDragState()
+}
+
+const saveTransferToTarget = async (
+  lesson: CellLesson,
+  target: TransferTarget,
+  room: string | null,
+) => {
+  const dayOfWeek = DAY_TO_NUMBER[target.day]
+  const weekStart = getTransferWeekStartValue(target.weekKey, lesson.weekStart ?? null)
+
+  if (
+    !dayOfWeek
+    || !target.startTime
+    || !target.endTime
+    || !weekStart
+    || isHolidayDayInWeek(target.day, target.weekKey)
+    || isPastWeek(target.weekKey)
+  ) {
+    await confirmDialog.alert('Выберите день и время для переноса')
+    return
+  }
+
+  if (isHolidayDayInWeek(target.day, target.weekKey)) {
+    await confirmDialog.alert('Нельзя перенести пару на праздничный день')
+    return
+  }
+
+  if (isPastWeek(target.weekKey)) {
+    await confirmDialog.alert('Нельзя перенести пару на прошедшую неделю')
+    return
+  }
+
+  isTransferSaving.value = true
+
+  try {
+    await updateScheduleItem(lesson.id, {
+      dayOfWeek,
+      startTime: target.startTime,
+      endTime: target.endTime,
+      weekStart,
+      room: room ?? undefined,
+    })
+    await refreshSchedulePreservingView()
+  } catch (error) {
+    await showScheduleAdminError(error)
+  } finally {
+    isTransferSaving.value = false
+  }
 }
 
 const saveTransfer = async () => {
@@ -1503,29 +1682,13 @@ const saveTransfer = async () => {
     return
   }
 
-  const dayOfWeek = DAY_TO_NUMBER[transferForm.value.day]
   const timeParts = transferForm.value.time.split('-').map((part) => part.trim())
-  const startTime = timeParts[0] ?? ''
-  const endTime = timeParts[1] ?? ''
-  const transferWeekStart = resolveWeekStartDate(transferForm.value.weekKey)
-  const weekStart = transferWeekStart
-    ? formatFullDate(transferWeekStart)
-    : transferringLesson.value.weekStart ?? resolveWeekStartForSave()
-  const room = formatRoomForApi(transferForm.value.building, transferForm.value.room)
-
-  if (!dayOfWeek || !startTime || !endTime || !weekStart) {
-    await confirmDialog.alert('Выберите день и время для переноса')
-    return
-  }
-
-  if (isHolidayDayInWeek(transferForm.value.day, transferForm.value.weekKey)) {
-    await confirmDialog.alert('Нельзя перенести пару на праздничный день')
-    return
-  }
-
-  if (isPastWeek(transferForm.value.weekKey)) {
-    await confirmDialog.alert('Нельзя перенести пару на прошедшую неделю')
-    return
+  const target: TransferTarget = {
+    weekKey: transferForm.value.weekKey,
+    day: transferForm.value.day,
+    startTime: timeParts[0] ?? '',
+    endTime: timeParts[1] ?? '',
+    room: transferForm.value.room.trim() || null,
   }
 
   if (hasTransferPreviewConflicts.value) {
@@ -1537,23 +1700,174 @@ const saveTransfer = async () => {
     return
   }
 
-  isTransferSaving.value = true
+  await saveTransferToTarget(
+    transferringLesson.value,
+    target,
+    formatRoomForApi(transferForm.value.building, transferForm.value.room) ?? null,
+  )
+  closeTransferModal()
+}
+
+const getTransferDragTargetKey = (day: string, slot: TimeSlot) =>
+  `${day}|${slot.startTime}|${slot.endTime}`
+
+const getTransferTargetKey = (target: TransferTarget) =>
+  `${target.day}|${target.startTime}|${target.endTime}`
+
+const getTransferDragTarget = (day: string, slot: TimeSlot): TransferTarget => ({
+  weekKey: currentWeekKey.value,
+  day,
+  startTime: slot.startTime,
+  endTime: slot.endTime,
+  room: draggedTransferLesson.value?.room?.trim() || null,
+})
+
+const isTransferDropTarget = (day: string, slot: TimeSlot) =>
+  transferDragTarget.value !== null
+  && transferDragTarget.value.day === day
+  && transferDragTarget.value.startTime === slot.startTime
+  && transferDragTarget.value.endTime === slot.endTime
+
+const getTransferDropCellClass = (day: string, slot: TimeSlot) => {
+  const active = isTransferDropTarget(day, slot)
+
+  return {
+    'cell--transfer-drop-target': active,
+    'cell--transfer-drop-valid': active && transferDragPreviewStatus.value === 'valid',
+    'cell--transfer-drop-invalid': active && ['invalid', 'error'].includes(transferDragPreviewStatus.value),
+    'cell--transfer-drop-loading': active && transferDragPreviewStatus.value === 'loading',
+  }
+}
+
+const updateTransferDragTarget = (day: string, slot: TimeSlot) => {
+  const lesson = draggedTransferLesson.value
+
+  if (!lesson) {
+    return
+  }
+
+  const target = getTransferDragTarget(day, slot)
+  const nextTargetKey = getTransferDragTargetKey(day, slot)
+  const currentTargetKey = transferDragTarget.value
+    ? getTransferTargetKey(transferDragTarget.value)
+    : null
+
+  if (currentTargetKey === nextTargetKey) {
+    return
+  }
+
+  transferDragTarget.value = target
+  transferDragPreviewStatus.value = 'loading'
+  transferDragPreviewError.value = null
+  transferDragPreviewConflicts.value = []
+  scheduleTransferDragPreviewSoon()
+}
+
+const handleTransferLessonDragStart = (lesson: CellLesson, event: DragEvent) => {
+  if (!canManagePairs.value || !event.dataTransfer) {
+    return
+  }
+
+  draggedTransferLesson.value = lesson
+  transferDragTarget.value = null
+  transferDragPreviewStatus.value = 'idle'
+  transferDragPreviewError.value = null
+  transferDragPreviewConflicts.value = []
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', String(lesson.id))
+}
+
+const handleTransferLessonDragEnd = () => {
+  resetTransferDragState()
+}
+
+const handleTransferCellDragOver = (day: string, slot: TimeSlot, event: DragEvent) => {
+  if (!draggedTransferLesson.value) {
+    return
+  }
+
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = transferDragPreviewStatus.value === 'invalid'
+      ? 'none'
+      : 'move'
+  }
+
+  updateTransferDragTarget(day, slot)
+}
+
+const handleTransferCellDragEnter = (day: string, slot: TimeSlot, event: DragEvent) => {
+  if (!draggedTransferLesson.value) {
+    return
+  }
+
+  event.preventDefault()
+  updateTransferDragTarget(day, slot)
+}
+
+const handleTransferCellDrop = async (day: string, slot: TimeSlot, event: DragEvent) => {
+  const lesson = draggedTransferLesson.value
+
+  if (!lesson) {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  const target = getTransferDragTarget(day, slot)
+  transferDragTarget.value = target
+
+  if (transferDragPreviewTimer) {
+    clearTimeout(transferDragPreviewTimer)
+    transferDragPreviewTimer = null
+  }
+
+  const payload = buildTransferPreviewPayloadForTarget(
+    lesson,
+    target,
+    lesson.room?.trim() || null,
+  )
+
+  if (!payload) {
+    await confirmDialog.alert({
+      title: 'Конфликт в расписании',
+      message: 'Нельзя перенести пару в эту ячейку.',
+    })
+    resetTransferDragState()
+    return
+  }
 
   try {
-    await updateScheduleItem(transferringLesson.value.id, {
-      dayOfWeek,
-      startTime,
-      endTime,
-      weekStart,
-      room,
+    const preview = await previewScheduleItemChanges(lesson.id, payload)
+
+    if (preview.conflicts.length > 0) {
+      transferDragPreviewConflicts.value = preview.conflicts
+      transferDragPreviewStatus.value = 'invalid'
+      await confirmDialog.alert({
+        title: 'Конфликт в расписании',
+        message: 'Нельзя перенести пару в эту ячейку.',
+        details: preview.conflicts,
+      })
+      resetTransferDragState()
+      return
+    }
+  } catch {
+    transferDragPreviewStatus.value = 'error'
+    transferDragPreviewError.value = 'Не удалось проверить перенос'
+    await confirmDialog.alert({
+      title: 'Ошибка',
+      message: 'Не удалось проверить перенос',
     })
-    await refreshSchedulePreservingView()
-    closeTransferModal()
-  } catch (error) {
-    await showScheduleAdminError(error)
-  } finally {
-    isTransferSaving.value = false
+    resetTransferDragState()
+    return
   }
+
+  await saveTransferToTarget(
+    lesson,
+    target,
+    lesson.room?.trim() || null,
+  )
+  resetTransferDragState()
 }
 
 const resolveScheduleGroupNames = (): string[] => {
@@ -1821,6 +2135,11 @@ const openLessonMenu = (lesson: CellLesson) => {
 }
 
 const handleLessonTap = (lesson: CellLesson, event: MouseEvent) => {
+  if (draggedTransferLesson.value) {
+    event.stopPropagation()
+    return
+  }
+
   if (isMobileLayout.value && canEdit.value) {
     event.stopPropagation()
     openLessonMenu(lesson)
@@ -2353,9 +2672,18 @@ onUnmounted(() => {
     clearTimeout(editPreviewTimer)
   }
 
+  if (transferPreviewTimer) {
+    clearTimeout(transferPreviewTimer)
+  }
+
+  if (transferDragPreviewTimer) {
+    clearTimeout(transferDragPreviewTimer)
+  }
+
   scheduleSocket?.removeAllListeners()
   scheduleSocket?.disconnect()
   scheduleSocket = null
+  resetTransferDragState()
 })
 </script>
 
@@ -2536,6 +2864,7 @@ onUnmounted(() => {
                       'cell--parallel': isParallelSlot(day, daySlot),
                       'cell--holiday': isHolidayDay(day),
                       'cell--preholiday': isPreholidayDay(day),
+                      ...getTransferDropCellClass(day, daySlot),
                     }"
                     @click.stop="
                       handleCellTap(
@@ -2549,6 +2878,9 @@ onUnmounted(() => {
                     @contextmenu.prevent="
                       showEmptyContextMenu($event, day, daySlot.startTime, daySlot.endTime)
                     "
+                    @dragenter.prevent="handleTransferCellDragEnter(day, daySlot, $event)"
+                    @dragover.prevent="handleTransferCellDragOver(day, daySlot, $event)"
+                    @drop.prevent="handleTransferCellDrop(day, daySlot, $event)"
                 >
                   <div v-if="isPreholidayDay(day)" class="cell-slot-time">
                     {{ daySlot.startTime }} - {{ daySlot.endTime }}
@@ -2559,6 +2891,9 @@ onUnmounted(() => {
                       :key="`${lesson.group}-${lesson.id}`"
                       class="lesson"
                       :class="getLessonClass(lesson.type)"
+                      :draggable="canManagePairs && !isMobileLayout"
+                      @dragstart="handleTransferLessonDragStart(lesson, $event)"
+                      @dragend="handleTransferLessonDragEnd"
                       @click.stop="handleLessonTap(lesson, $event)"
                       @contextmenu.prevent.stop="showContextMenu($event, lesson)"
                   >
@@ -2581,6 +2916,7 @@ onUnmounted(() => {
                       'cell--parallel': isParallelSlot(saturdayDay, saturdaySlot),
                       'cell--holiday': isHolidayDay(saturdayDay),
                       'cell--preholiday': isPreholidayDay(saturdayDay),
+                      ...getTransferDropCellClass(saturdayDay, saturdaySlot),
                     }"
                     @click.stop="
                       handleCellTap(
@@ -2599,6 +2935,9 @@ onUnmounted(() => {
                         saturdaySlot.endTime,
                       )
                     "
+                    @dragenter.prevent="handleTransferCellDragEnter(saturdayDay, saturdaySlot, $event)"
+                    @dragover.prevent="handleTransferCellDragOver(saturdayDay, saturdaySlot, $event)"
+                    @drop.prevent="handleTransferCellDrop(saturdayDay, saturdaySlot, $event)"
                 >
                   <div v-if="isPreholidayDay(saturdayDay)" class="cell-slot-time">
                     {{ saturdaySlot.startTime }} - {{ saturdaySlot.endTime }}
@@ -2609,6 +2948,9 @@ onUnmounted(() => {
                       :key="`${lesson.group}-${lesson.id}`"
                       class="lesson"
                       :class="getLessonClass(lesson.type)"
+                      :draggable="canManagePairs && !isMobileLayout"
+                      @dragstart="handleTransferLessonDragStart(lesson, $event)"
+                      @dragend="handleTransferLessonDragEnd"
                       @click.stop="handleLessonTap(lesson, $event)"
                       @contextmenu.prevent.stop="showContextMenu($event, lesson)"
                   >

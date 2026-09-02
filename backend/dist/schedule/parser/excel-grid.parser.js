@@ -342,6 +342,9 @@ function parseSheetGrid(grid, groupName, period, warnings) {
                     const weekStart = getWeekStartLabel(weekDate);
                     const parsedParts = (0, lesson_cell_parser_1.parseLessonCell)(lessonRaw);
                     if (parsedParts.length === 0) {
+                        if ((0, lesson_cell_parser_1.isIgnorableLessonCell)(lessonRaw)) {
+                            continue;
+                        }
                         warnings.push(`Не удалось разобрать ячейку: ${lessonRaw.slice(0, 80)}`);
                         continue;
                     }

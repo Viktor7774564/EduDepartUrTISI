@@ -36,6 +36,19 @@ function isKrDefenseLessonType(value: string): boolean {
     return value.includes('защ') && value.includes('кр');
 }
 
+function isSelfStudySpecialDay(value: string): boolean {
+    return /самоподготов/i.test(value);
+}
+
+export function isIgnorableLessonCell(rawText: string | null | undefined): boolean {
+    if (!rawText) {
+        return false;
+    }
+
+    const normalized = rawText.replace(/\s+/g, ' ').trim();
+    return isSelfStudySpecialDay(normalized);
+}
+
 function normalizeLessonType(raw: string): string {
     const value = raw.trim().replace(/;$/, '').toLowerCase();
 
@@ -58,13 +71,11 @@ function formatTeacherName(raw: string): string {
 }
 
 function isFullLessonSegment(segment: string): boolean {
-    const semicolonIndex = segment.indexOf(';');
-    if (semicolonIndex === -1) {
+    if (/^\d{1,2}:\d{2}(?:\s|$)/u.test(segment)) {
         return false;
     }
 
-    const colonIndex = segment.indexOf(':');
-    return colonIndex === -1 || semicolonIndex < colonIndex;
+    return segment.includes(';') || segment.includes(':');
 }
 
 function extractSubgroupFromText(text: string): { cleaned: string; subgroup: number | null } {
@@ -123,22 +134,22 @@ function parseLessonBlock(block: string): ParsedLessonPart[] {
         .replace(/\s+/g, ' ')
         .replace(/\s*\/\s*$/g, '')
         .trim();
-    const semicolonIndex = text.indexOf(';');
-    if (semicolonIndex === -1) {
+    const match = text.match(/^(.+?)[;:]\s*(.+?)(?::\s*(.+))?$/u);
+
+    if (!match) {
         return [];
     }
 
-    const subject = text.slice(0, semicolonIndex).trim();
-    const rest = text.slice(semicolonIndex + 1).trim();
-    const colonIndex = rest.indexOf(':');
-    if (colonIndex === -1) {
+    const subject = match[1].trim();
+    const typePart = match[2].trim();
+    const teachersPart = match[3]?.trim() ?? '';
+
+    if (!teachersPart) {
         return [];
     }
 
-    const typePart = rest.slice(0, colonIndex).trim();
     const { cleaned: cleanedType, subgroup: typeSubgroup } = extractSubgroupFromText(typePart);
     const lessonType = normalizeLessonType(cleanedType);
-    const teachersPart = rest.slice(colonIndex + 1).trim();
     const teacherParts = teachersPart
         .replace(/\s*\/\s*$/g, '')
         .split(/\s*\/\s*/)
@@ -210,15 +221,24 @@ function splitLessonBlocks(rawText: string): string[] {
 export function parseLessonCell(rawText: string): ParsedLessonPart[] {
     const text = rawText.replace(/\s+/g, ' ').trim();
 
-    if (/^час\s+куратора\.?$/i.test(text)) {
+    if (/час\s+куратора/i.test(text)) {
+        const normalized = text.replace(/^\d{1,2}:\d{2}\s*/u, '').trim();
+        const teacherPart = normalized.includes(':')
+            ? normalized.slice(normalized.indexOf(':') + 1).trim()
+            : '';
+
         return [{
             subject: 'Час куратора',
             lessonType: 'Кураторский час',
             subgroup: null,
             teacherPosition: '',
-            teacherName: '',
+            teacherName: formatTeacherName(teacherPart),
             isSameCellParallel: false,
         }];
+    }
+
+    if (isIgnorableLessonCell(text)) {
+        return [];
     }
 
     const blocks = splitLessonBlocks(rawText);
@@ -291,6 +311,10 @@ export function isAuditoriumRoomLabel(room: string | null | undefined): boolean 
     }
 
     if (collapsed.includes('Т/З')) {
+        return true;
+    }
+
+    if (normalized.includes('СПОРТИВНЫЙ ЗАЛ') || normalized.includes('СПОРТЗАЛ')) {
         return true;
     }
 
