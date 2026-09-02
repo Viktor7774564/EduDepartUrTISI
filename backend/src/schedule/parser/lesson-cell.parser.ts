@@ -314,6 +314,11 @@ export function isAuditoriumRoomLabel(room: string | null | undefined): boolean 
         return true;
     }
 
+    if (collapsed.includes('День здоровья')) {
+        return true;
+    }
+
+
     if (normalized.includes('СПОРТИВНЫЙ ЗАЛ') || normalized.includes('СПОРТЗАЛ')) {
         return true;
     }

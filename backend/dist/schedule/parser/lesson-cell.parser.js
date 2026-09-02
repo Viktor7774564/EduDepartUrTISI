@@ -249,6 +249,9 @@ function isAuditoriumRoomLabel(room) {
     if (collapsed.includes('Т/З')) {
         return true;
     }
+    if (collapsed.includes('День здоровья')) {
+        return true;
+    }
     if (normalized.includes('СПОРТИВНЫЙ ЗАЛ') || normalized.includes('СПОРТЗАЛ')) {
         return true;
     }
