@@ -22,17 +22,17 @@ const isLoading = ref(false)
 
 const helpfulLinks = [
   {
-    id: 'telegram',
-    title: 'Telegram',
-    subtitle: 'Учебный отдел',
-    icon: telegramIcon,
-    alt: 'Логотип Telegram',
-    url: 'https://t.me/c/2226177795/1',
+    id: 'max',
+    title: 'MAX',
+    subtitle: 'Учебный отдел УрТИСИ СибГУТИ',
+    icon: maxIcon,
+    alt: 'Логотип Max',
+    url: 'https://max.ru/join/AHiAjC8oCThnq2HqMGw9kNNZ6rgOgBSu97yA8gLJoyQ',
   },
   {
     id: 'vk',
     title: 'ВКонтакте',
-    subtitle: 'Новости УрТИСИ',
+    subtitle: 'Новости УрТИСИ СибГУТИ',
     icon: vkIcon,
     alt: 'Логотип ВКонтакте',
     url: 'https://vk.com/urtisi',
@@ -40,7 +40,7 @@ const helpfulLinks = [
   {
     id: 'max',
     title: 'MAX',
-    subtitle: 'Новости УрТИСИ',
+    subtitle: 'Новости УрТИСИ СибГУТИ',
     icon: maxIcon,
     alt: 'Логотип MAX',
     url: 'https://max.ru/id5405101327_gos2',
