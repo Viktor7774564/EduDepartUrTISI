@@ -8,7 +8,6 @@ exports.findLinkedLectureItemsInList = findLinkedLectureItemsInList;
 exports.extractLinkedGroupNames = extractLinkedGroupNames;
 exports.buildLinkedGroupsMap = buildLinkedGroupsMap;
 const lesson_type_entity_1 = require("./entities/lesson-type.entity");
-const group_parallel_utils_1 = require("./parser/group-parallel.utils");
 function isLectureScheduleItem(item) {
     return item.lessonType?.code === lesson_type_entity_1.LessonTypeCode.LECTURE;
 }
@@ -32,10 +31,6 @@ function areLinkedSharedLessonItems(first, second) {
     const firstGroupName = first.schedule?.group?.name;
     const secondGroupName = second.schedule?.group?.name;
     if (!firstGroupName || !secondGroupName) {
-        return false;
-    }
-    if (first.lessonType.code === lesson_type_entity_1.LessonTypeCode.LECTURE
-        && !(0, group_parallel_utils_1.areParallelGroups)(firstGroupName, secondGroupName)) {
         return false;
     }
     if (String(first.weekStart) !== String(second.weekStart)) {

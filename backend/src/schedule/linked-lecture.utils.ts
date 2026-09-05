@@ -1,6 +1,5 @@
 import { ScheduleItem } from './entities/schedule-item.entity';
 import { LessonTypeCode } from './entities/lesson-type.entity';
-import { areParallelGroups } from './parser/group-parallel.utils';
 
 export function isLectureScheduleItem(item: ScheduleItem): boolean {
     return item.lessonType?.code === LessonTypeCode.LECTURE;
@@ -32,11 +31,6 @@ export function areLinkedSharedLessonItems(first: ScheduleItem, second: Schedule
     const secondGroupName = second.schedule?.group?.name;
 
     if (!firstGroupName || !secondGroupName) {
-        return false;
-    }
-
-    if (first.lessonType.code === LessonTypeCode.LECTURE
-        && !areParallelGroups(firstGroupName, secondGroupName)) {
         return false;
     }
 
