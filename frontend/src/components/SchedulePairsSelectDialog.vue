@@ -75,6 +75,15 @@ function toggleOne(index: number) {
   selected.value = next
 }
 
+function splitConflictReasons(reason: string): string[] {
+  return [...new Set(
+    reason
+      .split(/;\s*/)
+      .map((item) => item.trim())
+      .filter(Boolean),
+  )]
+}
+
 function onConfirm() {
   // безконфликтные + выбранные конфликтные
   const indexes = [
@@ -136,7 +145,13 @@ function onCancel() {
               <span v-if="lesson.subgroup"> · подгр. {{ lesson.subgroup }}</span>
             </div>
             <div v-if="lesson.conflictReason" class="conflict-reason">
-              ⚠ {{ lesson.conflictReason }}
+              <div
+                v-for="reason in splitConflictReasons(lesson.conflictReason)"
+                :key="reason"
+                class="conflict-reason-item"
+              >
+                ⚠ {{ reason }}
+              </div>
             </div>
           </div>
         </label>
@@ -262,6 +277,10 @@ function onCancel() {
 .conflict-reason {
   font-size: 0.8rem;
   color: #c2410c;
+  margin-top: 4px;
+}
+
+.conflict-reason-item + .conflict-reason-item {
   margin-top: 4px;
 }
 

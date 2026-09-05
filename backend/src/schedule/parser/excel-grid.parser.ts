@@ -3,7 +3,6 @@ import * as XLSX from 'xlsx';
 import { extractGroupNameFromTitle } from './group-parallel.utils';
 import {
     isDistanceRoom,
-    isIgnorableLessonCell,
     isSharedMultiHallRoom,
     parseLessonCell,
     splitRoomForSubgroups,
@@ -422,10 +421,6 @@ function parseSheetGrid(
                     const weekStart = getWeekStartLabel(weekDate);
                     const parsedParts = parseLessonCell(lessonRaw);
                     if (parsedParts.length === 0) {
-                        if (isIgnorableLessonCell(lessonRaw)) {
-                            continue;
-                        }
-
                         warnings.push(`Не удалось разобрать ячейку: ${lessonRaw.slice(0, 80)}`);
                         continue;
                     }

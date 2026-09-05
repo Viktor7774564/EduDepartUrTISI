@@ -327,6 +327,14 @@ function getErrorPayload(data: unknown): {
   return payload
 }
 
+function getVisibleUploadWarnings(warnings: string[] | null | undefined): string[] | undefined {
+  const visibleWarnings = warnings?.filter((warning) =>
+    warning.startsWith('Преподаватель не найден в БД:'),
+  )
+
+  return visibleWarnings?.length ? visibleWarnings : undefined
+}
+
 function selectGroup(name: string) {
   selectedGroup.value = name
   groupSearchQuery.value = name
@@ -472,7 +480,7 @@ async function onPairsConfirm(selectedIndexes: number[]) {
       text: uploaded.periodStart && uploaded.periodEnd
           ? `Расписание группы ${uploaded.groupName ?? selectedGroup.value} за период ${uploaded.periodStart} — ${uploaded.periodEnd} загружено: ${uploaded.lessonsCount} занятий`
           : `Расписание группы ${uploaded.groupName ?? selectedGroup.value} загружено: ${uploaded.lessonsCount} занятий`,
-      warnings: uploaded.parseWarnings?.length ? uploaded.parseWarnings : undefined,
+      warnings: getVisibleUploadWarnings(uploaded.parseWarnings),
     }
 
     resetPreviewState() // только после успеха
@@ -762,20 +770,23 @@ const toggleUploadWarnings = (id: number) => {
                   {{ upload.originalFileName }}
                 </a>
                 <span class="file-size">{{ formatFileSize(upload.fileSize) }}</span>
-                <span v-if="upload.parseWarnings?.length" class="parse-warning">
+                <span v-if="getVisibleUploadWarnings(upload.parseWarnings)?.length" class="parse-warning">
                   <button
                     type="button"
                     class="warning-toggle"
                     @click="toggleUploadWarnings(upload.id)"
                   >
-                    {{ upload.parseWarnings.length }} предупреждений
+                    {{ getVisibleUploadWarnings(upload.parseWarnings)?.length }} предупреждений
                     {{ expandedWarningId === upload.id ? '▲' : '▼' }}
                   </button>
                   <ul
                     v-if="expandedWarningId === upload.id"
                     class="upload-warning-list"
                   >
-                    <li v-for="(warning, index) in upload.parseWarnings" :key="index">
+                    <li
+                      v-for="(warning, index) in getVisibleUploadWarnings(upload.parseWarnings)"
+                      :key="index"
+                    >
                       {{ warning }}
                     </li>
                   </ul>

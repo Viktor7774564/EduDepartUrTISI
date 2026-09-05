@@ -26,12 +26,6 @@ const dialog = useConfirmDialogStore()
           {{ dialog.message }}
         </p>
 
-        <ul v-if="dialog.details.length > 0" class="confirm-dialog__details">
-          <li v-for="(detail, index) in dialog.details" :key="index">
-            {{ detail }}
-          </li>
-        </ul>
-
         <div class="confirm-dialog__actions">
           <button
             v-if="dialog.mode === 'confirm'"

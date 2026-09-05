@@ -238,12 +238,26 @@ export function parseLessonCell(rawText: string): ParsedLessonPart[] {
     }
 
     if (isIgnorableLessonCell(text)) {
-        return [];
+        return [{
+            subject: text,
+            lessonType: 'Особое',
+            subgroup: null,
+            teacherPosition: '',
+            teacherName: '',
+            isSameCellParallel: false,
+        }];
     }
 
     const blocks = splitLessonBlocks(rawText);
     if (blocks.length === 0) {
-        return [];
+        return [{
+            subject: text,
+            lessonType: 'Особое',
+            subgroup: null,
+            teacherPosition: '',
+            teacherName: '',
+            isSameCellParallel: false,
+        }];
     }
 
     const hasParallelDisciplines = blocks.length > 1;
@@ -265,6 +279,17 @@ export function parseLessonCell(rawText: string): ParsedLessonPart[] {
             isSameCellParallel: isParallelPair,
         })),
     );
+
+    if (parts.length === 0) {
+        return [{
+            subject: text,
+            lessonType: 'Особое',
+            subgroup: null,
+            teacherPosition: '',
+            teacherName: '',
+            isSameCellParallel: false,
+        }];
+    }
 
     const subgroups = parts
         .map((part) => part.subgroup)

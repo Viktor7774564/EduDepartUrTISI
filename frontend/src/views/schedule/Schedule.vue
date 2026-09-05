@@ -253,6 +253,7 @@ const isLoadingTransferPreview = ref(false)
 const transferPreviewError = ref<string | null>(null)
 const transferPreviewConflicts = ref<string[]>([])
 const transferPreviewRecommendations = ref<ScheduleTransferRecommendation[]>([])
+const initialTransferFormSignature = ref('')
 const isLoadingEditPreview = ref(false)
 const editPreviewError = ref<string | null>(null)
 const editPreviewConflicts = ref<string[]>([])
@@ -296,6 +297,7 @@ const isLoadingTransferDragPreview = ref(false)
 const transferDragPreviewError = ref<string | null>(null)
 const transferDragPreviewConflicts = ref<string[]>([])
 const transferDragPreviewStatus = ref<'idle' | 'loading' | 'valid' | 'invalid' | 'error'>('idle')
+const transferDropInProgress = ref(false)
 
 const applySchedulePeriodMeta = (meta?: Partial<SchedulePeriodMeta> | null) => {
   schedulePeriodMeta.value = {
@@ -1235,11 +1237,14 @@ const resetTransferPreviewState = () => {
   transferPreviewRecommendations.value = []
 }
 
+const getTransferFormSignature = () => JSON.stringify(transferForm.value)
+
 const loadTransferPreview = async () => {
   const lesson = transferringLesson.value
 
   if (!lesson || !isTransferModalVisible.value) {
     resetTransferPreviewState()
+    initialTransferFormSignature.value = ''
     return
   }
 
@@ -1344,7 +1349,7 @@ const loadTransferDragPreview = async () => {
     if (
       generation !== transferDragPreviewGeneration
       || draggedTransferLesson.value?.id !== lesson.id
-      || transferDragTarget.value !== target
+      || !isSameTransferTarget(transferDragTarget.value, target)
     ) {
       return
     }
@@ -1355,7 +1360,7 @@ const loadTransferDragPreview = async () => {
     if (
       generation === transferDragPreviewGeneration
       && draggedTransferLesson.value?.id === lesson.id
-      && transferDragTarget.value === target
+      && isSameTransferTarget(transferDragTarget.value, target)
     ) {
       transferDragPreviewConflicts.value = []
       transferDragPreviewError.value = 'Не удалось проверить перенос'
@@ -1365,7 +1370,7 @@ const loadTransferDragPreview = async () => {
     if (
       generation === transferDragPreviewGeneration
       && draggedTransferLesson.value?.id === lesson.id
-      && transferDragTarget.value === target
+      && isSameTransferTarget(transferDragTarget.value, target)
     ) {
       isLoadingTransferDragPreview.value = false
     }
@@ -1558,6 +1563,11 @@ watch(
       return
     }
 
+    if (getTransferFormSignature() === initialTransferFormSignature.value) {
+      resetTransferPreviewState()
+      return
+    }
+
     scheduleTransferPreviewSoon()
   },
 )
@@ -1609,6 +1619,7 @@ const openTransferModalForLesson = (lesson: CellLesson) => {
     building: roomFields.building,
     room: roomFields.room,
   }
+  initialTransferFormSignature.value = getTransferFormSignature()
   isTransferModalVisible.value = true
 }
 
@@ -1714,6 +1725,9 @@ const getTransferDragTargetKey = (day: string, slot: TimeSlot) =>
 const getTransferTargetKey = (target: TransferTarget) =>
   `${target.day}|${target.startTime}|${target.endTime}`
 
+const isSameTransferTarget = (first: TransferTarget | null, second: TransferTarget) =>
+  first !== null && getTransferTargetKey(first) === getTransferTargetKey(second)
+
 const getTransferDragTarget = (day: string, slot: TimeSlot): TransferTarget => ({
   weekKey: currentWeekKey.value,
   day,
@@ -1778,6 +1792,10 @@ const handleTransferLessonDragStart = (lesson: CellLesson, event: DragEvent) => 
 }
 
 const handleTransferLessonDragEnd = () => {
+  if (transferDropInProgress.value) {
+    return
+  }
+
   resetTransferDragState()
 }
 
@@ -1812,8 +1830,10 @@ const handleTransferCellDrop = async (day: string, slot: TimeSlot, event: DragEv
     return
   }
 
+  transferDropInProgress.value = true
   event.preventDefault()
   event.stopPropagation()
+  const dragGeneration = ++transferDragPreviewGeneration
   const target = getTransferDragTarget(day, slot)
   transferDragTarget.value = target
 
@@ -1829,16 +1849,32 @@ const handleTransferCellDrop = async (day: string, slot: TimeSlot, event: DragEv
   )
 
   if (!payload) {
-    await confirmDialog.alert({
-      title: 'Конфликт в расписании',
-      message: 'Нельзя перенести пару в эту ячейку.',
-    })
+    if (
+      dragGeneration === transferDragPreviewGeneration
+      && draggedTransferLesson.value?.id === lesson.id
+    ) {
+      await confirmDialog.alert({
+        title: 'Конфликт в расписании',
+        message: 'Нельзя перенести пару в эту ячейку.',
+      })
+    }
+    transferDropInProgress.value = false
     resetTransferDragState()
     return
   }
 
   try {
     const preview = await previewScheduleItemChanges(lesson.id, payload)
+
+    if (
+      dragGeneration !== transferDragPreviewGeneration
+      || draggedTransferLesson.value?.id !== lesson.id
+      || !isSameTransferTarget(transferDragTarget.value, target)
+    ) {
+      transferDropInProgress.value = false
+      resetTransferDragState()
+      return
+    }
 
     if (preview.conflicts.length > 0) {
       transferDragPreviewConflicts.value = preview.conflicts
@@ -1848,16 +1884,61 @@ const handleTransferCellDrop = async (day: string, slot: TimeSlot, event: DragEv
         message: 'Нельзя перенести пару в эту ячейку.',
         details: preview.conflicts,
       })
+      transferDropInProgress.value = false
       resetTransferDragState()
       return
     }
   } catch {
+    if (
+      dragGeneration !== transferDragPreviewGeneration
+      || draggedTransferLesson.value?.id !== lesson.id
+      || !isSameTransferTarget(transferDragTarget.value, target)
+    ) {
+      transferDropInProgress.value = false
+      resetTransferDragState()
+      return
+    }
+
     transferDragPreviewStatus.value = 'error'
     transferDragPreviewError.value = 'Не удалось проверить перенос'
     await confirmDialog.alert({
       title: 'Ошибка',
       message: 'Не удалось проверить перенос',
     })
+    transferDropInProgress.value = false
+    resetTransferDragState()
+    return
+  }
+
+  if (
+    dragGeneration !== transferDragPreviewGeneration
+    || draggedTransferLesson.value?.id !== lesson.id
+    || !isSameTransferTarget(transferDragTarget.value, target)
+  ) {
+    transferDropInProgress.value = false
+    resetTransferDragState()
+    return
+  }
+
+  const isConfirmed = await confirmDialog.confirm({
+    title: 'Подтверждение переноса',
+    message: `Перенести пару «${lesson.subject}» на ${target.day}, ${target.startTime}–${target.endTime}?`,
+    confirmText: 'Перенести',
+    cancelText: 'Отмена',
+  })
+
+  if (!isConfirmed) {
+    transferDropInProgress.value = false
+    resetTransferDragState()
+    return
+  }
+
+  if (
+    dragGeneration !== transferDragPreviewGeneration
+    || draggedTransferLesson.value?.id !== lesson.id
+    || !isSameTransferTarget(transferDragTarget.value, target)
+  ) {
+    transferDropInProgress.value = false
     resetTransferDragState()
     return
   }
@@ -1867,6 +1948,7 @@ const handleTransferCellDrop = async (day: string, slot: TimeSlot, event: DragEv
     target,
     lesson.room?.trim() || null,
   )
+  transferDropInProgress.value = false
   resetTransferDragState()
 }
 

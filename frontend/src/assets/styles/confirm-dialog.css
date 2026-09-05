@@ -16,14 +16,6 @@
   @apply m-0 text-[15px] leading-[1.5] text-[#24313f] dark:text-[#d5dde6] whitespace-pre-line;
 }
 
-.confirm-dialog__details {
-  @apply mt-[12px] mb-0 pl-[18px] text-[14px] leading-[1.45] text-[#5f6975] dark:text-[#9aa3ad];
-}
-
-.confirm-dialog__details li + li {
-  @apply mt-[6px];
-}
-
 .confirm-dialog__actions {
   @apply mt-[20px] flex justify-end gap-[10px];
 }

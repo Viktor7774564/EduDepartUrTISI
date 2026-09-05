@@ -517,6 +517,18 @@ export class ScheduleAdminService {
         };
     }
 
+    private isConflictAtTargetSlot(
+        conflict: ReturnType<typeof validateScheduleConflicts>[number],
+        target: ScheduleLessonSlot,
+    ): boolean {
+        const matchesTarget = (lesson: ScheduleLessonSlot) =>
+            lesson.dayOfWeek === target.dayOfWeek
+            && normalizeTime(lesson.startTime) === normalizeTime(target.startTime)
+            && normalizeWeekStart(lesson.weekStart) === normalizeWeekStart(target.weekStart);
+
+        return matchesTarget(conflict.lessonA) || matchesTarget(conflict.lessonB);
+    }
+
     private buildTransferRecommendations(
         sourceSlot: ScheduleLessonSlot,
         linkedSlots: ScheduleLessonSlot[],
@@ -629,7 +641,8 @@ export class ScheduleAdminService {
         for (const linkedItem of linkedItems) {
             const slotFields = this.buildUpdateSlotFields(linkedItem, dto);
             const proposedSlot = this.buildLessonSlotFromFields(linkedItem, slotFields);
-            const conflicts = validateScheduleConflicts([proposedSlot], existingLessons);
+            const conflicts = validateScheduleConflicts([proposedSlot], existingLessons)
+                .filter((conflict) => this.isConflictAtTargetSlot(conflict, proposedSlot));
             conflictMessages.push(...conflicts.map((conflict) => conflict.message));
         }
 

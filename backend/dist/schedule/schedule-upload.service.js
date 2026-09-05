@@ -45,6 +45,10 @@ const DAY_LABELS = {
     6: 'СБ',
     7: 'ВС',
 };
+function isConflictWarning(warning) {
+    return warning.startsWith('Конфликт аудитории между группами:')
+        || warning.startsWith('Конфликт преподавателя:');
+}
 function decodeUploadedFilename(name) {
     if (/[\u0400-\u04FF]/.test(name)) {
         return name;
@@ -168,10 +172,7 @@ let ScheduleUploadService = class ScheduleUploadService {
         const conflictWarnings = conflicts
             .map((c) => c.message)
             .filter((msg) => msg.includes(parsed.groupName));
-        const allWarnings = [
-            ...parsed.warnings,
-            ...conflictWarnings,
-        ];
+        const allWarnings = parsed.warnings.filter((warning) => !isConflictWarning(warning));
         const storedFileName = normalizeStoredFileName(originalFileName);
         const filePath = (0, node_path_1.join)(this.schedulesDir, storedFileName);
         const fileUrl = `/uploads/schedules/${storedFileName}`;
@@ -403,7 +404,7 @@ let ScheduleUploadService = class ScheduleUploadService {
             facultyName: upload.facultyName,
             parseStatus: upload.parseStatus,
             parseErrors: upload.parseErrors,
-            parseWarnings: upload.parseWarnings,
+            parseWarnings: upload.parseWarnings?.filter((warning) => !isConflictWarning(warning)) ?? null,
             lessonsCount: upload.lessonsCount,
             periodStart: upload.periodStart,
             periodEnd: upload.periodEnd,
