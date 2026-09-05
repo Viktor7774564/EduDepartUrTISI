@@ -29,6 +29,26 @@ export interface ScheduleUploadResponse {
         patronymic: string;
     };
 }
+export interface PreviewLessonDto {
+    index: number;
+    dayOfWeek: number;
+    dayLabel: string;
+    startTime: string;
+    endTime: string;
+    subject: string;
+    teacherName?: string;
+    room?: string;
+    subgroup?: number | null;
+    hasConflict?: boolean;
+    conflictReason?: string;
+}
+export interface SchedulePreviewResponse {
+    lessons: PreviewLessonDto[];
+    periodStart: string | null;
+    periodEnd: string | null;
+    parseWarnings?: string[];
+    groupName: string;
+}
 export declare class ScheduleUploadService implements OnModuleInit {
     private readonly uploadsRepository;
     private readonly itemsRepository;
@@ -38,6 +58,8 @@ export declare class ScheduleUploadService implements OnModuleInit {
     private readonly scheduleNotifier;
     private readonly schedulesDir;
     constructor(uploadsRepository: Repository<ScheduleUpload>, itemsRepository: Repository<ScheduleItem>, schedulesRepository: Repository<Schedule>, scheduleImportService: ScheduleImportService, notificationsService: NotificationsService, scheduleNotifier: ScheduleNotifierService);
+    previewSchedule(uploadedById: number, scheduleTypeRaw: unknown, expectedGroupNameRaw: unknown, facultyNameRaw: unknown, file: Express.Multer.File | undefined): Promise<SchedulePreviewResponse>;
+    confirmSchedule(uploadedById: number, scheduleTypeRaw: unknown, expectedGroupNameRaw: unknown, facultyNameRaw: unknown, file: Express.Multer.File | undefined, selectedIndexes: number[]): Promise<ScheduleUploadResponse>;
     onModuleInit(): Promise<void>;
     private assertValidUpload;
     private parseScheduleType;

@@ -4,6 +4,28 @@ import { getApiBaseUrl } from '@/config/api'
 export type ScheduleUploadType = 'student' | 'teacher' | 'auditory'
 export type ScheduleParseStatus = 'success' | 'failed'
 
+export interface PreviewLesson {
+  index: number
+  dayOfWeek: number
+  dayLabel: string
+  startTime: string
+  endTime: string
+  subject: string
+  teacherName?: string
+  room?: string
+  subgroup?: number | null
+  hasConflict?: boolean
+  conflictReason?: string
+}
+
+export interface SchedulePreviewResult {
+  lessons: PreviewLesson[]
+  periodStart: string | null
+  periodEnd: string | null
+  parseWarnings?: string[]
+  groupName: string
+}
+
 export interface ScheduleUploadItem {
   id: number
   scheduleType: ScheduleUploadType
@@ -63,10 +85,11 @@ export async function fetchScheduleUploads(): Promise<ScheduleUploadItem[]> {
   return response.data
 }
 
+/** Старый endpoint — полная загрузка без выбора пар */
 export async function uploadScheduleFile(
-  facultyName: string,
-  groupName: string,
-  file: File,
+    facultyName: string,
+    groupName: string,
+    file: File,
 ): Promise<ScheduleUploadItem> {
   const formData = new FormData()
   formData.append('scheduleType', 'student')
@@ -75,10 +98,50 @@ export async function uploadScheduleFile(
   formData.append('file', file)
 
   const response = await api.post<ScheduleUploadItem>(
-    '/education-department/schedules/upload',
-    formData,
+      '/education-department/schedules/upload',
+      formData,
   )
 
+  return response.data
+}
+
+/** Только парсинг + конфликты, без записи в БД */
+export async function previewScheduleFile(
+    facultyName: string,
+    groupName: string,
+    file: File,
+): Promise<SchedulePreviewResult> {
+  const formData = new FormData()
+  formData.append('scheduleType', 'student')
+  formData.append('facultyName', facultyName)
+  formData.append('groupName', groupName)
+  formData.append('file', file)
+
+  const response = await api.post<SchedulePreviewResult>(
+      '/education-department/schedules/preview',
+      formData,
+  )
+  return response.data
+}
+
+/** Сохраняет только выбранные пары */
+export async function confirmScheduleUpload(
+    facultyName: string,
+    groupName: string,
+    file: File,
+    selectedIndexes: number[],
+): Promise<ScheduleUploadItem> {
+  const formData = new FormData()
+  formData.append('scheduleType', 'student')
+  formData.append('facultyName', facultyName)
+  formData.append('groupName', groupName)
+  formData.append('file', file)
+  formData.append('selectedIndexes', JSON.stringify(selectedIndexes))
+
+  const response = await api.post<ScheduleUploadItem>(
+      '/education-department/schedules/confirm',
+      formData,
+  )
   return response.data
 }
 

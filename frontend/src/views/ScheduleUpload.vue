@@ -10,9 +10,13 @@ import {
   fetchScheduleUploads,
   formatFileSize,
   getScheduleFileUrl,
-  uploadScheduleFile,
+  uploadScheduleFile, // можно оставить, если где-то ещё нужен
+  previewScheduleFile,
+  confirmScheduleUpload,
   type ScheduleUploadItem,
+  type PreviewLesson,
 } from '@/api/scheduleUpload'
+import SchedulePairsSelectDialog from '@/components/SchedulePairsSelectDialog.vue'
 import { fetchScheduleGroups, type ScheduleGroupInfo } from '@/api/schedule'
 import { useConfirmDialogStore } from '@/stores/confirmDialog'
 import {
@@ -46,6 +50,9 @@ const uploadsSearchQuery = ref('')
 const dragCounter = ref(0)
 const isDraggingOver = computed(() => dragCounter.value > 0)
 const goBack = () => router.push({ name: 'home' })
+const showPairsDialog = ref(false)
+const previewLessons = ref<PreviewLesson[]>([])
+const pendingFile = ref<File | null>(null) // файл, который ждёт подтверждения
 
 const ACCEPTED_EXTENSIONS = ['.xlsx', '.xls']
 const ACCEPTED_MIME_TYPES = [
@@ -99,6 +106,12 @@ async function loadKnownGroups() {
   } catch {
     knownGroups.value = []
   }
+}
+
+function resetPreviewState() {
+  showPairsDialog.value = false
+  previewLessons.value = []
+  pendingFile.value = null
 }
 
 function closeGroupDropdown(event: MouseEvent) {
@@ -234,6 +247,7 @@ watch(selectedFaculty, () => {
   submitMessage.value = null
   groupSearchQuery.value = ''
   isGroupDropdownOpen.value = false
+  resetPreviewState()
 
   const fileInput = document.getElementById('schedule-file') as HTMLInputElement | null
   if (fileInput) {
@@ -244,6 +258,7 @@ watch(selectedFaculty, () => {
 watch(selectedGroup, () => {
   selectedFile.value = null
   submitMessage.value = null
+  resetPreviewState()
 
   const fileInput = document.getElementById('schedule-file') as HTMLInputElement | null
   if (fileInput) {
@@ -361,12 +376,10 @@ async function handleUpload() {
     submitMessage.value = { type: 'error', text: 'Выберите факультет' }
     return
   }
-
   if (!selectedGroup.value.trim()) {
     submitMessage.value = { type: 'error', text: 'Введите группу' }
     return
   }
-
   if (!selectedFile.value) {
     submitMessage.value = { type: 'error', text: 'Выберите файл расписания' }
     return
@@ -375,52 +388,116 @@ async function handleUpload() {
   isSubmitting.value = true
 
   try {
-    const uploaded = await uploadScheduleFile(
-      selectedFaculty.value,
-      selectedGroup.value.trim(),
-      selectedFile.value,
+    const preview = await previewScheduleFile(
+        selectedFaculty.value,
+        selectedGroup.value.trim(),
+        selectedFile.value,
     )
 
-    uploads.value = [
-      uploaded,
-      ...uploads.value.filter((item) => !(
-        item.groupName === uploaded.groupName
-        && item.periodStart === uploaded.periodStart
-        && item.periodEnd === uploaded.periodEnd
-      )),
-    ]
-
-    selectedFile.value = null
-
-    const fileInput = document.getElementById('schedule-file') as HTMLInputElement | null
-    if (fileInput) {
-      fileInput.value = ''
+    if (!preview.lessons.length) {
+      submitMessage.value = {
+        type: 'error',
+        text: 'В файле не найдено ни одной пары',
+        warnings: preview.parseWarnings,
+      }
+      return
     }
 
-    submitMessage.value = {
-      type: 'success',
-      text: uploaded.periodStart && uploaded.periodEnd
-        ? `Расписание группы ${uploaded.groupName ?? selectedGroup.value} за период ${uploaded.periodStart} — ${uploaded.periodEnd} загружено: ${uploaded.lessonsCount} занятий`
-        : `Расписание группы ${uploaded.groupName ?? selectedGroup.value} загружено: ${uploaded.lessonsCount} занятий`,
-      warnings: uploaded.parseWarnings?.length ? uploaded.parseWarnings : undefined,
+    const hasAnyConflict = preview.lessons.some((l) => l.hasConflict)
+
+    // конфликтов нет — сразу загружаем все пары, без окна
+    if (!hasAnyConflict) {
+      pendingFile.value = selectedFile.value
+      const allIndexes = preview.lessons.map((l) => l.index)
+      isSubmitting.value = false // снимем флаг handleUpload
+      await onPairsConfirm(allIndexes)
+      return
     }
+
+    // есть конфликты — показываем диалог выбора
+    pendingFile.value = selectedFile.value
+    previewLessons.value = preview.lessons
+    showPairsDialog.value = true
   } catch (err: any) {
     const data = getErrorPayload(err.response?.data)
     const details = toStringList(data.errors)
-      ?? (Array.isArray(data.message) ? toStringList(data.message) : undefined)
+        ?? (Array.isArray(data.message) ? toStringList(data.message) : undefined)
     const warnings = toStringList(data.warnings)
 
     submitMessage.value = {
       type: 'error',
       text: typeof data.message === 'string'
-        ? data.message
-        : 'Не удалось загрузить файл',
+          ? data.message
+          : 'Не удалось разобрать файл',
       details,
       warnings,
     }
   } finally {
     isSubmitting.value = false
   }
+}
+
+async function onPairsConfirm(selectedIndexes: number[]) {
+  if (!pendingFile.value || !selectedFaculty.value || !selectedGroup.value.trim()) {
+    resetPreviewState()
+    return
+  }
+
+  isSubmitting.value = true
+  submitMessage.value = null
+
+  try {
+    const uploaded = await confirmScheduleUpload(
+        selectedFaculty.value,
+        selectedGroup.value.trim(),
+        pendingFile.value,
+        selectedIndexes,
+    )
+
+    uploads.value = [
+      uploaded,
+      ...uploads.value.filter((item) => !(
+          item.groupName === uploaded.groupName
+          && item.periodStart === uploaded.periodStart
+          && item.periodEnd === uploaded.periodEnd
+      )),
+    ]
+
+    selectedFile.value = null
+    const fileInput = document.getElementById('schedule-file') as HTMLInputElement | null
+    if (fileInput) fileInput.value = ''
+
+    submitMessage.value = {
+      type: 'success',
+      text: uploaded.periodStart && uploaded.periodEnd
+          ? `Расписание группы ${uploaded.groupName ?? selectedGroup.value} за период ${uploaded.periodStart} — ${uploaded.periodEnd} загружено: ${uploaded.lessonsCount} занятий`
+          : `Расписание группы ${uploaded.groupName ?? selectedGroup.value} загружено: ${uploaded.lessonsCount} занятий`,
+      warnings: uploaded.parseWarnings?.length ? uploaded.parseWarnings : undefined,
+    }
+
+    resetPreviewState() // только после успеха
+  } catch (err: any) {
+    const data = getErrorPayload(err.response?.data)
+    const details = toStringList(data.errors)
+        ?? (Array.isArray(data.message) ? toStringList(data.message) : undefined)
+    const warnings = toStringList(data.warnings)
+
+    submitMessage.value = {
+      type: 'error',
+      text: typeof data.message === 'string'
+          ? data.message
+          : 'Не удалось сохранить выбранные пары',
+      details,
+      warnings,
+    }
+    // диалог НЕ закрываем — можно снять конфликтующие пары и нажать ещё раз
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+function onPairsCancel() {
+  resetPreviewState()
 }
 
 async function handleDelete(id: number) {
@@ -722,6 +799,13 @@ const toggleUploadWarnings = (id: number) => {
         </div>
       </div>
     </section>
+    <SchedulePairsSelectDialog
+        v-model:open="showPairsDialog"
+        :lessons="previewLessons"
+        :group-name="selectedGroup"
+        @confirm="onPairsConfirm"
+        @cancel="onPairsCancel"
+    />
   </PageFrame>
 </template>
 

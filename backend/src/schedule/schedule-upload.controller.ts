@@ -38,6 +38,54 @@ export class ScheduleUploadController {
         return this.scheduleUploadService.listUploads(req.user.sub);
     }
 
+    /** Только парсинг + конфликты, без записи в БД */
+    @Post('preview')
+    @UseInterceptors(FileInterceptor('file', {
+        storage: memoryStorage(),
+        limits: { fileSize: 20 * 1024 * 1024 },
+    }))
+    previewSchedule(
+        @Req() req: AuthenticatedRequest,
+        @UploadedFile() file: Express.Multer.File | undefined,
+    ) {
+        return this.scheduleUploadService.previewSchedule(
+            req.user.sub,
+            req.body?.scheduleType,
+            req.body?.groupName,
+            req.body?.facultyName,
+            file,
+        );
+    }
+
+    /** Сохраняет только выбранные пары */
+    @Post('confirm')
+    @UseInterceptors(FileInterceptor('file', {
+        storage: memoryStorage(),
+        limits: { fileSize: 20 * 1024 * 1024 },
+    }))
+    confirmSchedule(
+        @Req() req: AuthenticatedRequest,
+        @UploadedFile() file: Express.Multer.File | undefined,
+    ) {
+        let selectedIndexes: number[] = [];
+        try {
+            const raw = req.body?.selectedIndexes;
+            selectedIndexes = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? []);
+        } catch {
+            selectedIndexes = [];
+        }
+
+        return this.scheduleUploadService.confirmSchedule(
+            req.user.sub,
+            req.body?.scheduleType,
+            req.body?.groupName,
+            req.body?.facultyName,
+            file,
+            selectedIndexes,
+        );
+    }
+
+    /** Старый endpoint — можно оставить для совместимости */
     @Post('upload')
     @UseInterceptors(FileInterceptor('file', {
         storage: memoryStorage(),

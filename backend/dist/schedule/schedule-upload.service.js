@@ -36,6 +36,15 @@ const ALLOWED_MIME_TYPES = new Set([
     'application/csv',
 ]);
 const ALLOWED_EXTENSIONS = new Set(['.xlsx', '.xls', '.csv']);
+const DAY_LABELS = {
+    1: 'ПН',
+    2: 'ВТ',
+    3: 'СР',
+    4: 'ЧТ',
+    5: 'ПТ',
+    6: 'СБ',
+    7: 'ВС',
+};
 function decodeUploadedFilename(name) {
     if (/[\u0400-\u04FF]/.test(name)) {
         return name;
@@ -74,6 +83,147 @@ let ScheduleUploadService = class ScheduleUploadService {
         this.scheduleImportService = scheduleImportService;
         this.notificationsService = notificationsService;
         this.scheduleNotifier = scheduleNotifier;
+    }
+    async previewSchedule(uploadedById, scheduleTypeRaw, expectedGroupNameRaw, facultyNameRaw, file) {
+        this.assertValidUpload(file);
+        const originalFileName = decodeUploadedFilename(file.originalname);
+        this.parseScheduleType(scheduleTypeRaw);
+        const expectedGroupName = this.parseRequiredGroupName(expectedGroupNameRaw);
+        this.parseFacultyName(facultyNameRaw);
+        const extension = (0, node_path_1.extname)(originalFileName).toLowerCase();
+        if (extension === '.csv') {
+            throw new common_1.BadRequestException('Парсер поддерживает только Excel (.xlsx, .xls). Загрузите файл в формате Excel.');
+        }
+        const parsed = this.parseUploadedWorkbook(file.buffer);
+        this.assertGroupMatches(expectedGroupName, parsed.groupName);
+        this.assertPeriodDefined(parsed.periodStart, parsed.periodEnd);
+        const obsoleteUploads = await this.findPeriodUploads(uploadedById, parsed.groupName, parsed.periodStart, parsed.periodEnd);
+        const obsoleteUploadIds = obsoleteUploads.map((u) => u.id);
+        const excludePeriod = {
+            validFrom: this.toDate(parsed.periodStart),
+            validTo: this.toDate(parsed.periodEnd),
+        };
+        const existingSameGroupLessons = await this.loadExistingLessons(parsed.groupName, obsoleteUploadIds, excludePeriod);
+        const otherGroupsLessons = await this.loadOtherGroupsLessons(parsed.groupName, obsoleteUploadIds);
+        const allExisting = [...existingSameGroupLessons, ...otherGroupsLessons];
+        const conflictByIndex = new Map();
+        parsed.lessons.forEach((lesson, index) => {
+            const conflicts = (0, schedule_conflict_validator_1.validateScheduleConflicts)([lesson], allExisting);
+            const relevant = conflicts.filter((c) => c.message.includes(parsed.groupName));
+            if (relevant.length > 0) {
+                conflictByIndex.set(index, relevant.map((c) => c.message).join('; '));
+            }
+        });
+        const lessons = parsed.lessons.map((lesson, index) => ({
+            index,
+            dayOfWeek: lesson.dayOfWeek,
+            dayLabel: DAY_LABELS[lesson.dayOfWeek] ?? String(lesson.dayOfWeek),
+            startTime: lesson.startTime,
+            endTime: lesson.endTime,
+            subject: lesson.subject,
+            teacherName: lesson.teacherName || undefined,
+            room: lesson.room || undefined,
+            subgroup: lesson.subgroup ?? null,
+            hasConflict: conflictByIndex.has(index),
+            conflictReason: conflictByIndex.get(index),
+        }));
+        return {
+            lessons,
+            periodStart: parsed.periodStart,
+            periodEnd: parsed.periodEnd,
+            parseWarnings: parsed.warnings.length > 0 ? parsed.warnings : undefined,
+            groupName: parsed.groupName,
+        };
+    }
+    async confirmSchedule(uploadedById, scheduleTypeRaw, expectedGroupNameRaw, facultyNameRaw, file, selectedIndexes) {
+        this.assertValidUpload(file);
+        if (!Array.isArray(selectedIndexes) || selectedIndexes.length === 0) {
+            throw new common_1.BadRequestException('Не выбрано ни одной пары для загрузки');
+        }
+        const originalFileName = decodeUploadedFilename(file.originalname);
+        const scheduleType = this.parseScheduleType(scheduleTypeRaw);
+        const expectedGroupName = this.parseRequiredGroupName(expectedGroupNameRaw);
+        const facultyName = this.parseFacultyName(facultyNameRaw);
+        const extension = (0, node_path_1.extname)(originalFileName).toLowerCase();
+        if (extension === '.csv') {
+            throw new common_1.BadRequestException('Парсер поддерживает только Excel (.xlsx, .xls). Загрузите файл в формате Excel.');
+        }
+        const parsed = this.parseUploadedWorkbook(file.buffer);
+        this.assertGroupMatches(expectedGroupName, parsed.groupName);
+        this.assertPeriodDefined(parsed.periodStart, parsed.periodEnd);
+        const indexSet = new Set(selectedIndexes.filter((i) => Number.isInteger(i) && i >= 0 && i < parsed.lessons.length));
+        const selectedLessons = parsed.lessons.filter((_, i) => indexSet.has(i));
+        if (selectedLessons.length === 0) {
+            throw new common_1.BadRequestException('Не выбрано ни одной валидной пары');
+        }
+        const obsoleteUploads = await this.findPeriodUploads(uploadedById, parsed.groupName, parsed.periodStart, parsed.periodEnd);
+        const obsoleteUploadIds = obsoleteUploads.map((u) => u.id);
+        const excludePeriod = {
+            validFrom: this.toDate(parsed.periodStart),
+            validTo: this.toDate(parsed.periodEnd),
+        };
+        const existingSameGroupLessons = await this.loadExistingLessons(parsed.groupName, obsoleteUploadIds, excludePeriod);
+        const otherGroupsLessons = await this.loadOtherGroupsLessons(parsed.groupName, obsoleteUploadIds);
+        const conflicts = (0, schedule_conflict_validator_1.validateScheduleConflicts)(selectedLessons, [...existingSameGroupLessons, ...otherGroupsLessons]);
+        const conflictWarnings = conflicts
+            .map((c) => c.message)
+            .filter((msg) => msg.includes(parsed.groupName));
+        const allWarnings = [
+            ...parsed.warnings,
+            ...conflictWarnings,
+        ];
+        const storedFileName = normalizeStoredFileName(originalFileName);
+        const filePath = (0, node_path_1.join)(this.schedulesDir, storedFileName);
+        const fileUrl = `/uploads/schedules/${storedFileName}`;
+        await (0, promises_1.writeFile)(filePath, file.buffer);
+        await this.removeUploads(obsoleteUploads);
+        const upload = this.uploadsRepository.create({
+            scheduleType,
+            originalFileName,
+            storedFileName,
+            fileUrl,
+            mimeType: file.mimetype || 'application/octet-stream',
+            fileSize: file.size,
+            groupName: parsed.groupName,
+            facultyName,
+            parseStatus: schedule_upload_entity_1.ScheduleParseStatus.SUCCESS,
+            parseErrors: null,
+            parseWarnings: allWarnings.length > 0 ? allWarnings : null,
+            lessonsCount: selectedLessons.length,
+            periodStart: parsed.periodStart,
+            periodEnd: parsed.periodEnd,
+            uploadedById,
+        });
+        const savedUpload = await this.uploadsRepository.save(upload);
+        const filteredParsed = {
+            ...parsed,
+            lessons: selectedLessons,
+        };
+        const importResult = await this.scheduleImportService.importParsedSchedule(filteredParsed, savedUpload);
+        savedUpload.lessonsCount = importResult.itemsCount;
+        const mergedWarnings = [
+            ...allWarnings,
+            ...importResult.warnings,
+        ];
+        savedUpload.parseWarnings = mergedWarnings.length > 0 ? mergedWarnings : null;
+        await this.uploadsRepository.save(savedUpload);
+        const uploadWithUser = await this.uploadsRepository.findOne({
+            where: { id: savedUpload.id },
+            relations: ['uploadedBy'],
+        });
+        if (!uploadWithUser) {
+            throw new common_1.NotFoundException('Загруженный файл не найден');
+        }
+        this.scheduleNotifier.notifyScheduleChanged('schedule-uploaded');
+        await this.notificationsService.notifyScheduleUploaded({
+            groupName: parsed.groupName,
+            periodStart: parsed.periodStart,
+            periodEnd: parsed.periodEnd,
+            lessonsCount: savedUpload.lessonsCount,
+            isReplacement: obsoleteUploads.length > 0,
+            uploadId: savedUpload.id,
+        });
+        return this.toResponse(uploadWithUser);
     }
     async onModuleInit() {
         await (0, promises_1.mkdir)(this.schedulesDir, { recursive: true });

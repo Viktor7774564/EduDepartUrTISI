@@ -10,6 +10,8 @@ export declare class ScheduleUploadController {
     private readonly scheduleUploadService;
     constructor(scheduleUploadService: ScheduleUploadService);
     listUploads(req: AuthenticatedRequest): Promise<import("./schedule-upload.service").ScheduleUploadResponse[]>;
+    previewSchedule(req: AuthenticatedRequest, file: Express.Multer.File | undefined): Promise<import("./schedule-upload.service").SchedulePreviewResponse>;
+    confirmSchedule(req: AuthenticatedRequest, file: Express.Multer.File | undefined): Promise<import("./schedule-upload.service").ScheduleUploadResponse>;
     uploadSchedule(req: AuthenticatedRequest, file: Express.Multer.File | undefined): Promise<import("./schedule-upload.service").ScheduleUploadResponse>;
     deleteUpload(req: AuthenticatedRequest, id: number): Promise<void>;
 }

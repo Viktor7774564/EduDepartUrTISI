@@ -27,6 +27,20 @@ let ScheduleUploadController = class ScheduleUploadController {
     listUploads(req) {
         return this.scheduleUploadService.listUploads(req.user.sub);
     }
+    previewSchedule(req, file) {
+        return this.scheduleUploadService.previewSchedule(req.user.sub, req.body?.scheduleType, req.body?.groupName, req.body?.facultyName, file);
+    }
+    confirmSchedule(req, file) {
+        let selectedIndexes = [];
+        try {
+            const raw = req.body?.selectedIndexes;
+            selectedIndexes = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? []);
+        }
+        catch {
+            selectedIndexes = [];
+        }
+        return this.scheduleUploadService.confirmSchedule(req.user.sub, req.body?.scheduleType, req.body?.groupName, req.body?.facultyName, file, selectedIndexes);
+    }
     uploadSchedule(req, file) {
         return this.scheduleUploadService.uploadSchedule(req.user.sub, req.body?.scheduleType, req.body?.groupName, req.body?.facultyName, file);
     }
@@ -42,6 +56,30 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], ScheduleUploadController.prototype, "listUploads", null);
+__decorate([
+    (0, common_1.Post)('preview'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', {
+        storage: (0, multer_1.memoryStorage)(),
+        limits: { fileSize: 20 * 1024 * 1024 },
+    })),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], ScheduleUploadController.prototype, "previewSchedule", null);
+__decorate([
+    (0, common_1.Post)('confirm'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', {
+        storage: (0, multer_1.memoryStorage)(),
+        limits: { fileSize: 20 * 1024 * 1024 },
+    })),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], ScheduleUploadController.prototype, "confirmSchedule", null);
 __decorate([
     (0, common_1.Post)('upload'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', {
