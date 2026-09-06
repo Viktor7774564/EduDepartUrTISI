@@ -1,8 +1,28 @@
+# Dependencies
 node_modules/
+
+# Build
+dist/
+**/dist/
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Env
 .env
 .env.*
 !.env.example
 
-# DEV-HTTPS: локальные сертификаты (удалить папку certs/ перед продакшеном, если не нужна)
+# OS
+.DS_Store
+Thumbs.db
+
+# DEV-HTTPS
 certs/*.pem
 certs/openssl.cnf
