@@ -694,9 +694,8 @@ export class ScheduleUploadService implements OnModuleInit {
             .map((item) => mapItemToLessonSlot(item));
     }
 
-    async listUploads(uploadedById: number): Promise<ScheduleUploadResponse[]> {
+    async listUploads(): Promise<ScheduleUploadResponse[]> {
         const uploads = await this.uploadsRepository.find({
-            where: { uploadedById },
             relations: ['uploadedBy'],
             order: { uploadedAt: 'DESC' },
         });

@@ -96,7 +96,12 @@ const filteredUploads = computed(() => {
   return uploads.value.filter((upload) =>
       (upload.groupName?.toLowerCase().includes(query))
       || (upload.facultyName?.toLowerCase().includes(query))
-      || upload.originalFileName.toLowerCase().includes(query),
+      || upload.originalFileName.toLowerCase().includes(query)
+      || [upload.uploadedBy.surname, upload.uploadedBy.name, upload.uploadedBy.patronymic]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(query),
   )
 })
 
@@ -745,6 +750,7 @@ const toggleUploadWarnings = (id: number) => {
             <div class="table-header">
               <span class="col-faculty">Факультет</span>
               <span class="col-name">Группа / файл</span>
+              <span class="col-uploader">Загрузил</span>
               <span class="col-created">Дата</span>
               <span class="col-role">Занятий</span>
               <span class="col-actions">Действия</span>
@@ -791,6 +797,11 @@ const toggleUploadWarnings = (id: number) => {
                     </li>
                   </ul>
                 </span>
+              </span>
+              <span class="col-uploader" data-label="Загрузил">
+                {{ [upload.uploadedBy.surname, upload.uploadedBy.name, upload.uploadedBy.patronymic]
+                  .filter(Boolean)
+                  .join(' ') || '—' }}
               </span>
               <span class="col-created" data-label="Дата">{{ formatDate(upload.uploadedAt) }}</span>
               <span class="col-role" data-label="Занятий">{{ upload.lessonsCount }}</span>
@@ -988,7 +999,7 @@ const toggleUploadWarnings = (id: number) => {
 
 .uploads-table .table-header,
 .uploads-table .table-row {
-  grid-template-columns: 1fr 1.6fr 1fr 0.8fr 0.8fr;
+  grid-template-columns: 1fr 1.6fr 1.3fr 1fr 0.8fr 0.8fr;
 }
 
 .file-link {

@@ -34,8 +34,8 @@ export class ScheduleUploadController {
     ) {}
 
     @Get()
-    listUploads(@Req() req: AuthenticatedRequest) {
-        return this.scheduleUploadService.listUploads(req.user.sub);
+    listUploads() {
+        return this.scheduleUploadService.listUploads();
     }
 
     /** Только парсинг + конфликты, без записи в БД */
