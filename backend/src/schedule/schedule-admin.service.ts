@@ -81,7 +81,7 @@ const SATURDAY_TRANSFER_TIME_SLOTS = [
     { startTime: '12:00', endTime: '13:30' },
     { startTime: '13:45', endTime: '15:15' },
     { startTime: '15:30', endTime: '17:00' },
-    { startTime: '17:40', endTime: '19:05' },
+    { startTime: '17:10', endTime: '18:40' },
 ] as const;
 
 const PREHOLIDAY_TRANSFER_TIME_SLOTS = [
@@ -450,7 +450,7 @@ export class ScheduleAdminService {
     ): Promise<void> {
         const existingLessons = await this.loadActiveLessonSlots(excludeItemIds);
         const candidateSlot = mapItemToLessonSlot(candidate);
-        const conflicts = validateScheduleConflicts([candidateSlot], existingLessons);
+        const conflicts = this.getCandidateConflicts(candidateSlot, existingLessons);
 
         if (conflicts.length === 0) {
             return;
@@ -460,6 +460,16 @@ export class ScheduleAdminService {
             message: 'Невозможно сохранить: обнаружен конфликт в расписании',
             errors: conflicts.map((conflict) => conflict.message),
         });
+    }
+
+    private getCandidateConflicts(
+        candidate: ScheduleLessonSlot,
+        existingLessons: ScheduleLessonSlot[],
+    ): ReturnType<typeof validateScheduleConflicts> {
+        return validateScheduleConflicts([candidate], existingLessons)
+            .filter((conflict) =>
+                conflict.lessonA === candidate || conflict.lessonB === candidate,
+            );
     }
 
     private async findLinkedLectureItems(item: ScheduleItem): Promise<ScheduleItem[]> {
@@ -571,7 +581,7 @@ export class ScheduleAdminService {
                 }
 
                 const hasConflict = candidates.some((candidate) =>
-                    validateScheduleConflicts([candidate], existingLessons).length > 0,
+                    this.getCandidateConflicts(candidate, existingLessons).length > 0,
                 );
 
                 if (hasConflict) {
@@ -641,7 +651,7 @@ export class ScheduleAdminService {
         for (const linkedItem of linkedItems) {
             const slotFields = this.buildUpdateSlotFields(linkedItem, dto);
             const proposedSlot = this.buildLessonSlotFromFields(linkedItem, slotFields);
-            const conflicts = validateScheduleConflicts([proposedSlot], existingLessons)
+            const conflicts = this.getCandidateConflicts(proposedSlot, existingLessons)
                 .filter((conflict) => this.isConflictAtTargetSlot(conflict, proposedSlot));
             conflictMessages.push(...conflicts.map((conflict) => conflict.message));
         }
@@ -657,7 +667,10 @@ export class ScheduleAdminService {
 
         const sourceItem = linkedItems.find((entry) => entry.id === id) ?? item;
         const sourceFields = this.buildUpdateSlotFields(sourceItem, dto);
-        const sourceSlot = this.buildLessonSlotFromFields(sourceItem, sourceFields);
+        // Keep the real slot as the scoring baseline. The proposed fields are
+        // used for candidate conflicts, but must not replace the original day
+        // and time when ranking alternatives.
+        const sourceSlot = mapItemToLessonSlot(sourceItem);
         const targetWeekStart = normalizeWeekStart(sourceFields.weekStart);
 
         if (this.isWeekInPast(targetWeekStart)) {
