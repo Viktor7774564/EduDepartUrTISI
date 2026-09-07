@@ -27,23 +27,6 @@ const app = createApp(App)
 const pinia = createPinia()
 const authStore = useAuthStore(pinia)
 
-function registerServiceWorker() {
-  // DEV-HTTPS-START: удалить проверку VITE_ENABLE_SW перед продакшеном.
-  // В проде service worker должен включаться только через import.meta.env.PROD.
-  const shouldRegisterServiceWorker = import.meta.env.PROD || import.meta.env.VITE_ENABLE_SW === 'true'
-  // DEV-HTTPS-END
-
-  if (!shouldRegisterServiceWorker || typeof window === 'undefined' || !('serviceWorker' in navigator)) {
-    return
-  }
-
-  window.addEventListener('load', () => {
-    void navigator.serviceWorker.register('/sw.js').catch((error) => {
-      console.warn('Не удалось зарегистрировать service worker', error)
-    })
-  })
-}
-
 function setupPersonalScheduleWarmup() {
   const warmPersonalSchedule = () => {
     void warmOwnPersonalScheduleCache(authStore.currentUser)
@@ -65,12 +48,9 @@ function setupPersonalScheduleWarmup() {
 app.use(pinia)
 app.use(router)
 
-registerServiceWorker()
-
 void authStore.initializeAuth().finally(() => {
   setupPersonalScheduleWarmup()
   useThemeStore(pinia).initializeTheme()
   app.mount('#app')
 })
-
 
