@@ -2565,7 +2565,7 @@ const mapCellLessons = (lessons: DisplayScheduleItem[]): CellLesson[] => {
     })))
   }
 
-  if (scheduleType.value !== 'teachers') {
+  if (scheduleType.value !== 'teachers' && scheduleType.value !== 'auditories') {
     return sortCellLessons(lessons.map((lesson) => ({
       ...lesson,
       groups: resolveLessonGroups(lesson),
@@ -2583,6 +2583,7 @@ const mapCellLessons = (lessons: DisplayScheduleItem[]): CellLesson[] => {
       lesson.teacher,
       lesson.type,
       lesson.room,
+      lesson.subgroup ?? '',
     ].join('|')
 
     const existingLesson = groupedLessons.get(key)
