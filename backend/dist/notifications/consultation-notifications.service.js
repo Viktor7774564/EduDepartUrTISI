@@ -1,36 +1,30 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
-
-import { Consultation } from '../schedule/entities/consultation.entity';
-import { formatTeacherName } from '../schedule/schedule-item.mapper';
-import { RoleCode } from '../users/entities/role.entity';
-import { User } from '../users/entities/user.entity';
-import { ConsultationNotificationPreferencesService } from './consultation-notification-preferences.service';
-import { Notification, NotificationType } from './notification.entity';
-import { NotificationsGateway } from './notifications.gateway';
-import { PushNotificationsService } from './push-notifications.service';
-
-type ConsultationNotificationAction = 'created' | 'updated' | 'deleted';
-
-type MessageAudience = 'student' | 'teacher' | 'other';
-
-export type ConsultationNotificationSnapshot = {
-    id: number;
-    departmentId: number;
-    teacherId: number;
-    teacherName: string;
-    subject: string;
-    consultationType: string;
-    dayOfWeek: number;
-    startTime: string;
-    endTime: string;
-    weekStart: string;
-    room: string | null;
-    comment: string | null;
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-
-const CONSULTATION_DAY_LABELS: Record<number, string> = {
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var ConsultationNotificationsService_1;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ConsultationNotificationsService = void 0;
+const common_1 = require("@nestjs/common");
+const typeorm_1 = require("@nestjs/typeorm");
+const typeorm_2 = require("typeorm");
+const schedule_item_mapper_1 = require("../schedule/schedule-item.mapper");
+const role_entity_1 = require("../users/entities/role.entity");
+const user_entity_1 = require("../users/entities/user.entity");
+const consultation_notification_preferences_service_1 = require("./consultation-notification-preferences.service");
+const notification_entity_1 = require("./notification.entity");
+const notifications_gateway_1 = require("./notifications.gateway");
+const push_notifications_service_1 = require("./push-notifications.service");
+const CONSULTATION_DAY_LABELS = {
     1: 'понедельник',
     2: 'вторник',
     3: 'среда',
@@ -39,28 +33,27 @@ const CONSULTATION_DAY_LABELS: Record<number, string> = {
     6: 'суббота',
     7: 'воскресенье',
 };
-
-@Injectable()
-export class ConsultationNotificationsService {
-    private readonly logger = new Logger(ConsultationNotificationsService.name);
-
-    constructor(
-        @InjectRepository(Notification)
-        private readonly notificationsRepository: Repository<Notification>,
-        @InjectRepository(User)
-        private readonly usersRepository: Repository<User>,
-        private readonly notificationsGateway: NotificationsGateway,
-        private readonly pushNotificationsService: PushNotificationsService,
-        private readonly consultationNotificationPreferencesService: ConsultationNotificationPreferencesService,
-    ) {}
-
-    createConsultationSnapshot(consultation: Consultation): ConsultationNotificationSnapshot {
+let ConsultationNotificationsService = ConsultationNotificationsService_1 = class ConsultationNotificationsService {
+    notificationsRepository;
+    usersRepository;
+    notificationsGateway;
+    pushNotificationsService;
+    consultationNotificationPreferencesService;
+    logger = new common_1.Logger(ConsultationNotificationsService_1.name);
+    constructor(notificationsRepository, usersRepository, notificationsGateway, pushNotificationsService, consultationNotificationPreferencesService) {
+        this.notificationsRepository = notificationsRepository;
+        this.usersRepository = usersRepository;
+        this.notificationsGateway = notificationsGateway;
+        this.pushNotificationsService = pushNotificationsService;
+        this.consultationNotificationPreferencesService = consultationNotificationPreferencesService;
+    }
+    createConsultationSnapshot(consultation) {
         return {
             id: consultation.id,
             departmentId: consultation.departmentId,
             teacherId: consultation.teacherId,
             teacherName: consultation.teacher
-                ? formatTeacherName(consultation.teacher)
+                ? (0, schedule_item_mapper_1.formatTeacherName)(consultation.teacher)
                 : '',
             subject: consultation.subject,
             consultationType: consultation.consultationType,
@@ -72,128 +65,74 @@ export class ConsultationNotificationsService {
             comment: consultation.comment,
         };
     }
-
-    async notifyConsultationChanged(
-        action: ConsultationNotificationAction,
-        consultation: Consultation,
-        previousItem?: ConsultationNotificationSnapshot,
-    ): Promise<void> {
+    async notifyConsultationChanged(action, consultation, previousItem) {
         const currentItem = this.createConsultationSnapshot(consultation);
-
-        if (
-            action === 'updated'
+        if (action === 'updated'
             && previousItem
-            && !this.hasConsultationChanges(previousItem, currentItem)
-        ) {
+            && !this.hasConsultationChanges(previousItem, currentItem)) {
             return;
         }
-
-        const recipients = await this.resolveConsultationRecipients(
-            currentItem.teacherId,
-            previousItem?.teacherId,
-        );
-
+        const recipients = await this.resolveConsultationRecipients(currentItem.teacherId, previousItem?.teacherId);
         if (recipients.length === 0) {
-            this.logger.warn(
-                `Consultation notification has no recipients: consultationId=${currentItem.id}, teacherId=${currentItem.teacherId}`,
-            );
+            this.logger.warn(`Consultation notification has no recipients: consultationId=${currentItem.id}, teacherId=${currentItem.teacherId}`);
             return;
         }
-
         const title = this.getConsultationTitle(action);
-        const notifications = await this.notificationsRepository.save(
-            recipients.map((user) => {
-                const audience = this.getMessageAudience(user);
-
-                return this.notificationsRepository.create({
-                    userId: user.id,
-                    type: NotificationType.CONSULTATION,
-                    title,
-                    message: this.buildConsultationMessage(
-                        action,
-                        currentItem,
-                        previousItem,
-                        audience,
-                    ),
-                    payload: {
-                        action,
-                        consultationId: consultation.id,
-                        departmentId: currentItem.departmentId,
-                        teacherId: currentItem.teacherId,
-                        weekStart: currentItem.weekStart,
-                        dayOfWeek: currentItem.dayOfWeek,
-                        startTime: currentItem.startTime,
-                        endTime: currentItem.endTime,
-                        changes: previousItem
-                            ? this.getConsultationChanges(previousItem, currentItem, audience)
-                            : [],
-                    },
-                });
-            }),
-        );
-
-        await Promise.all(
-            notifications.map(async (notification) => {
-                this.notificationsGateway.sendToUser(notification.userId, notification);
-
-                try {
-                    await this.pushNotificationsService.sendToUser(
-                        notification.userId,
-                        notification,
-                    );
-                } catch (error: unknown) {
-                    this.logger.error(
-                        `Failed to send consultation push notification: notificationId=${notification.id}`,
-                        error instanceof Error ? error.stack : String(error),
-                    );
-                }
-            }),
-        );
+        const notifications = await this.notificationsRepository.save(recipients.map((user) => {
+            const audience = this.getMessageAudience(user);
+            return this.notificationsRepository.create({
+                userId: user.id,
+                type: notification_entity_1.NotificationType.CONSULTATION,
+                title,
+                message: this.buildConsultationMessage(action, currentItem, previousItem, audience),
+                payload: {
+                    action,
+                    consultationId: consultation.id,
+                    departmentId: currentItem.departmentId,
+                    teacherId: currentItem.teacherId,
+                    weekStart: currentItem.weekStart,
+                    dayOfWeek: currentItem.dayOfWeek,
+                    startTime: currentItem.startTime,
+                    endTime: currentItem.endTime,
+                    changes: previousItem
+                        ? this.getConsultationChanges(previousItem, currentItem, audience)
+                        : [],
+                },
+            });
+        }));
+        for (const notification of notifications) {
+            this.notificationsGateway.sendToUser(notification.userId, notification);
+            void this.pushNotificationsService.sendToUser(notification.userId, notification);
+        }
     }
-
-    private async resolveConsultationRecipients(
-        teacherId: number,
-        previousTeacherId?: number,
-    ): Promise<User[]> {
-        const recipientIds = new Set<number>();
-
+    async resolveConsultationRecipients(teacherId, previousTeacherId) {
+        const recipientIds = new Set();
         const subscriberIds = await this.consultationNotificationPreferencesService
             .findSubscriberUserIds(teacherId);
-
         for (const userId of subscriberIds) {
             recipientIds.add(userId);
         }
-
         recipientIds.add(teacherId);
-
         if (previousTeacherId && previousTeacherId !== teacherId) {
             recipientIds.add(previousTeacherId);
-
             const previousSubscriberIds = await this.consultationNotificationPreferencesService
                 .findSubscriberUserIds(previousTeacherId);
-
             for (const userId of previousSubscriberIds) {
                 recipientIds.add(userId);
             }
         }
-
         if (recipientIds.size === 0) {
             return [];
         }
-
         return this.usersRepository.find({
             where: {
-                id: In([...recipientIds]),
+                id: (0, typeorm_2.In)([...recipientIds]),
                 isActive: true,
             },
             relations: ['role'],
         });
     }
-
-    private hasConsultationChanges(
-        previousItem: ConsultationNotificationSnapshot,
-        currentItem: ConsultationNotificationSnapshot,
-    ): boolean {
+    hasConsultationChanges(previousItem, currentItem) {
         return previousItem.subject !== currentItem.subject
             || previousItem.consultationType !== currentItem.consultationType
             || previousItem.teacherId !== currentItem.teacherId
@@ -204,8 +143,7 @@ export class ConsultationNotificationsService {
             || (previousItem.room ?? '') !== (currentItem.room ?? '')
             || (previousItem.comment ?? '') !== (currentItem.comment ?? '');
     }
-
-    private getConsultationTitle(action: ConsultationNotificationAction): string {
+    getConsultationTitle(action) {
         switch (action) {
             case 'created':
                 return 'Добавлена консультация';
@@ -215,104 +153,58 @@ export class ConsultationNotificationsService {
                 return 'Отмена консультации';
         }
     }
-
-    private buildConsultationMessage(
-        action: ConsultationNotificationAction,
-        item: ConsultationNotificationSnapshot,
-        previousItem?: ConsultationNotificationSnapshot,
-        audience: MessageAudience = 'student',
-    ): string {
+    buildConsultationMessage(action, item, previousItem, audience = 'student') {
         const summary = this.formatConsultationSummary(item, audience);
-
         if (action === 'created') {
             return summary;
         }
-
         if (action === 'deleted') {
             return `${summary}. Отмена консультации`;
         }
-
         if (action === 'updated' && previousItem) {
             const changes = this.buildUpdatedConsultationMessage(previousItem, item, audience);
-
             return changes || summary;
         }
-
         return summary;
     }
-
-    private buildUpdatedConsultationMessage(
-        previousItem: ConsultationNotificationSnapshot,
-        item: ConsultationNotificationSnapshot,
-        audience: MessageAudience,
-    ): string {
-        const messages: string[] = [];
-
+    buildUpdatedConsultationMessage(previousItem, item, audience) {
+        const messages = [];
         if (this.isConsultationPlacementChanged(previousItem, item)) {
             messages.push(this.formatConsultationTransferMessage(previousItem, item, audience));
         }
-
         this.addChange(messages, 'Предмет', previousItem.subject, item.subject);
         this.addChange(messages, 'Тип', previousItem.consultationType, item.consultationType);
-
         if (audience !== 'teacher') {
             this.addChange(messages, 'Преподаватель', previousItem.teacherName, item.teacherName);
         }
-
         if ((previousItem.room ?? '').trim() !== (item.room ?? '').trim()) {
             const room = item.room?.trim() || 'кабинет не указан';
             messages.push(`Кабинет: ${room}`);
         }
-
-        this.addChange(
-            messages,
-            'Комментарий',
-            previousItem.comment ?? '',
-            item.comment ?? '',
-        );
-
+        this.addChange(messages, 'Комментарий', previousItem.comment ?? '', item.comment ?? '');
         return messages.join(' ');
     }
-
-    private getConsultationChanges(
-        previousItem: ConsultationNotificationSnapshot,
-        item: ConsultationNotificationSnapshot,
-        audience: MessageAudience,
-    ): string[] {
-        const changes: string[] = [];
-
+    getConsultationChanges(previousItem, item, audience) {
+        const changes = [];
         if (this.isConsultationPlacementChanged(previousItem, item)) {
             changes.push(this.formatConsultationTransferMessage(previousItem, item, audience));
         }
-
         this.addChange(changes, 'Предмет', previousItem.subject, item.subject);
         this.addChange(changes, 'Тип', previousItem.consultationType, item.consultationType);
-
         if (audience !== 'teacher') {
             this.addChange(changes, 'Преподаватель', previousItem.teacherName, item.teacherName);
         }
-
         this.addChange(changes, 'Кабинет', previousItem.room ?? '', item.room ?? '');
         this.addChange(changes, 'Комментарий', previousItem.comment ?? '', item.comment ?? '');
-
         return changes;
     }
-
-    private isConsultationPlacementChanged(
-        previousItem: ConsultationNotificationSnapshot,
-        item: ConsultationNotificationSnapshot,
-    ): boolean {
+    isConsultationPlacementChanged(previousItem, item) {
         return previousItem.weekStart !== item.weekStart
             || previousItem.dayOfWeek !== item.dayOfWeek
             || previousItem.startTime !== item.startTime
             || previousItem.endTime !== item.endTime;
     }
-
-    private formatConsultationTransferMessage(
-        previousItem: ConsultationNotificationSnapshot,
-        item: ConsultationNotificationSnapshot,
-        audience: MessageAudience,
-    ): string {
+    formatConsultationTransferMessage(previousItem, item, audience) {
         const consultation = this.capitalize(this.formatConsultationWithSubject(item));
         const teacher = this.formatTeacherForNotification(item.teacherName);
         const teacherPart = audience !== 'teacher' && teacher
@@ -322,111 +214,89 @@ export class ConsultationNotificationsService {
         const nextDate = this.formatConsultationShortDate(item);
         const previousTime = `${previousItem.startTime}-${previousItem.endTime}`;
         const nextTime = `${item.startTime}-${item.endTime}`;
-
         return `${consultation}${teacherPart} перенесена с ${previousDate}, ${previousTime} на ${nextDate}, ${nextTime}.`;
     }
-
-    private formatConsultationSummary(
-        item: ConsultationNotificationSnapshot,
-        audience: MessageAudience,
-    ): string {
+    formatConsultationSummary(item, audience) {
         const consultation = this.capitalize(this.formatConsultationWithSubject(item));
         const teacherPart = audience !== 'teacher' && item.teacherName.trim()
             ? ` у ${item.teacherName.trim()}`
             : '';
         const dateTime = this.formatConsultationDateTime(item);
         const room = item.room?.trim();
-
         if (!room) {
             return `${consultation}${teacherPart}, ${dateTime}`;
         }
-
         return `${consultation}${teacherPart}, ${dateTime}. Кабинет: ${room}`;
     }
-
-    private formatConsultationWithSubject(item: ConsultationNotificationSnapshot): string {
+    formatConsultationWithSubject(item) {
         const type = item.consultationType.trim() || 'консультация';
         const subject = item.subject.trim();
-
         if (!subject || type.toLowerCase() === subject.toLowerCase()) {
             return type.toLowerCase();
         }
-
         return `${type.toLowerCase()} по ${subject}`;
     }
-
-    private formatConsultationDateTime(item: ConsultationNotificationSnapshot): string {
+    formatConsultationDateTime(item) {
         const day = CONSULTATION_DAY_LABELS[item.dayOfWeek] ?? 'день не указан';
         const date = this.formatConsultationDate(item);
-
         return `${day}${date ? `, ${date}` : ''}, ${item.startTime}-${item.endTime}`;
     }
-
-    private formatConsultationDate(item: ConsultationNotificationSnapshot): string {
+    formatConsultationDate(item) {
         const [year, month, day] = item.weekStart.slice(0, 10).split('-').map(Number);
-
         if (!year || !month || !day || !item.dayOfWeek) {
             return '';
         }
-
         const lessonDate = new Date(Date.UTC(year, month - 1, day + item.dayOfWeek - 1));
         const formattedDay = String(lessonDate.getUTCDate()).padStart(2, '0');
         const formattedMonth = String(lessonDate.getUTCMonth() + 1).padStart(2, '0');
-
         return `${formattedDay}.${formattedMonth}.${lessonDate.getUTCFullYear()}`;
     }
-
-    private formatConsultationShortDate(item: ConsultationNotificationSnapshot): string {
+    formatConsultationShortDate(item) {
         const [day, month] = this.formatConsultationDate(item).split('.');
-
         if (!day || !month) {
             return 'дата не указана';
         }
-
         return `${day}.${month}`;
     }
-
-    private getMessageAudience(user: User): MessageAudience {
-        if (user.role?.code === RoleCode.TEACHER) {
+    getMessageAudience(user) {
+        if (user.role?.code === role_entity_1.RoleCode.TEACHER) {
             return 'teacher';
         }
-
-        if (user.role?.code === RoleCode.STUDENT) {
+        if (user.role?.code === role_entity_1.RoleCode.STUDENT) {
             return 'student';
         }
-
         return 'other';
     }
-
-    private formatTeacherForNotification(value: string): string {
+    formatTeacherForNotification(value) {
         return value.trim().replace(/[\s.]+/g, '');
     }
-
-    private capitalize(value: string): string {
+    capitalize(value) {
         const trimmed = value.trim();
-
         if (!trimmed) {
             return '';
         }
-
         return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1).toLowerCase()}`;
     }
-
-    private addChange(
-        changes: string[],
-        label: string,
-        previousValue: string,
-        nextValue: string,
-    ): void {
+    addChange(changes, label, previousValue, nextValue) {
         const previous = previousValue.trim() || 'не указано';
         const next = nextValue.trim() || 'не указано';
-
         if (previous !== next) {
             changes.push(`${label}: ${previous} -> ${next}`);
         }
     }
-
-    private formatTime(value: string): string {
+    formatTime(value) {
         return String(value).slice(0, 5);
     }
-}
+};
+exports.ConsultationNotificationsService = ConsultationNotificationsService;
+exports.ConsultationNotificationsService = ConsultationNotificationsService = ConsultationNotificationsService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, typeorm_1.InjectRepository)(notification_entity_1.Notification)),
+    __param(1, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        notifications_gateway_1.NotificationsGateway,
+        push_notifications_service_1.PushNotificationsService,
+        consultation_notification_preferences_service_1.ConsultationNotificationPreferencesService])
+], ConsultationNotificationsService);
+//# sourceMappingURL=consultation-notifications.service.js.map

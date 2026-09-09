@@ -1,28 +1,18 @@
 # Dependencies
 node_modules/
+# Default ignored files
+/shelf/
+/workspace.xml
+# Ignored default folder with query files
+/queries/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# Editor-based HTTP Client requests
+/httpRequests/
 
-# Build
-dist/
-**/dist/
-
-# IDE
-.idea/
-.vscode/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
+./idea
 # Env
 .env
 .env.*
 !.env.example
-
-# OS
-.DS_Store
-Thumbs.db
-
-# DEV-HTTPS
-certs/*.pem
-certs/openssl.cnf
